@@ -1,0 +1,625 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// 组织与用户
+// ============================================================
+
+model ProductGroup {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agents  Agent[]
+  members ProductGroupMember[]
+}
+
+model ProductGroupMember {
+  id             String       @id @default(cuid())
+  productGroupId String
+  productGroup   ProductGroup @relation(fields: [productGroupId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  role           GroupRole    @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+
+  @@unique([productGroupId, userId])
+}
+
+enum GroupRole {
+  LEAD
+  MEMBER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  roles              UserRole[]
+  productGroups      ProductGroupMember[]
+  auditLogs          AuditLog[]
+}
+
+// ============================================================
+// Agent 核心
+// ============================================================
+
+model Agent {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  productGroupId String
+  productGroup   ProductGroup @relation(fields: [productGroupId], references: [id])
+  status         AgentStatus  @default(DRAFT)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      String
+
+  // 四分区配置
+  promptConfig    PromptConfig?
+  knowledgeConfig KnowledgeConfig?
+  toolsConfig     ToolsConfig?
+  routingConfig   RoutingConfig?
+
+  // Draft 环境
+  draftConfig AgentDraftConfig?
+
+  // 关联实体
+  feedbacks     Feedback[]
+  releases      Release[]
+  versions      AgentVersion[]
+  skillBindings AgentSkillBinding[]
+  wikiVault     WikiVault?
+  configChanges ConfigChange[]
+
+  @@index([productGroupId])
+  @@index([status])
+}
+
+enum AgentStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+// ============================================================
+// Agent 四分区配置
+// ============================================================
+
+model PromptConfig {
+  id             String   @id @default(cuid())
+  agentId        String   @unique
+  agent          Agent    @relation(fields: [agentId], references: [id])
+  systemPrompt   String
+  roleDefinition String?
+  constraints    String[]
+  outputFormat   String?
+  version        Int      @default(1)
+  lastModifiedBy String?
+  lastModifiedAt DateTime @default(now())
+}
+
+model KnowledgeConfig {
+  id                  String         @id @default(cuid())
+  agentId             String         @unique
+  agent               Agent          @relation(fields: [agentId], references: [id])
+  wikiVaultId         String?        @unique
+  wikiVault           WikiVault?     @relation(fields: [wikiVaultId], references: [id])
+  searchStrategy      SearchStrategy @default(WIKI_FIRST)
+  fallbackToMcp       Boolean        @default(true)
+  maxWikiResults      Int            @default(5)
+  confidenceThreshold Float          @default(0.6)
+  lastSyncAt          DateTime?
+  syncStatus          SyncStatus     @default(SYNCED)
+  version             Int            @default(1)
+  lastModifiedBy      String?
+  lastModifiedAt      DateTime       @default(now())
+}
+
+enum SearchStrategy {
+  WIKI_FIRST
+  WIKI_ONLY
+  MCP_FIRST
+  HYBRID
+}
+
+enum SyncStatus {
+  SYNCED
+  SYNCING
+  OUT_OF_SYNC
+  ERROR
+}
+
+model ToolsConfig {
+  id                 String   @id @default(cuid())
+  agentId            String   @unique
+  agent              Agent    @relation(fields: [agentId], references: [id])
+  mcpTools           Json     // McpToolConfig[]
+  wikiQueryTools     Json     // WikiQueryToolConfig[]
+  maxConcurrentCalls Int      @default(3)
+  timeoutMs          Int      @default(30000)
+  retryCount         Int      @default(2)
+  version            Int      @default(1)
+  lastModifiedBy     String?
+  lastModifiedAt     DateTime @default(now())
+}
+
+model RoutingConfig {
+  id                 String   @id @default(cuid())
+  agentId            String   @unique
+  agent              Agent    @relation(fields: [agentId], references: [id])
+  rules              Json     // RoutingRule[]
+  escalationPolicy   Json?
+  humanThreshold     Float    @default(0.3)
+  maxConversationTurns Int    @default(10)
+  idleTimeoutMinutes Int      @default(5)
+  version            Int      @default(1)
+  lastModifiedBy     String?
+  lastModifiedAt     DateTime @default(now())
+}
+
+model AgentDraftConfig {
+  id              String   @id @default(cuid())
+  agentId         String   @unique
+  agent           Agent    @relation(fields: [agentId], references: [id])
+  promptConfig    Json?
+  knowledgeConfig Json?
+  toolsConfig     Json?
+  routingConfig   Json?
+  isDirty         Boolean  @default(false)
+  lastSavedBy     String?
+  lastSavedAt     DateTime?
+}
+
+// ============================================================
+// 配置变更记录
+// ============================================================
+
+model ConfigChange {
+  id          String          @id @default(cuid())
+  agentId     String
+  agent       Agent           @relation(fields: [agentId], references: [id])
+  partition   ConfigPartition
+  before      Json?
+  after       Json
+  diff        Json
+  changedBy   String
+  changedAt   DateTime        @default(now())
+  changeNote  String?
+  releaseId   String?
+
+  @@index([agentId, partition])
+  @@index([changedAt])
+}
+
+enum ConfigPartition {
+  PROMPT
+  KNOWLEDGE
+  TOOLS
+  ROUTING
+}
+
+// ============================================================
+// Feedback（反馈）
+// ============================================================
+
+model Feedback {
+  id              String           @id @default(cuid())
+  agentId         String
+  agent           Agent            @relation(fields: [agentId], references: [id])
+  source          FeedbackSource   @default(MANUAL)
+  title           String
+  content         String
+  sessionData     Json?
+  rating          FeedbackRating
+  tags            FeedbackTag[]
+  severity        FeedbackSeverity @default(MINOR)
+  status          FeedbackStatus   @default(NEW)
+  assignedTo      String?
+  assignedAt      DateTime?
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolution      String?
+  releaseId       String?
+  ingestJobId     String?
+  targetPartition ConfigPartition?
+  submittedBy     String
+  submittedAt     DateTime         @default(now())
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  verificationNote String?
+
+  @@index([agentId, status])
+  @@index([submittedAt])
+  @@index([severity, status])
+}
+
+enum FeedbackSource {
+  MANUAL
+  API
+  SESSION_IMPORT
+  SYSTEM
+}
+
+enum FeedbackRating {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
+enum FeedbackTag {
+  ANSWER_QUALITY
+  KNOWLEDGE_GAP
+  TOOL_FAILURE
+  ROUTING_ERROR
+  HALLUCINATION
+  OUTDATED_INFO
+  TONE_ISSUE
+  INCOMPLETE
+  OFF_TOPIC
+}
+
+enum FeedbackSeverity {
+  CRITICAL
+  MAJOR
+  MINOR
+  SUGGESTION
+}
+
+enum FeedbackStatus {
+  NEW
+  TRIAGED
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  VERIFIED
+  CLOSED
+  WONTFIX
+}
+
+// ============================================================
+// Release（发布审批）
+// ============================================================
+
+model Release {
+  id                String        @id @default(cuid())
+  agentId           String
+  agent             Agent         @relation(fields: [agentId], references: [id])
+  changeNote        String
+  changedPartitions ConfigPartition[]
+  status            ReleaseStatus @default(PENDING)
+  submittedBy       String
+  submittedAt       DateTime      @default(now())
+  approvedBy        String?
+  approvedAt        DateTime?
+  reviewComment     String?
+
+  // 关联配置快照
+  configSnapshot Json?
+
+  // 关联
+  version AgentVersion?
+
+  @@index([agentId, status])
+  @@index([submittedAt])
+}
+
+enum ReleaseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+// ============================================================
+// Version（版本快照）
+// ============================================================
+
+model AgentVersion {
+  id              String  @id @default(cuid())
+  agentId         String
+  agent           Agent   @relation(fields: [agentId], references: [id])
+  version         String
+  major           Int
+  minor           Int
+  patch           Int
+  promptSnapshot    Json
+  knowledgeSnapshot Json
+  toolsSnapshot     Json
+  routingSnapshot   Json
+  releaseId       String  @unique
+  release         Release @relation(fields: [releaseId], references: [id])
+  wikiCommitSha   String?
+  publishedAt     DateTime @default(now())
+  publishedBy     String
+  changeNote      String
+  effectivenessReport Json?
+
+  @@unique([agentId, version])
+  @@index([agentId, publishedAt])
+}
+
+// ============================================================
+// Skill（技能插件）
+// ============================================================
+
+model Skill {
+  id              String        @id @default(cuid())
+  name            String        @unique
+  displayName     String
+  description     String
+  category        SkillCategory @default(GENERAL)
+  triggerPatterns String[]
+  inputSchema     Json
+  outputSchema    Json
+  runtime         SkillRuntime  @default(HTTP)
+  endpoint        String?
+  codeRef         String?
+  version         String        @default("1.0.0")
+  dependencies    String[]
+  permissions     String[]
+  status          SkillStatus   @default(DRAFT)
+  publishedAt     DateTime?
+  downloadCount   Int           @default(0)
+  authorId        String
+  authorName      String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  bindings AgentSkillBinding[]
+  versions SkillVersion[]
+
+  @@index([category, status])
+}
+
+enum SkillCategory {
+  KNOWLEDGE_QUERY
+  DATA_FETCH
+  ACTION
+  TRANSFORM
+  GENERAL
+}
+
+enum SkillRuntime {
+  HTTP
+  FUNCTION
+  MCP
+  WORKFLOW
+}
+
+enum SkillStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+  ARCHIVED
+}
+
+model SkillVersion {
+  id          String   @id @default(cuid())
+  skillId     String
+  skill       Skill    @relation(fields: [skillId], references: [id])
+  version     String
+  changelog   String?
+  snapshot    Json
+  publishedAt DateTime @default(now())
+
+  @@unique([skillId, version])
+  @@index([skillId])
+}
+
+model AgentSkillBinding {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id])
+  skillId       String
+  skill         Skill    @relation(fields: [skillId], references: [id])
+  config        Json?
+  enabled       Boolean  @default(true)
+  priority      Int      @default(0)
+  allowedScopes String[]
+  boundAt       DateTime @default(now())
+  boundBy       String
+
+  @@unique([agentId, skillId])
+  @@index([agentId])
+  @@index([skillId])
+}
+
+// ============================================================
+// Wiki（知识库）
+// ============================================================
+
+model WikiVault {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  agentId       String?  @unique
+  agent         Agent?   @relation(fields: [agentId], references: [id])
+  gitRepoUrl    String?
+  gitBranch     String   @default("main")
+  lastCommitSha String?
+  pageCount     Int      @default(0)
+  avgConfidence Float    @default(0.0)
+  orphanCount   Int      @default(0)
+  isShared      Boolean  @default(false)
+  sharedBy      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pages      WikiPage[]
+  ingestJobs WikiIngestJob[]
+  knowledgeConfig KnowledgeConfig?
+
+  @@index([isShared])
+}
+
+model WikiPage {
+  id             String        @id @default(cuid())
+  vaultId        String
+  vault          WikiVault     @relation(fields: [vaultId], references: [id])
+  title          String
+  slug           String
+  content        String
+  summary        String?
+  provenance     Provenance    @default(EXTRACTED)
+  lifecycle      PageLifecycle @default(DRAFT)
+  tier           PageTier      @default(SUPPORTING)
+  baseConfidence Float         @default(0.5)
+  sourceRefs     Json
+  wikilinks      String[]
+  categories     String[]
+  tags           String[]
+  filePath       String
+  lastCommitSha  String?
+  inboundLinks   Int           @default(0)
+  outboundLinks  Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  reviewedAt     DateTime?
+  reviewedBy     String?
+
+  @@unique([vaultId, slug])
+  @@index([vaultId, lifecycle])
+  @@index([vaultId, tier])
+}
+
+enum Provenance {
+  EXTRACTED
+  INFERRED
+  AMBIGUOUS
+  SYNTHESIZED
+}
+
+enum PageLifecycle {
+  DRAFT
+  REVIEWED
+  VERIFIED
+  DISPUTED
+  ARCHIVED
+}
+
+enum PageTier {
+  CORE
+  SUPPORTING
+  PERIPHERAL
+}
+
+model WikiIngestJob {
+  id               String      @id @default(cuid())
+  vaultId          String
+  vault            WikiVault   @relation(fields: [vaultId], references: [id])
+  jobType          WikiJobType
+  sourceType       String
+  sourceId         String?
+  sourceContent    String?
+  sourceUrl        String?
+  generatedPageIds String[]
+  status           JobStatus   @default(PENDING)
+  result           Json?
+  error            String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  triggeredBy      String
+  createdAt        DateTime    @default(now())
+
+  @@index([vaultId, status])
+  @@index([jobType, status])
+}
+
+enum WikiJobType {
+  INGEST
+  UPDATE
+  SYNTHESIZE
+  LINT
+  DEDUP
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ============================================================
+// 权限与审计
+// ============================================================
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  description String?
+  isSystem    Boolean  @default(false)
+
+  permissions RolePermission[]
+  members     UserRole[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  resource    String
+  action      String
+  description String?
+
+  roles RolePermission[]
+
+  @@unique([resource, action])
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  roleId         String
+  role           Role     @relation(fields: [roleId], references: [id])
+  productGroupId String?
+  assignedAt     DateTime @default(now())
+  assignedBy     String
+
+  @@unique([userId, roleId, productGroupId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  resource   String
+  resourceId String
+  details    Json?
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  userName   String
+  userRole   String
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([resource, resourceId])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+}

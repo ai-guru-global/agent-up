@@ -1,0 +1,23 @@
+{
+  "name": "@agent-up/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:push": "prisma db push --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=prisma/schema.prisma",
+    "clean": "rm -rf dist .turbo node_modules"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "prisma": "^6.10.0",
+    "typescript": "^5"
+  }
+}

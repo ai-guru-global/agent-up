@@ -1,0 +1,79 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-07-08T13:41:16Z"
+modules:
+    "":
+        dir_name: Agent Up Monorepo（pnpm + Turborepo）
+        title: Agent Up Monorepo（pnpm + Turborepo）
+        scope:
+            - README.md
+            - .gitignore
+            - docker-compose.yml
+            - package.json
+            - pnpm-workspace.yaml
+            - turbo.json
+            - tsconfig.json
+            - .env.example
+            - package-lock.json
+            - pnpm-lock.yaml
+        source_files: []
+        children:
+            - db_package
+            - shared_types
+            - ui_package
+            - web_app
+        depends_on: []
+        related_to: []
+    db_package:
+        dir_name: Prisma 数据库客户端单例封装
+        title: Prisma 数据库客户端单例封装
+        scope:
+            - packages/db/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app
+    shared_types:
+        dir_name: Agent 平台共享类型定义包
+        title: Agent 平台共享类型定义包
+        scope:
+            - packages/shared/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app
+    ui_package:
+        dir_name: '@agent-up_ui 共享 UI 组件库'
+        title: '@agent-up/ui 共享 UI 组件库'
+        scope:
+            - packages/ui/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app:
+        dir_name: Web 管理后台应用（Next.js App Router）
+        title: Web 管理后台应用（Next.js App Router）
+        scope:
+            - apps/web/
+        source_files: []
+        children:
+            - web_app/dashboard_routes
+        depends_on: []
+        related_to:
+            - path: db_package
+            - path: shared_types
+    web_app/dashboard_routes:
+        dir_name: 管理后台仪表盘路由组
+        title: 管理后台仪表盘路由组
+        scope:
+            - apps/web/app/(dashboard)/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

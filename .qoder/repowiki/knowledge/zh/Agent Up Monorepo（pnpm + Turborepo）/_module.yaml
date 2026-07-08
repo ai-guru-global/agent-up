@@ -1,0 +1,17 @@
+schema_version: 1
+module_path: ""
+title: Agent Up Monorepo（pnpm + Turborepo）
+scope:
+    - README.md
+    - .gitignore
+    - docker-compose.yml
+    - package.json
+    - pnpm-workspace.yaml
+    - turbo.json
+    - tsconfig.json
+    - .env.example
+    - package-lock.json
+    - pnpm-lock.yaml
+source_files: []
+depends_on: []
+related_to: []
