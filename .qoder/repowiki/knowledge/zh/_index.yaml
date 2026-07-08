@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-07-08T13:41:16Z"
+exported_at: "2026-07-08T14:13:19Z"
 modules:
     "":
-        dir_name: Agent Up Monorepo（pnpm + Turborepo）
-        title: Agent Up Monorepo（pnpm + Turborepo）
+        dir_name: Agent 持续改进平台 Monorepo 根编排
+        title: Agent 持续改进平台 Monorepo 根编排
         scope:
             - README.md
             - .gitignore
@@ -28,25 +28,23 @@ modules:
         depends_on: []
         related_to: []
     db_package:
-        dir_name: Prisma 数据库客户端单例封装
-        title: Prisma 数据库客户端单例封装
+        dir_name: Agent 平台数据库访问层与领域模型
+        title: Agent 平台数据库访问层与领域模型
         scope:
             - packages/db/
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: web_app
+        related_to: []
     shared_types:
-        dir_name: Agent 平台共享类型定义包
-        title: Agent 平台共享类型定义包
+        dir_name: Agent 改进平台共享类型包
+        title: Agent 改进平台共享类型包
         scope:
             - packages/shared/
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: web_app
+        related_to: []
     ui_package:
         dir_name: '@agent-up_ui 共享 UI 组件库'
         title: '@agent-up/ui 共享 UI 组件库'
@@ -57,22 +55,10 @@ modules:
         depends_on: []
         related_to: []
     web_app:
-        dir_name: Web 管理后台应用（Next.js App Router）
-        title: Web 管理后台应用（Next.js App Router）
+        dir_name: Agent 持续改进平台 Web 管理后台
+        title: Agent 持续改进平台 Web 管理后台
         scope:
             - apps/web/
-        source_files: []
-        children:
-            - web_app/dashboard_routes
-        depends_on: []
-        related_to:
-            - path: db_package
-            - path: shared_types
-    web_app/dashboard_routes:
-        dir_name: 管理后台仪表盘路由组
-        title: 管理后台仪表盘路由组
-        scope:
-            - apps/web/app/(dashboard)/
         source_files: []
         children: []
         depends_on: []

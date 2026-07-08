@@ -16,6 +16,14 @@
 - [pnpm-workspace.yaml](file://pnpm-workspace.yaml)
 </cite>
 
+## 更新摘要
+**所做更改**   
+- 更新了类型定义包的完整实现分析，包括所有核心业务类型的详细结构
+- 新增了 Agent、Feedback、Release、Skill、Wiki、Permission 等域的完整类型定义说明
+- 增强了架构总览和依赖关系分析，反映实际的 TypeScript 类型安全设计
+- 补充了类型版本管理、向后兼容性保证和类型安全最佳实践的详细指导
+- 添加了类型使用示例和集成指南，包括在 web 应用中的正确引用方法
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -29,10 +37,10 @@
 10. [附录](#附录)
 
 ## 简介
-本文件系统性说明 packages/shared 类型定义包的设计与实现，聚焦 TypeScript 共享类型的组织结构、导出策略、版本管理与向后兼容策略、类型安全最佳实践，以及如何在 web 应用与其他包中正确引用这些类型。同时提供类型验证、接口设计、命名规范、测试策略与文档生成方法的指导。
+本文件系统性说明 packages/shared 类型定义包的设计与实现，聚焦 TypeScript 共享类型的组织结构、导出策略、版本管理与向后兼容策略、类型安全最佳实践，以及如何在 web 应用与其他包中正确引用这些类型。该包为整个 Agent 改进平台提供了统一的类型契约，确保跨模块的类型安全性和一致性。
 
 ## 项目结构
-shared 包采用“按领域分文件 + 统一入口导出”的组织方式：
+shared 包采用"按领域分文件 + 统一入口导出"的组织方式：
 - src/types 下按业务域划分类型文件（Agent、Feedback、Release、Skill、Wiki、Permission）
 - src/index.ts 作为统一入口，集中 re-export 所有类型与常量
 - package.json 声明 types 字段指向入口，便于其他包直接消费类型
@@ -57,8 +65,8 @@ IDX --> T_WIKI
 IDX --> T_PERMISSION
 ```
 
-图表来源
-- [packages/shared/src/index.ts:1-15](file://packages/shared/src/index.ts#L1-L15)
+**图表来源**
+- [packages/shared/src/index.ts:1-6](file://packages/shared/src/index.ts#L1-L6)
 - [packages/shared/src/types/agent.ts:1-108](file://packages/shared/src/types/agent.ts#L1-L108)
 - [packages/shared/src/types/feedback.ts:1-62](file://packages/shared/src/types/feedback.ts#L1-L62)
 - [packages/shared/src/types/release.ts:1-36](file://packages/shared/src/types/release.ts#L1-L36)
@@ -66,21 +74,21 @@ IDX --> T_PERMISSION
 - [packages/shared/src/types/wiki.ts:1-73](file://packages/shared/src/types/wiki.ts#L1-L73)
 - [packages/shared/src/types/permission.ts:1-37](file://packages/shared/src/types/permission.ts#L1-L37)
 
-章节来源
+**章节来源**
 - [packages/shared/src/index.ts:1-15](file://packages/shared/src/index.ts#L1-L15)
 - [packages/shared/package.json:1-15](file://packages/shared/package.json#L1-L15)
 - [packages/shared/tsconfig.json:1-9](file://packages/shared/tsconfig.json#L1-L9)
 
 ## 核心组件
-- Agent 域：Agent 实体、状态枚举、配置分区枚举，Prompt/Knowledge/Tools/Routing 等配置模型
-- Feedback 域：反馈记录、来源、评分、标签、严重等级、处理状态
-- Release 域：发布单、发布状态、Agent 版本信息
-- Skill 域：技能定义、分类、运行时、状态、与 Agent 的绑定关系
-- Wiki 域：知识库仓库、页面、来源引用、生命周期、分级、任务与作业状态
-- Permission 域：角色、权限动作、作用域、审计日志条目
-- 通用常量与规则：平台名称、分页默认值、最大页大小、语义化版本号正则
+- **Agent 域**：Agent 实体、状态枚举、配置分区枚举，Prompt/Knowledge/Tools/Routing 等配置模型
+- **Feedback 域**：反馈记录、来源、评分、标签、严重等级、处理状态
+- **Release 域**：发布单、发布状态、Agent 版本信息
+- **Skill 域**：技能定义、分类、运行时、状态、与 Agent 的绑定关系
+- **Wiki 域**：知识库仓库、页面、来源引用、生命周期、分级、任务与作业状态
+- **Permission 域**：角色、权限动作、作用域、审计日志条目
+- **通用常量与规则**：平台名称、分页默认值、最大页大小、语义化版本号正则
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/agent.ts:1-108](file://packages/shared/src/types/agent.ts#L1-L108)
 - [packages/shared/src/types/feedback.ts:1-62](file://packages/shared/src/types/feedback.ts#L1-L62)
 - [packages/shared/src/types/release.ts:1-36](file://packages/shared/src/types/release.ts#L1-L36)
@@ -104,23 +112,23 @@ end
 WEB --> PKG_SHARED
 ```
 
-图表来源
+**图表来源**
 - [pnpm-workspace.yaml:1-4](file://pnpm-workspace.yaml#L1-L4)
 - [packages/shared/package.json:1-15](file://packages/shared/package.json#L1-L15)
 
-章节来源
+**章节来源**
 - [pnpm-workspace.yaml:1-4](file://pnpm-workspace.yaml#L1-L4)
 - [packages/shared/package.json:1-15](file://packages/shared/package.json#L1-L15)
 
 ## 详细组件分析
 
 ### Agent 域类型
-- 实体与状态
+- **实体与状态**
   - Agent：标识、名称、描述、所属产品组、状态、时间戳
   - AgentStatus：草稿、活跃、归档
-- 配置分区
+- **配置分区**
   - ConfigPartition：提示词、知识、工具、路由
-- 配置模型
+- **配置模型**
   - PromptConfig：系统提示、角色定义、约束、输出格式
   - KnowledgeConfig：知识库仓库、检索策略、回退策略、结果上限、置信度阈值
   - ToolsConfig：MCP 工具集合、Wiki 查询工具集合、并发、超时、重试
@@ -141,9 +149,16 @@ class Agent {
 }
 class AgentStatus {
 <<enum>>
+DRAFT = "DRAFT"
+ACTIVE = "ACTIVE"
+ARCHIVED = "ARCHIVED"
 }
 class ConfigPartition {
 <<enum>>
+PROMPT = "PROMPT"
+KNOWLEDGE = "KNOWLEDGE"
+TOOLS = "TOOLS"
+ROUTING = "ROUTING"
 }
 class PromptConfig {
 +string systemPrompt
@@ -160,6 +175,10 @@ class KnowledgeConfig {
 }
 class SearchStrategy {
 <<enum>>
+WIKI_FIRST = "WIKI_FIRST"
+WIKI_ONLY = "WIKI_ONLY"
+MCP_FIRST = "MCP_FIRST"
+HYBRID = "HYBRID"
 }
 class ToolsConfig {
 +McpToolConfig[] mcpTools
@@ -173,18 +192,18 @@ class McpToolConfig {
 +string displayName
 +string description
 +string endpoint
-+string method
++"GET"|"POST"|"PUT"|"DELETE" method
 +Record~string, unknown~ inputSchema
 +Record~string, unknown~ outputSchema
-+string authType
-+string permissionScope
++"none"|"bearer"|"api_key" authType
++"read_only"|"read_write" permissionScope
 +boolean enabled
 }
 class WikiQueryToolConfig {
 +string name
 +string displayName
 +string description
-+string searchType
++"keyword"|"semantic"|"hybrid" searchType
 +number maxResults
 +number minConfidence
 +boolean enabled
@@ -209,15 +228,15 @@ ToolsConfig --> WikiQueryToolConfig : "包含"
 RoutingConfig --> RoutingRule : "包含"
 ```
 
-图表来源
+**图表来源**
 - [packages/shared/src/types/agent.ts:1-108](file://packages/shared/src/types/agent.ts#L1-L108)
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/agent.ts:1-108](file://packages/shared/src/types/agent.ts#L1-L108)
 
 ### Feedback 域类型
-- 反馈记录：关联 Agent、来源、标题、内容、评分、标签、严重等级、状态、目标配置分区、提交人与时间
-- 枚举：来源、评分、标签、严重等级、处理状态
+- **反馈记录**：关联 Agent、来源、标题、内容、评分、标签、严重等级、状态、目标配置分区、提交人与时间
+- **枚举**：来源、评分、标签、严重等级、处理状态
 
 ```mermaid
 classDiagram
@@ -235,12 +254,12 @@ class Feedback {
 +string submittedBy
 +Date submittedAt
 }
-class FeedbackSource { <<enum>> }
-class FeedbackRating { <<enum>> }
-class FeedbackTag { <<enum>> }
-class FeedbackSeverity { <<enum>> }
-class FeedbackStatus { <<enum>> }
-class ConfigPartition { <<enum>> }
+class FeedbackSource { <<enum>> MANUAL="MANUAL", API="API", SESSION_IMPORT="SESSION_IMPORT", SYSTEM="SYSTEM" }
+class FeedbackRating { <<enum>> POSITIVE="POSITIVE", NEGATIVE="NEGATIVE", NEUTRAL="NEUTRAL" }
+class FeedbackTag { <<enum>> ANSWER_QUALITY="ANSWER_QUALITY", KNOWLEDGE_GAP="KNOWLEDGE_GAP", TOOL_FAILURE="TOOL_FAILURE", ROUTING_ERROR="ROUTING_ERROR", HALLUCINATION="HALLUCINATION", OUTDATED_INFO="OUTDATED_INFO", TONE_ISSUE="TONE_ISSUE", INCOMPLETE="INCOMPLETE", OFF_TOPIC="OFF_TOPIC" }
+class FeedbackSeverity { <<enum>> CRITICAL="CRITICAL", MAJOR="MAJOR", MINOR="MINOR", SUGGESTION="SUGGESTION" }
+class FeedbackStatus { <<enum>> NEW="NEW", TRIAGED="TRIAGED", ASSIGNED="ASSIGNED", IN_PROGRESS="IN_PROGRESS", RESOLVED="RESOLVED", VERIFIED="VERIFIED", CLOSED="CLOSED", WONTFIX="WONTFIX" }
+class ConfigPartition { <<enum>> PROMPT="PROMPT", KNOWLEDGE="KNOWLEDGE", TOOLS="TOOLS", ROUTING="ROUTING" }
 Feedback --> FeedbackSource : "使用"
 Feedback --> FeedbackRating : "使用"
 Feedback --> FeedbackTag : "使用"
@@ -249,17 +268,17 @@ Feedback --> FeedbackStatus : "使用"
 Feedback --> ConfigPartition : "可选使用"
 ```
 
-图表来源
+**图表来源**
 - [packages/shared/src/types/feedback.ts:1-62](file://packages/shared/src/types/feedback.ts#L1-L62)
 - [packages/shared/src/types/agent.ts:18-23](file://packages/shared/src/types/agent.ts#L18-L23)
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/feedback.ts:1-62](file://packages/shared/src/types/feedback.ts#L1-L62)
 
 ### Release 域类型
-- 发布单：关联 Agent、变更说明、变更分区、状态、提交与审批信息
-- 发布状态：待审、已批准、已拒绝、需修改
-- Agent 版本：语义化版本解析为 major/minor/patch，含发布时间与发布者
+- **发布单**：关联 Agent、变更说明、变更分区、状态、提交与审批信息
+- **发布状态**：待审、已批准、已拒绝、需修改
+- **Agent 版本**：语义化版本解析为 major/minor/patch，含发布时间与发布者
 
 ```mermaid
 classDiagram
@@ -275,7 +294,7 @@ class Release {
 +Date approvedAt?
 +string reviewComment?
 }
-class ReleaseStatus { <<enum>> }
+class ReleaseStatus { <<enum>> PENDING="PENDING", APPROVED="APPROVED", REJECTED="REJECTED", CHANGES_REQUESTED="CHANGES_REQUESTED" }
 class AgentVersion {
 +string id
 +string agentId
@@ -287,22 +306,22 @@ class AgentVersion {
 +Date publishedAt
 +string publishedBy
 }
-class ConfigPartition { <<enum>> }
+class ConfigPartition { <<enum>> PROMPT="PROMPT", KNOWLEDGE="KNOWLEDGE", TOOLS="TOOLS", ROUTING="ROUTING" }
 Release --> ReleaseStatus : "使用"
 Release --> ConfigPartition : "使用"
 ```
 
-图表来源
+**图表来源**
 - [packages/shared/src/types/release.ts:1-36](file://packages/shared/src/types/release.ts#L1-L36)
 - [packages/shared/src/types/agent.ts:18-23](file://packages/shared/src/types/agent.ts#L18-L23)
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/release.ts:1-36](file://packages/shared/src/types/release.ts#L1-L36)
 
 ### Skill 域类型
-- 技能定义：名称、显示名、描述、分类、触发模式、输入/输出 Schema、运行时、版本、状态、作者信息
-- 分类/运行时/状态：限定取值空间
-- Agent-Skill 绑定：允许配置、启用标志、优先级、作用域列表
+- **技能定义**：名称、显示名、描述、分类、触发模式、输入/输出 Schema、运行时、版本、状态、作者信息
+- **分类/运行时/状态**：限定取值空间
+- **Agent-Skill 绑定**：允许配置、启用标志、优先级、作用域列表
 
 ```mermaid
 classDiagram
@@ -321,9 +340,9 @@ class Skill {
 +string authorId
 +string authorName
 }
-class SkillCategory { <<enum>> }
-class SkillRuntime { <<enum>> }
-class SkillStatus { <<enum>> }
+class SkillCategory { <<enum>> KNOWLEDGE_QUERY="KNOWLEDGE_QUERY", DATA_FETCH="DATA_FETCH", ACTION="ACTION", TRANSFORM="TRANSFORM", GENERAL="GENERAL" }
+class SkillRuntime { <<enum>> HTTP="HTTP", FUNCTION="FUNCTION", MCP="MCP", WORKFLOW="WORKFLOW" }
+class SkillStatus { <<enum>> DRAFT="DRAFT", PUBLISHED="PUBLISHED", DEPRECATED="DEPRECATED", ARCHIVED="ARCHIVED" }
 class AgentSkillBinding {
 +string id
 +string agentId
@@ -338,17 +357,17 @@ Skill --> SkillRuntime : "使用"
 Skill --> SkillStatus : "使用"
 ```
 
-图表来源
+**图表来源**
 - [packages/shared/src/types/skill.ts:1-49](file://packages/shared/src/types/skill.ts#L1-L49)
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/skill.ts:1-49](file://packages/shared/src/types/skill.ts#L1-L49)
 
 ### Wiki 域类型
-- 知识库仓库：名称、描述、关联 Agent、Git 源、分支、统计与共享标记
-- 页面：标题、路径、内容、摘要、来源可信度、生命周期、分级、来源引用、内部链接、分类与标签
-- 来源引用：类型、ID、描述
-- 枚举：来源可信度、页面生命周期、页面分级、Wiki 作业类型、作业状态
+- **知识库仓库**：名称、描述、关联 Agent、Git 源、分支、统计与共享标记
+- **页面**：标题、路径、内容、摘要、来源可信度、生命周期、分级、来源引用、内部链接、分类与标签
+- **来源引用**：类型、ID、描述
+- **枚举**：来源可信度、页面生命周期、页面分级、Wiki 作业类型、作业状态
 
 ```mermaid
 classDiagram
@@ -380,38 +399,38 @@ class WikiPage {
 +string[] tags
 }
 class SourceRef {
-+string type
++"document"|"feedback"|"url"|"session" type
 +string id?
 +string description
 }
-class Provenance { <<enum>> }
-class PageLifecycle { <<enum>> }
-class PageTier { <<enum>> }
-class WikiJobType { <<enum>> }
-class JobStatus { <<enum>> }
+class Provenance { <<enum>> EXTRACTED="EXTRACTED", INFERRED="INFERRED", AMBIGUOUS="AMBIGUOUS", SYNTHESIZED="SYNTHESIZED" }
+class PageLifecycle { <<enum>> DRAFT="DRAFT", REVIEWED="REVIEWED", VERIFIED="VERIFIED", DISPUTED="DISPUTED", ARCHIVED="ARCHIVED" }
+class PageTier { <<enum>> CORE="CORE", SUPPORTING="SUPPORTING", PERIPHERAL="PERIPHERAL" }
+class WikiJobType { <<enum>> INGEST="INGEST", UPDATE="UPDATE", SYNTHESIZE="SYNTHESIZE", LINT="LINT", DEDUP="DEDUP" }
+class JobStatus { <<enum>> PENDING="PENDING", RUNNING="RUNNING", COMPLETED="COMPLETED", FAILED="FAILED", CANCELLED="CANCELLED" }
 WikiPage --> SourceRef : "包含"
 WikiPage --> Provenance : "使用"
 WikiPage --> PageLifecycle : "使用"
 WikiPage --> PageTier : "使用"
 ```
 
-图表来源
+**图表来源**
 - [packages/shared/src/types/wiki.ts:1-73](file://packages/shared/src/types/wiki.ts#L1-L73)
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/wiki.ts:1-73](file://packages/shared/src/types/wiki.ts#L1-L73)
 
 ### Permission 域类型
-- 角色：平台管理员、产品负责人、产品成员、技能开发者、知识编辑、审计员、只读查看者
-- 权限动作：读、写、发布、审批、回滚、删除、管理
-- 权限作用域：仅自身组、跨组、全局
-- 审计日志：操作、资源、资源 ID、用户信息与详情
+- **角色**：平台管理员、产品负责人、产品成员、技能开发者、知识编辑、审计员、只读查看者
+- **权限动作**：读、写、发布、审批、回滚、删除、管理
+- **权限作用域**：仅自身组、跨组、全局
+- **审计日志**：操作、资源、资源 ID、用户信息与详情
 
 ```mermaid
 classDiagram
-class RoleType { <<enum>> }
-class PermissionAction { <<enum>> }
-class PermissionScope { <<enum>> }
+class RoleType { <<enum>> PLATFORM_ADMIN="PLATFORM_ADMIN", PRODUCT_LEAD="PRODUCT_LEAD", PRODUCT_MEMBER="PRODUCT_MEMBER", SKILL_DEVELOPER="SKILL_DEVELOPER", KNOWLEDGE_EDITOR="KNOWLEDGE_EDITOR", AUDITOR="AUDITOR", CRE_VIEWER="CRE_VIEWER" }
+class PermissionAction { <<enum>> READ="read", WRITE="write", PUBLISH="publish", APPROVE="approve", ROLLBACK="rollback", DELETE="delete", ADMIN="admin" }
+class PermissionScope { <<enum>> OWN_GROUP="own_group", CROSS_GROUP="cross_group", GLOBAL="global" }
 class AuditLogEntry {
 +string action
 +string resource
@@ -423,15 +442,15 @@ class AuditLogEntry {
 }
 ```
 
-图表来源
+**图表来源**
 - [packages/shared/src/types/permission.ts:1-37](file://packages/shared/src/types/permission.ts#L1-L37)
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/permission.ts:1-37](file://packages/shared/src/types/permission.ts#L1-L37)
 
 ### 通用常量与版本规则
-- 平台名称、分页默认值与最大值
-- 语义化版本号正则表达式，用于前端校验与后端校验的一致性
+- **平台名称、分页默认值与最大值**
+- **语义化版本号正则表达式**，用于前端校验与后端校验的一致性
 
 ```mermaid
 flowchart TD
@@ -443,17 +462,17 @@ Accept --> End(["结束"])
 Reject --> End
 ```
 
-图表来源
+**图表来源**
 - [packages/shared/src/index.ts:8-15](file://packages/shared/src/index.ts#L8-L15)
 
-章节来源
+**章节来源**
 - [packages/shared/src/index.ts:8-15](file://packages/shared/src/index.ts#L8-L15)
 
 ## 依赖分析
-- 包内依赖
+- **包内依赖**
   - feedback.ts 与 release.ts 通过 import type 引入 agent.ts 中的 ConfigPartition，避免循环依赖
   - index.ts 集中 re-export 所有类型与常量，形成稳定对外契约
-- 包外依赖
+- **包外依赖**
   - 无第三方运行时依赖，仅依赖 TypeScript 编译器能力
   - 通过 pnpm workspace 被 apps/web 及其他包引用
 
@@ -469,37 +488,35 @@ D --> F["types/wiki.ts"]
 D --> G["types/permission.ts"]
 ```
 
-图表来源
-- [packages/shared/src/index.ts:1-7](file://packages/shared/src/index.ts#L1-L7)
+**图表来源**
+- [packages/shared/src/index.ts:1-6](file://packages/shared/src/index.ts#L1-L6)
 - [packages/shared/src/types/feedback.ts:60-62](file://packages/shared/src/types/feedback.ts#L60-L62)
 - [packages/shared/src/types/release.ts:34-36](file://packages/shared/src/types/release.ts#L34-L36)
 
-章节来源
-- [packages/shared/src/index.ts:1-7](file://packages/shared/src/index.ts#L1-L7)
+**章节来源**
+- [packages/shared/src/index.ts:1-6](file://packages/shared/src/index.ts#L1-L6)
 - [packages/shared/src/types/feedback.ts:60-62](file://packages/shared/src/types/feedback.ts#L60-L62)
 - [packages/shared/src/types/release.ts:34-36](file://packages/shared/src/types/release.ts#L34-L36)
 
 ## 性能考虑
-- 纯类型包不产生运行时开销，编译期即可保证类型安全
-- 使用 import type 减少不必要的导入负担
-- 合理拆分文件与集中导出有助于 IDE 索引与增量编译效率
-
-[本节为通用建议，无需源码引用]
+- **纯类型包不产生运行时开销**，编译期即可保证类型安全
+- **使用 import type 减少不必要的导入负担**
+- **合理拆分文件与集中导出有助于 IDE 索引与增量编译效率**
 
 ## 故障排查指南
-- 无法在应用中解析 @agent-up/shared
+- **无法在应用中解析 @agent-up/shared**
   - 确认 pnpm workspace 已包含 packages/*
   - 检查应用的 package.json 是否声明对 @agent-up/shared 的依赖
   - 确保 types 字段指向正确的入口文件
-- 类型不一致或报错
+- **类型不一致或报错**
   - 确认双方均使用相同版本的 shared 包
   - 检查是否误用非导出类型（仅通过 index.ts 暴露的类型可用）
   - 使用严格模式与 noEmit 配置进行本地类型检查
-- 版本校验失败
+- **版本校验失败**
   - 使用共享的正则表达式进行前后端一致校验
   - 若需要更严格的校验，可在上层封装校验函数并复用该正则
 
-章节来源
+**章节来源**
 - [pnpm-workspace.yaml:1-4](file://pnpm-workspace.yaml#L1-L4)
 - [packages/shared/package.json:1-15](file://packages/shared/package.json#L1-L15)
 - [packages/shared/src/index.ts:8-15](file://packages/shared/src/index.ts#L8-L15)
@@ -507,93 +524,89 @@ D --> G["types/permission.ts"]
 ## 结论
 shared 包以清晰的领域分层与统一的导出策略，提供了稳定、可演进的类型契约。通过严格 TS 配置、import type 的使用与常量/规则的集中管理，既保证了类型安全，也提升了跨包协作的效率。建议在后续迭代中持续遵循向后兼容原则，并通过类型测试与文档生成进一步提升质量与可维护性。
 
-[本节为总结性内容，无需源码引用]
-
 ## 附录
 
 ### 类型版本管理与向后兼容性
-- 语义化版本
+- **语义化版本**
   - 使用共享的语义化版本正则进行版本字符串校验
   - 在 Release 与 AgentVersion 中维护 major/minor/patch 以便追踪变更影响面
-- 向后兼容策略
+- **向后兼容策略**
   - 新增字段优先使用可选字段，避免破坏现有消费者
   - 新增枚举值时保持旧值可用，并在文档中标注弃用计划
   - 移除或重命名字段前至少保留一个次要版本周期
-- 变更治理
+- **变更治理**
   - 通过 Release 记录变更分区与变更说明，配合审批流程控制风险
 
-章节来源
+**章节来源**
 - [packages/shared/src/index.ts:8-15](file://packages/shared/src/index.ts#L8-L15)
 - [packages/shared/src/types/release.ts:1-36](file://packages/shared/src/types/release.ts#L1-L36)
 
 ### 类型安全最佳实践
-- 严格模式与一致性
+- **严格模式与一致性**
   - 启用 strict、noEmit、declaration、declarationMap、sourceMap
   - 使用 forceConsistentCasingInFileNames 与 isolatedModules
-- 类型边界
+- **类型边界**
   - 对外仅通过 index.ts 暴露必要类型
   - 使用 import type 避免运行时依赖
-- 常量与规则
+- **常量与规则**
   - 将平台常量与校验规则集中在入口导出，确保多端一致
 
-章节来源
+**章节来源**
 - [packages/shared/tsconfig.json:1-9](file://packages/shared/tsconfig.json#L1-L9)
 - [tsconfig.json:1-22](file://tsconfig.json#L1-L22)
 - [packages/shared/src/index.ts:1-15](file://packages/shared/src/index.ts#L1-L15)
 
 ### 命名规范
-- 类型与接口：大驼峰（如 Agent、WikiPage）
-- 枚举：大驼峰且值为大写字符串（如 AgentStatus、SkillCategory）
-- 配置对象：语义化命名（如 PromptConfig、KnowledgeConfig）
-- 常量：全大写加下划线（如 PLATFORM_NAME、DEFAULT_PAGE_SIZE）
+- **类型与接口**：大驼峰（如 Agent、WikiPage）
+- **枚举**：大驼峰且值为大写字符串（如 AgentStatus、SkillCategory）
+- **配置对象**：语义化命名（如 PromptConfig、KnowledgeConfig）
+- **常量**：全大写加下划线（如 PLATFORM_NAME、DEFAULT_PAGE_SIZE）
 
-章节来源
+**章节来源**
 - [packages/shared/src/types/agent.ts:1-108](file://packages/shared/src/types/agent.ts#L1-L108)
 - [packages/shared/src/types/skill.ts:1-49](file://packages/shared/src/types/skill.ts#L1-L49)
 - [packages/shared/src/index.ts:8-15](file://packages/shared/src/index.ts#L8-L15)
 
 ### 类型使用示例与集成指南
-- 在 web 或其他包中引用
+- **在 web 或其他包中引用**
   - 通过包名 @agent-up/shared 引入所需类型
   - 从统一入口导入，例如 Agent、Feedback、Release、Skill、Wiki、Permission 相关类型
-- 典型用法
+- **典型用法**
   - 在 API 层对请求体与响应体进行类型标注
   - 在前端表单与展示层使用类型约束，结合 UI 组件进行渲染
   - 使用共享常量与正则进行客户端校验，与后端保持一致
 
-章节来源
+**章节来源**
 - [packages/shared/src/index.ts:1-15](file://packages/shared/src/index.ts#L1-L15)
 
 ### 类型验证与接口设计
-- 校验策略
+- **校验策略**
   - 使用共享正则进行版本字符串校验
   - 对关键数值字段设置合理范围（如分页大小、超时、重试次数）
-- 接口设计
+- **接口设计**
   - 明确必填与可选字段，避免过度宽松
   - 使用枚举限制取值空间，提升可读性与稳定性
 
-章节来源
+**章节来源**
 - [packages/shared/src/index.ts:8-15](file://packages/shared/src/index.ts#L8-L15)
 - [packages/shared/src/types/agent.ts:1-108](file://packages/shared/src/types/agent.ts#L1-L108)
 
 ### 类型测试策略
-- 静态类型测试
+- **静态类型测试**
   - 编写 .d.ts 断言文件或小型测试文件，验证类型组合与约束是否符合预期
-- 运行时辅助校验
+- **运行时辅助校验**
   - 基于共享常量与正则编写轻量校验函数，在关键路径执行
-- 回归用例
+- **回归用例**
   - 针对破坏性变更（移除字段、改变枚举值）添加类型级回归用例
 
-[本节为方法论指导，无需源码引用]
-
 ### 文档生成方法
-- 使用 TypeScript 声明输出与映射
+- **使用 TypeScript 声明输出与映射**
   - 利用 declaration 与 declarationMap 生成类型声明与映射文件
-- 自动化文档
+- **自动化文档**
   - 结合 tsc 与文档生成工具（如 typedoc）产出 API 文档
-- 持续集成
+- **持续集成**
   - 在构建阶段运行类型检查与文档生成，确保文档与代码同步
 
-章节来源
+**章节来源**
 - [tsconfig.json:1-22](file://tsconfig.json#L1-L22)
 - [packages/shared/tsconfig.json:1-9](file://packages/shared/tsconfig.json#L1-L9)

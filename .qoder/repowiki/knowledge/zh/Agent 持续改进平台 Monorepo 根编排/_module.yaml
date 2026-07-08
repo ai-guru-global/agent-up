@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: Agent Up Monorepo（pnpm + Turborepo）
+title: Agent 持续改进平台 Monorepo 根编排
 scope:
     - README.md
     - .gitignore

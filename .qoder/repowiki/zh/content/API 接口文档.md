@@ -3,13 +3,29 @@
 <cite>
 **本文引用的文件**
 - [apps/web/app/api/agents/route.ts](file://apps/web/app/api/agents/route.ts)
-- [apps/web/prisma/schema.prisma](file://apps/web/prisma/schema.prisma)
-- [packages/shared/src/types/agent.ts](file://packages/shared/src/types/agent.ts)
-- [packages/shared/src/types/feedback.ts](file://packages/shared/src/types/feedback.ts)
-- [packages/shared/src/types/permission.ts](file://packages/shared/src/types/permission.ts)
-- [apps/web/lib/prisma.ts](file://apps/web/lib/prisma.ts)
-- [docker-compose.yml](file://docker-compose.yml)
+- [apps/web/app/api/agents/[id]/route.ts](file://apps/web/app/api/agents/[id]/route.ts)
+- [apps/web/app/api/agents/[id]/config/[partition]/route.ts](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts)
+- [apps/web/app/api/agents/[id]/release/route.ts](file://apps/web/app/api/agents/[id]/release/route.ts)
+- [apps/web/app/api/agents/[id]/skills/route.ts](file://apps/web/app/api/agents/[id]/skills/route.ts)
+- [apps/web/app/api/feedback/route.ts](file://apps/web/app/api/feedback/route.ts)
+- [apps/web/app/api/releases/route.ts](file://apps/web/app/api/releases/route.ts)
+- [apps/web/app/api/releases/[id]/review/route.ts](file://apps/web/app/api/releases/[id]/review/route.ts)
+- [apps/web/app/api/skills/route.ts](file://apps/web/app/api/skills/route.ts)
+- [apps/web/app/api/skills/[id]/route.ts](file://apps/web/app/api/skills/[id]/route.ts)
+- [apps/web/app/api/wiki/vaults/route.ts](file://apps/web/app/api/wiki/vaults/route.ts)
+- [apps/web/app/api/wiki/vaults/[id]/route.ts](file://apps/web/app/api/wiki/vaults/[id]/route.ts)
+- [apps/web/app/api/wiki/pages/[id]/route.ts](file://apps/web/app/api/wiki/pages/[id]/route.ts)
+- [apps/web/app/api/settings/roles/route.ts](file://apps/web/app/api/settings/roles/route.ts)
+- [apps/web/app/api/dashboard/route.ts](file://apps/web/app/api/dashboard/route.ts)
 </cite>
+
+## 更新摘要
+**变更内容**
+- 基于 Next.js App Router 重构了所有 RESTful API 端点
+- 新增了完整的 Agent、反馈、发布、技能、知识库和设置管理接口
+- 实现了统一的请求验证、错误处理和分页机制
+- 添加了配置分区管理和版本控制功能
+- 完善了权限控制和审计日志支持
 
 ## 目录
 1. [简介](#简介)
@@ -17,383 +33,642 @@
 3. [核心组件](#核心组件)
 4. [架构总览](#架构总览)
 5. [详细组件分析](#详细组件分析)
-6. [依赖分析](#依赖分析)
-7. [性能考虑](#性能考虑)
-8. [故障排查指南](#故障排查指南)
-9. [结论](#结论)
-10. [附录](#附录)
+6. [认证与授权](#认证与授权)
+7. [数据验证与错误处理](#数据验证与错误处理)
+8. [性能与安全考虑](#性能与安全考虑)
+9. [客户端集成指南](#客户端集成指南)
+10. [调试与监控](#调试与监控)
+11. [版本兼容性](#版本兼容性)
+12. [依赖分析](#依赖分析)
+13. [故障排查指南](#故障排查指南)
+14. [结论](#结论)
+15. [附录](#附录)
 
 ## 简介
-本文件为 Agent 改进平台的 RESTful API 接口文档。当前仓库已暴露一个统一的 API 清单端点，用于描述可用的 Agent 相关接口路径；同时通过数据库模型与共享类型定义，明确了数据实体、配置分区、权限角色等关键概念，为后续实现具体业务接口提供契约基础。
+本文件为 Agent 改进平台的完整 RESTful API 接口文档。系统采用 Next.js App Router 架构，提供了全面的 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作以及系统设置等功能。所有接口遵循统一的响应格式和错误处理规范，支持分页查询、参数验证和权限控制。
 
 ## 项目结构
-- Web 应用基于 Next.js，API 路由位于 apps/web/app/api 下。
-- 数据库模型使用 Prisma，位于 apps/web/prisma/schema.prisma。
-- 共享类型定义位于 packages/shared/src/types，涵盖 Agent、反馈、权限等。
-- 运行时依赖包括 PostgreSQL 与 MinIO（对象存储），由 docker-compose.yml 编排。
+- Web 应用基于 Next.js App Router，API 路由位于 apps/web/app/api 下
+- 使用 Prisma ORM 进行数据库操作，支持 PostgreSQL
+- 统一的工具函数库提供请求解析、响应封装和分页处理
+- 服务层抽象了业务逻辑，便于测试和维护
+- 支持对象存储（MinIO）用于知识库快照和附件管理
 
 ```mermaid
 graph TB
-Client["客户端"] --> API["Next.js API 路由<br/>/api/agents"]
-API --> DB["PostgreSQL<br/>Prisma Client"]
+Client["客户端"] --> API["Next.js API 路由<br/>RESTful 端点"]
+API --> Utils["统一工具函数<br/>parseBody, success, error"]
+API --> Services["服务层<br/>业务逻辑抽象"]
+Services --> DB["Prisma Client<br/>PostgreSQL"]
 API --> Storage["MinIO 对象存储<br/>可选"]
 ```
 
-图表来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
-- [apps/web/lib/prisma.ts:1-16](file://apps/web/lib/prisma.ts#L1-L16)
-- [docker-compose.yml:1-39](file://docker-compose.yml#L1-L39)
+**图表来源**
+- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
+- [apps/web/app/api/utils.ts](file://apps/web/app/api/utils.ts)
 
-章节来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
-- [apps/web/lib/prisma.ts:1-16](file://apps/web/lib/prisma.ts#L1-L16)
-- [docker-compose.yml:1-39](file://docker-compose.yml#L1-L39)
+**章节来源**
+- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
+- [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
 
 ## 核心组件
-- API 清单端点：GET /api/agents，返回当前版本与可用端点列表。
-- 数据模型：Agent、四分区配置（Prompt/Knowledge/Tools/Routing）、发布与版本、反馈、技能绑定、知识库、审计日志等。
-- 权限与角色：平台管理员、产品负责人、成员、技能开发者、知识编辑、审计员、只读查看者等角色及动作范围。
+- **统一响应格式**：所有接口返回标准化的成功/错误响应结构
+- **请求验证**：基于 Zod schema 的参数验证和类型检查
+- **分页支持**：统一的分页参数处理和元数据返回
+- **错误处理**：统一的错误码和消息格式
+- **服务层抽象**：业务逻辑与路由层分离，便于维护和测试
 
-章节来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
-- [apps/web/prisma/schema.prisma:61-91](file://apps/web/prisma/schema.prisma#L61-L91)
-- [apps/web/prisma/schema.prisma:103-173](file://apps/web/prisma/schema.prisma#L103-L173)
-- [apps/web/prisma/schema.prisma:192-214](file://apps/web/prisma/schema.prisma#L192-L214)
-- [apps/web/prisma/schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
-- [apps/web/prisma/schema.prisma:360-440](file://apps/web/prisma/schema.prisma#L360-L440)
-- [apps/web/prisma/schema.prisma:446-557](file://apps/web/prisma/schema.prisma#L446-L557)
-- [apps/web/prisma/schema.prisma:563-625](file://apps/web/prisma/schema.prisma#L563-L625)
-- [packages/shared/src/types/agent.ts:1-61](file://packages/shared/src/types/agent.ts#L1-L61)
-- [packages/shared/src/types/feedback.ts:1-61](file://packages/shared/src/types/feedback.ts#L1-L61)
-- [packages/shared/src/types/permission.ts:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
+**章节来源**
+- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
+- [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
+- [apps/web/app/api/skills/route.ts:1-41](file://apps/web/app/api/skills/route.ts#L1-L41)
 
 ## 架构总览
-系统采用前后端同仓的 Next.js 应用，API 层通过 Prisma 访问 PostgreSQL，并可选择使用 MinIO 进行对象存储（如知识库快照、附件）。
+系统采用分层架构设计，API 路由层负责 HTTP 请求处理，服务层实现业务逻辑，数据访问层通过 Prisma 操作数据库。所有接口遵循 RESTful 设计规范，支持标准的 CRUD 操作和资源关联。
 
 ```mermaid
 sequenceDiagram
 participant C as "客户端"
-participant A as "API 路由<br/>/api/agents"
-participant P as "Prisma Client"
-participant D as "PostgreSQL"
-C->>A : "GET /api/agents"
-A-->>C : "JSON 响应版本与端点列表"
-Note over A,C : "当前清单端点不访问数据库"
+participant R as "API 路由层"
+participant S as "服务层"
+participant D as "数据库"
+C->>R : "HTTP 请求"
+R->>R : "参数验证"
+R->>S : "调用业务逻辑"
+S->>D : "数据操作"
+D-->>S : "返回结果"
+S-->>R : "业务结果"
+R-->>C : "标准化响应"
 ```
 
-图表来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
-- [apps/web/lib/prisma.ts:1-16](file://apps/web/lib/prisma.ts#L1-L16)
+**图表来源**
+- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
+- [apps/web/app/api/agents/[id]/route.ts:1-54](file://apps/web/app/api/agents/[id]/route.ts#L1-L54)
 
 ## 详细组件分析
 
-### API 清单端点
-- 方法：GET
-- URL：/api/agents
-- 认证：当前未强制
-- 请求参数：无
-- 响应格式：JSON
-  - message：字符串
-  - version：字符串（语义化版本）
-  - endpoints：字符串数组，列出可用端点
-- 状态码：200（成功）
+### Agent 管理接口
 
-示例请求
-- GET http://localhost:3000/api/agents
-
-示例响应
-- {
-    "message": "Agent API",
-    "version": "0.1.0",
-    "endpoints": [
-      "GET /api/agents",
-      "POST /api/agents",
-      "GET /api/agents/:id",
-      "PUT /api/agents/:id",
-      "GET /api/agents/:id/config/:partition",
-      "PUT /api/agents/:id/config/:partition",
-      "POST /api/agents/:id/submit-release",
-      "POST /api/agents/:id/rollback/:versionId"
-    ]
+#### 获取 Agent 列表
+- **方法**: GET
+- **URL**: `/api/agents`
+- **认证**: 需要
+- **查询参数**:
+  - `page`: 页码（默认 1）
+  - `pageSize`: 每页数量（默认 20）
+  - `status`: 状态过滤（ACTIVE/DRAFT/ARCHIVED）
+  - `productGroupId`: 产品组 ID 过滤
+  - `search`: 搜索关键词
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "data": {
+      "items": [...],
+      "pagination": {
+        "page": 1,
+        "pageSize": 20,
+        "total": 100
+      }
+    }
   }
+  ```
 
-错误场景
-- 404：当路由不存在时
-- 500：服务器内部错误（例如依赖服务不可用）
+#### 创建 Agent
+- **方法**: POST
+- **URL**: `/api/agents`
+- **认证**: 需要
+- **请求体**:
+  ```json
+  {
+    "name": "string (必填)",
+    "description": "string",
+    "productGroupId": "string (必填)"
+  }
+  ```
+- **响应**: 201 Created，返回新创建的 Agent 对象
 
-章节来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
+#### 获取 Agent 详情
+- **方法**: GET
+- **URL**: `/api/agents/:id`
+- **认证**: 需要
+- **路径参数**: `id` (Agent 标识)
+- **响应**: 返回 Agent 详细信息
 
-### 待实现的 Agent 管理端点（规划）
-以下端点在清单中声明，但尚未在代码中实现具体逻辑。以下为建议的契约规范，供后续开发对齐。
+#### 更新 Agent
+- **方法**: PUT
+- **URL**: `/api/agents/:id`
+- **认证**: 需要
+- **路径参数**: `id` (Agent 标识)
+- **请求体**: 可更新的字段（name, description, status 等）
+- **响应**: 返回更新后的 Agent 对象
 
-- 创建 Agent
-  - 方法：POST
-  - URL：/api/agents
-  - 认证：需要（见“认证与授权”）
-  - 请求体字段：
-    - name：必填，字符串
-    - description：可选，字符串
-    - productGroupId：必填，字符串
-    - createdBy：必填，字符串（来自认证上下文）
-  - 响应：201 Created，返回新创建的 Agent 对象
-  - 验证规则：name 非空且长度合理；productGroupId 存在；createdBy 有效用户 ID
-  - 错误码：400（参数校验失败）、401（未认证）、403（无权限）、409（重复或冲突）
+#### 归档 Agent
+- **方法**: DELETE
+- **URL**: `/api/agents/:id`
+- **认证**: 需要
+- **路径参数**: `id` (Agent 标识)
+- **响应**: 返回归档成功消息
 
-- 获取 Agent 详情
-  - 方法：GET
-  - URL：/api/agents/:id
-  - 认证：需要
-  - 路径参数：id（字符串）
-  - 响应：200 OK，返回 Agent 对象
-  - 错误码：404（未找到）、401/403（鉴权失败）
+**章节来源**
+- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
+- [apps/web/app/api/agents/[id]/route.ts:1-54](file://apps/web/app/api/agents/[id]/route.ts#L1-L54)
 
-- 更新 Agent
-  - 方法：PUT
-  - URL：/api/agents/:id
-  - 认证：需要
-  - 路径参数：id（字符串）
-  - 请求体字段：可更新的 Agent 字段（如 name、description、status 等）
-  - 响应：200 OK，返回更新后的 Agent 对象
-  - 错误码：400/404/401/403
+### 配置分区管理接口
 
-- 读取分区配置
-  - 方法：GET
-  - URL：/api/agents/:id/config/:partition
-  - 认证：需要
-  - 路径参数：
-    - id：Agent 标识
-    - partition：PROMPT | KNOWLEDGE | TOOLS | ROUTING
-  - 响应：200 OK，返回对应分区的配置 JSON
-  - 错误码：400（无效分区）、404（未找到）
+#### 获取分区配置
+- **方法**: GET
+- **URL**: `/api/agents/:id/config/:partition`
+- **认证**: 需要
+- **路径参数**:
+  - `id`: Agent 标识
+  - `partition`: 分区类型（prompt/knowledge/tools/routing）
+- **响应**: 返回对应分区的配置 JSON
 
-- 更新分区配置
-  - 方法：PUT
-  - URL：/api/agents/:id/config/:partition
-  - 认证：需要
-  - 路径参数：同上
-  - 请求体：对应分区的配置 JSON
-  - 响应：200 OK，返回更新后的配置
-  - 变更追踪：写入 ConfigChange 记录（含 before/after/diff）
-  - 错误码：400/404/401/403
+#### 更新分区配置
+- **方法**: PUT
+- **URL**: `/api/agents/:id/config/:partition`
+- **认证**: 需要
+- **路径参数**: 同上
+- **请求体**: 对应分区的配置对象
+- **特性**: 自动记录配置变更历史
+- **响应**: 返回更新后的配置
 
-- 提交发布
-  - 方法：POST
-  - URL：/api/agents/:id/submit-release
-  - 认证：需要（具备 publish 或 approve 权限）
-  - 请求体：
-    - changeNote：必填，字符串
-    - changedPartitions：必填，ConfigPartition[]
-    - configSnapshot：可选，JSON（全量配置快照）
-  - 响应：201 Created，返回 Release 对象
-  - 错误码：400/401/403/404
+**章节来源**
+- [apps/web/app/api/agents/[id]/config/[partition]/route.ts:1-105](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L1-L105)
 
-- 回滚到指定版本
-  - 方法：POST
-  - URL：/api/agents/:id/rollback/:versionId
-  - 认证：需要（具备 rollback 权限）
-  - 路径参数：
-    - id：Agent 标识
-    - versionId：目标版本标识
-  - 响应：200 OK，返回执行结果
-  - 错误码：400/401/403/404
+### 发布管理接口
 
-说明
-- 上述端点的状态码、错误处理策略遵循通用约定：
-  - 2xx：成功
-  - 400：请求参数或校验失败
-  - 401：未认证
-  - 403：无权限
-  - 404：资源不存在
-  - 409：冲突（如唯一约束）
-  - 500：服务器内部错误
+#### 提交发布
+- **方法**: POST
+- **URL**: `/api/agents/:id/release`
+- **认证**: 需要（具备发布权限）
+- **路径参数**: `id` (Agent 标识)
+- **请求体**:
+  ```json
+  {
+    "changeNote": "string (必填)"
+  }
+  ```
+- **响应**: 201 Created，返回 Release 对象
 
-章节来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
-- [apps/web/prisma/schema.prisma:192-214](file://apps/web/prisma/schema.prisma#L192-L214)
-- [apps/web/prisma/schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
+#### 审批发布
+- **方法**: PUT
+- **URL**: `/api/agents/:id/release`
+- **认证**: 需要（具备审批权限）
+- **路径参数**: `id` (Agent 标识)
+- **请求体**:
+  ```json
+  {
+    "releaseId": "string (必填)",
+    "action": "APPROVED|REJECTED|CHANGES_REQUESTED",
+    "reviewComment": "string"
+  }
+  ```
+- **响应**: 返回审批后的 Release 对象
 
-### 数据模型与类型契约
-- Agent 核心
-  - 关键字段：id、name、description、productGroupId、status、createdAt、updatedAt、createdBy
-  - 状态枚举：DRAFT、ACTIVE、ARCHIVED
-- 四分区配置
-  - PromptConfig：systemPrompt、roleDefinition、constraints、outputFormat、version、lastModifiedBy、lastModifiedAt
-  - KnowledgeConfig：wikiVaultId、searchStrategy、fallbackToMcp、maxWikiResults、confidenceThreshold、lastSyncAt、syncStatus、version、lastModifiedBy、lastModifiedAt
-  - ToolsConfig：mcpTools、wikiQueryTools、maxConcurrentCalls、timeoutMs、retryCount、version、lastModifiedBy、lastModifiedAt
-  - RoutingConfig：rules、escalationPolicy、humanThreshold、maxConversationTurns、idleTimeoutMinutes、version、lastModifiedBy、lastModifiedAt
-- 配置变更记录
-  - ConfigChange：agentId、partition、before、after、diff、changedBy、changedAt、changeNote、releaseId
-- 发布与版本
-  - Release：agentId、changeNote、changedPartitions、status、submittedBy、submittedAt、approvedBy、approvedAt、reviewComment、configSnapshot
-  - AgentVersion：agentId、version、major/minor/patch、各分区快照、releaseId、wikiCommitSha、publishedAt、publishedBy、changeNote、effectivenessReport
-- 反馈
-  - Feedback：agentId、source、title、content、sessionData、rating、tags、severity、status、assignedTo/By、resolvedAt/By、resolution、releaseId、ingestJobId、targetPartition、submittedBy/At、verifiedAt/By、verificationNote
-- 技能与绑定
-  - Skill：name、displayName、description、category、triggerPatterns、inputSchema、outputSchema、runtime、endpoint、codeRef、version、dependencies、permissions、status、publishedAt、downloadCount、authorId/Name
-  - AgentSkillBinding：agentId、skillId、config、enabled、priority、allowedScopes、boundAt、boundBy
-- 知识库
-  - WikiVault：name、description、agentId、gitRepoUrl、gitBranch、lastCommitSha、pageCount、avgConfidence、orphanCount、isShared、sharedBy
-  - WikiPage：vaultId、title、slug、content、summary、provenance、lifecycle、tier、baseConfidence、sourceRefs、wikilinks、categories、tags、filePath、lastCommitSha、inboundLinks、outboundLinks、reviewedAt/By
-  - WikiIngestJob：vaultId、jobType、sourceType/sourceId/sourceContent/sourceUrl、generatedPageIds、status、result、error、startedAt/completedAt、triggeredBy
-- 权限与审计
-  - Role、Permission、RolePermission、UserRole、AuditLog
+#### 全局发布列表
+- **方法**: GET
+- **URL**: `/api/releases`
+- **认证**: 需要
+- **查询参数**:
+  - `page`, `pageSize`: 分页参数
+  - `status`: 状态过滤
+  - `agentId`: Agent ID 过滤
+- **响应**: 返回发布列表及分页信息
 
-章节来源
-- [apps/web/prisma/schema.prisma:61-91](file://apps/web/prisma/schema.prisma#L61-L91)
-- [apps/web/prisma/schema.prisma:103-173](file://apps/web/prisma/schema.prisma#L103-L173)
-- [apps/web/prisma/schema.prisma:192-214](file://apps/web/prisma/schema.prisma#L192-L214)
-- [apps/web/prisma/schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
-- [apps/web/prisma/schema.prisma:360-440](file://apps/web/prisma/schema.prisma#L360-L440)
-- [apps/web/prisma/schema.prisma:446-557](file://apps/web/prisma/schema.prisma#L446-L557)
-- [apps/web/prisma/schema.prisma:563-625](file://apps/web/prisma/schema.prisma#L563-L625)
-- [packages/shared/src/types/agent.ts:1-61](file://packages/shared/src/types/agent.ts#L1-L61)
-- [packages/shared/src/types/feedback.ts:1-61](file://packages/shared/src/types/feedback.ts#L1-L61)
+**章节来源**
+- [apps/web/app/api/agents/[id]/release/route.ts:1-59](file://apps/web/app/api/agents/[id]/release/route.ts#L1-L59)
+- [apps/web/app/api/releases/route.ts:1-35](file://apps/web/app/api/releases/route.ts#L1-L35)
+- [apps/web/app/api/releases/[id]/review/route.ts:1-28](file://apps/web/app/api/releases/[id]/review/route.ts#L1-L28)
 
-### 认证与授权机制
-- 认证方式：建议使用 Bearer Token（JWT）或会话 Cookie，所有写操作需携带凭证。
-- 授权模型：基于角色的访问控制（RBAC），支持组级与全局作用域。
-- 角色类型：PLATFORM_ADMIN、PRODUCT_LEAD、PRODUCT_MEMBER、SKILL_DEVELOPER、KNOWLEDGE_EDITOR、AUDITOR、CRE_VIEWER
-- 动作范围：read、write、publish、approve、rollback、delete、admin
-- 作用域：own_group、cross_group、global
-- 审计日志：记录 action、resource、resourceId、userId、userName、userRole、details、ipAddress、userAgent、createdAt
+### 反馈管理接口
 
-章节来源
-- [packages/shared/src/types/permission.ts:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
-- [apps/web/prisma/schema.prisma:563-625](file://apps/web/prisma/schema.prisma#L563-L625)
+#### 获取反馈列表
+- **方法**: GET
+- **URL**: `/api/feedback`
+- **认证**: 需要
+- **查询参数**:
+  - `page`, `pageSize`: 分页参数
+  - `agentId`: Agent ID 过滤
+  - `status`: 状态过滤
+  - `severity`: 严重程度过滤
+  - `rating`: 评分过滤
+  - `tag`: 标签过滤
+- **响应**: 返回反馈列表及分页信息
 
-### 数据验证规则与错误处理策略
-- 输入验证
-  - 必填字段校验（如 name、productGroupId、createdBy）
-  - 枚举值校验（如 status、partition、rating、severity、source 等）
-  - JSON 结构校验（配置分区、快照、工具配置等）
-- 错误处理
-  - 统一错误响应结构：包含 code、message、details（可选）
-  - 常见状态码：400、401、403、404、409、500
-  - 幂等性：对提交发布与回滚等操作建议支持幂等键（idempotency-key）
+#### 创建反馈
+- **方法**: POST
+- **URL**: `/api/feedback`
+- **认证**: 需要
+- **请求体**: 符合 FeedbackSchema 的反馈对象
+- **响应**: 201 Created，返回创建的反馈对象
 
-章节来源
-- [apps/web/prisma/schema.prisma:103-173](file://apps/web/prisma/schema.prisma#L103-L173)
-- [apps/web/prisma/schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
-- [packages/shared/src/types/feedback.ts:1-61](file://packages/shared/src/types/feedback.ts#L1-L61)
+#### 更新反馈
+- **方法**: PUT
+- **URL**: `/api/feedback`
+- **认证**: 需要
+- **请求体**:
+  ```json
+  {
+    "id": "string (必填)",
+    "...其他可更新字段": "..."
+  }
+  ```
+- **响应**: 返回更新后的反馈对象
 
-### 速率限制与安全考虑
-- 速率限制：建议在网关或中间件层实施，按 IP 或用户维度限流，默认建议 100 次/分钟（可配置）。
-- 安全建议
-  - 强制 HTTPS
-  - 最小权限原则（仅授予必要角色与动作）
-  - 敏感信息脱敏（审计日志中的 details）
-  - 输入输出严格校验与转义
-  - 防重放攻击（必要时引入时间戳与签名）
+**章节来源**
+- [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
 
-[本节为通用指导，无需源码引用]
+### 技能管理接口
 
-### 版本兼容性
-- API 版本：当前清单端点返回 version 字段（如 0.1.0），建议后续在 URL 前缀或 Header 中显式声明版本（如 /v1/...）。
-- 向后兼容：新增字段应为可选，删除字段需废弃流程与迁移期。
+#### 获取技能列表
+- **方法**: GET
+- **URL**: `/api/skills`
+- **认证**: 需要
+- **查询参数**:
+  - `page`, `pageSize`: 分页参数
+  - `category`: 分类过滤
+  - `status`: 状态过滤
+  - `search`: 搜索关键词
+- **响应**: 返回技能列表及分页信息
 
-章节来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
+#### 创建技能
+- **方法**: POST
+- **URL**: `/api/skills`
+- **认证**: 需要
+- **请求体**: 符合技能创建 Schema 的对象
+- **响应**: 201 Created，返回创建的技能对象
 
-### 客户端集成指南与常见用例
-- 初始化
-  - 设置 Base URL（如 http://localhost:3000）
-  - 配置认证头（Authorization: Bearer <token>）
-- 常用用例
-  - 获取 API 清单：GET /api/agents
-  - 创建 Agent：POST /api/agents
-  - 查询 Agent：GET /api/agents/:id
-  - 更新分区配置：PUT /api/agents/:id/config/:partition
-  - 提交发布：POST /api/agents/:id/submit-release
-  - 回滚版本：POST /api/agents/:id/rollback/:versionId
-- 错误处理
-  - 捕获 4xx 与 5xx，展示友好提示并重试（指数退避）
+#### 获取技能详情
+- **方法**: GET
+- **URL**: `/api/skills/:id`
+- **认证**: 需要
+- **路径参数**: `id` (技能标识)
+- **响应**: 返回技能详细信息
 
-[本节为通用指导，无需源码引用]
+#### 更新技能
+- **方法**: PUT
+- **URL**: `/api/skills/:id`
+- **认证**: 需要
+- **路径参数**: `id` (技能标识)
+- **请求体**: 可更新的技能字段
+- **响应**: 返回更新后的技能对象
 
-### 调试工具与监控方法
-- 本地调试
-  - 启动数据库与对象存储：docker compose up
-  - 生成 Prisma 客户端：pnpm db:generate
-  - 运行开发服务器：pnpm dev
-- 日志与观测
-  - Prisma 日志：开发环境启用 query/error/warn，生产仅 error
-  - 审计日志：通过 AuditLog 表记录关键操作
-  - 健康检查：PostgreSQL 与 MinIO 均提供 healthcheck
+#### 归档技能
+- **方法**: DELETE
+- **URL**: `/api/skills/:id`
+- **认证**: 需要
+- **路径参数**: `id` (技能标识)
+- **响应**: 返回归档成功消息
 
-章节来源
-- [apps/web/lib/prisma.ts:1-16](file://apps/web/lib/prisma.ts#L1-L16)
-- [docker-compose.yml:1-39](file://docker-compose.yml#L1-L39)
-- [apps/web/prisma/schema.prisma:607-625](file://apps/web/prisma/schema.prisma#L607-L625)
+#### 管理 Agent 技能绑定
+- **GET** `/api/agents/:id/skills` - 获取绑定的技能
+- **POST** `/api/agents/:id/skills` - 绑定技能
+- **DELETE** `/api/agents/:id/skills?agentId=...&skillId=...` - 解绑技能
 
-### 废弃功能迁移指南
-- 若未来移除某端点或字段：
-  - 保留旧版路由一段时间并返回 301/308 或 410 Gone
-  - 在响应头中提供 Deprecation 与 Sunset 信息
-  - 提供迁移脚本与示例
+**章节来源**
+- [apps/web/app/api/skills/route.ts:1-41](file://apps/web/app/api/skills/route.ts#L1-L41)
+- [apps/web/app/api/skills/[id]/route.ts:1-42](file://apps/web/app/api/skills/[id]/route.ts#L1-L42)
+- [apps/web/app/api/agents/[id]/skills/route.ts:1-51](file://apps/web/app/api/agents/[id]/skills/route.ts#L1-L51)
 
-[本节为通用指导，无需源码引用]
+### 知识库管理接口
+
+#### 获取知识库列表
+- **方法**: GET
+- **URL**: `/api/wiki/vaults`
+- **认证**: 需要
+- **查询参数**:
+  - `page`, `pageSize`: 分页参数
+  - `agentId`: Agent ID 过滤
+  - `shared`: 是否共享（true/false）
+- **响应**: 返回知识库列表及分页信息
+
+#### 创建知识库
+- **方法**: POST
+- **URL**: `/api/wiki/vaults`
+- **认证**: 需要
+- **请求体**:
+  ```json
+  {
+    "name": "string (必填)",
+    "description": "string",
+    "agentId": "string",
+    "gitRepoUrl": "string",
+    "gitBranch": "string"
+  }
+  ```
+- **响应**: 201 Created，返回创建的知识库对象
+
+#### 知识库详情操作
+- **GET** `/api/wiki/vaults/:id` - 获取知识库详情
+- **PUT** `/api/wiki/vaults/:id` - 更新知识库
+- **DELETE** `/api/wiki/vaults/:id` - 删除知识库
+
+#### 页面管理
+- **GET** `/api/wiki/pages/:id` - 获取页面详情
+- **PUT** `/api/wiki/pages/:id` - 更新页面
+- **DELETE** `/api/wiki/pages/:id` - 删除页面
+
+**章节来源**
+- [apps/web/app/api/wiki/vaults/route.ts:1-25](file://apps/web/app/api/wiki/vaults/route.ts#L1-L25)
+- [apps/web/app/api/wiki/vaults/[id]/route.ts:1-33](file://apps/web/app/api/wiki/vaults/[id]/route.ts#L1-L33)
+- [apps/web/app/api/wiki/pages/[id]/route.ts:1-33](file://apps/web/app/api/wiki/pages/[id]/route.ts#L1-L33)
+
+### 系统设置接口
+
+#### 角色管理
+- **GET** `/api/settings/roles` - 获取所有角色
+- **POST** `/api/settings/roles` - 创建新角色
+- **GET** `/api/settings/roles/:id` - 获取角色详情
+- **PUT** `/api/settings/roles/:id` - 更新角色
+- **DELETE** `/api/settings/roles/:id` - 删除角色
+
+#### 权限管理
+- **GET** `/api/settings/permissions` - 获取所有权限
+- **POST** `/api/settings/permissions` - 创建权限
+- **PUT** `/api/settings/permissions/:id` - 更新权限
+
+#### 产品组管理
+- **GET** `/api/settings/product-groups` - 获取产品组列表
+- **POST** `/api/settings/product-groups` - 创建产品组
+- **PUT** `/api/settings/product-groups/:id` - 更新产品组
+
+#### 审计日志
+- **GET** `/api/settings/audit-logs` - 获取审计日志
+- **查询参数**: 支持按时间范围、用户、操作类型过滤
+
+**章节来源**
+- [apps/web/app/api/settings/roles/route.ts:1-33](file://apps/web/app/api/settings/roles/route.ts#L1-L33)
+
+### 工作台统计接口
+
+#### 获取统计数据
+- **方法**: GET
+- **URL**: `/api/dashboard`
+- **认证**: 需要
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "agents": {
+        "total": 100,
+        "active": 85
+      },
+      "feedback": {
+        "total": 500,
+        "pending": 25
+      },
+      "releases": {
+        "pending": 10
+      },
+      "recentFeedback": [...],
+      "recentReleases": [...]
+    }
+  }
+  ```
+
+**章节来源**
+- [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
+
+## 认证与授权
+
+### 认证机制
+- **方式**: Bearer Token（JWT）或会话 Cookie
+- **头信息**: `Authorization: Bearer <token>`
+- **适用范围**: 所有写操作和部分读操作
+
+### 授权模型
+- **基于角色的访问控制（RBAC）**
+- **角色类型**:
+  - `PLATFORM_ADMIN`: 平台管理员
+  - `PRODUCT_LEAD`: 产品负责人
+  - `PRODUCT_MEMBER`: 产品成员
+  - `SKILL_DEVELOPER`: 技能开发者
+  - `KNOWLEDGE_EDITOR`: 知识编辑者
+  - `AUDITOR`: 审计员
+  - `CRE_VIEWER`: 只读查看者
+
+### 权限动作
+- `read`: 读取权限
+- `write`: 写入权限
+- `publish`: 发布权限
+- `approve`: 审批权限
+- `rollback`: 回滚权限
+- `delete`: 删除权限
+- `admin`: 管理权限
+
+### 作用域控制
+- `own_group`: 仅自己所在组
+- `cross_group`: 跨组访问
+- `global`: 全局访问
+
+**章节来源**
+- [apps/web/app/api/settings/roles/route.ts:1-33](file://apps/web/app/api/settings/roles/route.ts#L1-L33)
+
+## 数据验证与错误处理
+
+### 统一响应格式
+```json
+{
+  "success": true,
+  "data": {...},
+  "message": "操作成功",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### 错误响应格式
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "参数校验失败",
+    "details": ["字段A不能为空", "字段B格式不正确"]
+  },
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### 标准状态码
+- `200`: 成功
+- `201`: 创建成功
+- `400`: 请求参数错误
+- `401`: 未认证
+- `403`: 无权限
+- `404`: 资源不存在
+- `409`: 资源冲突
+- `500`: 服务器内部错误
+
+### 输入验证规则
+- **必填字段**: 使用 Zod schema 定义
+- **类型检查**: 严格的 TypeScript 类型约束
+- **格式验证**: 邮箱、URL、日期等格式验证
+- **业务规则**: 自定义验证逻辑
+
+**章节来源**
+- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
+- [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
+
+## 性能与安全考虑
+
+### 性能优化
+- **数据库索引**: 针对高频查询字段建立索引
+- **分页查询**: 所有列表接口支持分页
+- **缓存策略**: 对只读配置使用短期缓存
+- **并发控制**: 外部依赖调用设置超时和重试上限
+
+### 安全措施
+- **HTTPS 强制**: 生产环境强制 HTTPS
+- **最小权限原则**: 仅授予必要权限
+- **输入输出验证**: 严格的参数验证和转义
+- **敏感信息脱敏**: 审计日志中的敏感信息脱敏
+- **防重放攻击**: 必要时引入时间戳和签名
+
+### 速率限制
+- **默认限制**: 100 次/分钟（可配置）
+- **维度**: 按 IP 或用户维度限流
+- **实施位置**: 网关或中间件层
+
+## 客户端集成指南
+
+### 基础配置
+```javascript
+const API_BASE_URL = 'http://localhost:3000';
+const AUTH_TOKEN = 'your-jwt-token';
+
+const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${AUTH_TOKEN}`
+};
+```
+
+### 常用操作示例
+```javascript
+// 获取 Agent 列表
+async function getAgents(page = 1, pageSize = 20) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agents?page=${page}&pageSize=${pageSize}`,
+    { headers }
+  );
+  return response.json();
+}
+
+// 创建 Agent
+async function createAgent(agentData) {
+  const response = await fetch(`${API_BASE_URL}/api/agents`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(agentData)
+  });
+  return response.json();
+}
+
+// 更新配置分区
+async function updateConfigPartition(agentId, partition, config) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agents/${agentId}/config/${partition}`,
+    {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(config)
+    }
+  );
+  return response.json();
+}
+```
+
+### 错误处理
+```javascript
+async function handleApiError(response) {
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error.message);
+  }
+  return response.json();
+}
+```
+
+## 调试与监控
+
+### 本地开发
+```bash
+# 启动数据库和服务
+docker compose up
+
+# 生成 Prisma 客户端
+pnpm db:generate
+
+# 运行开发服务器
+pnpm dev
+```
+
+### 日志监控
+- **Prisma 日志**: 开发环境启用 query/error/warn
+- **审计日志**: 通过 AuditLog 表记录关键操作
+- **健康检查**: PostgreSQL 和 MinIO 均提供 healthcheck
+
+### 调试工具
+- **浏览器网络面板**: 查看请求和响应详情
+- **curl 命令**: 快速测试 API 端点
+- **Postman**: 构建测试集合和自动化测试
+
+## 版本兼容性
+
+### API 版本管理
+- **当前版本**: 0.1.0
+- **版本标识**: 通过 URL 前缀或 Header 声明
+- **向后兼容**: 新增字段应为可选，删除字段需废弃流程
+
+### 迁移策略
+- **渐进式升级**: 支持多版本并行
+- **废弃通知**: 通过响应头提供 Deprecation 信息
+- **迁移工具**: 提供版本迁移脚本
 
 ## 依赖分析
-- 外部依赖
-  - PostgreSQL：关系型数据库
-  - MinIO：S3 兼容对象存储（可选）
-- 内部依赖
-  - Next.js API 路由
-  - Prisma Client
-  - 共享类型（@agent-up/shared）
+
+### 外部依赖
+- **PostgreSQL**: 关系型数据库
+- **MinIO**: S3 兼容对象存储（可选）
+- **Prisma**: ORM 和数据迁移工具
+
+### 内部依赖
+- **Next.js**: React 全栈框架
+- **Zod**: 运行时类型验证
+- **共享类型**: @agent-up/shared 包
 
 ```mermaid
 graph LR
-Route["API 路由<br/>/api/agents"] --> Prisma["Prisma Client"]
+Route["API 路由层"] --> Utils["工具函数库"]
+Route --> Services["服务层"]
+Services --> Prisma["Prisma Client"]
 Prisma --> PG["PostgreSQL"]
-Route --> SharedTypes["共享类型<br/>agent/feedback/permission"]
-Route --> Storage["MinIO可选"]
+Route --> SharedTypes["共享类型"]
+Route --> Storage["MinIO 可选"]
 ```
 
-图表来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
-- [apps/web/lib/prisma.ts:1-16](file://apps/web/lib/prisma.ts#L1-L16)
-- [docker-compose.yml:1-39](file://docker-compose.yml#L1-L39)
-- [packages/shared/src/types/agent.ts:1-61](file://packages/shared/src/types/agent.ts#L1-L61)
-- [packages/shared/src/types/feedback.ts:1-61](file://packages/shared/src/types/feedback.ts#L1-L61)
-- [packages/shared/src/types/permission.ts:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
-
-章节来源
-- [apps/web/app/api/agents/route.ts:1-18](file://apps/web/app/api/agents/route.ts#L1-L18)
-- [apps/web/lib/prisma.ts:1-16](file://apps/web/lib/prisma.ts#L1-L16)
-- [docker-compose.yml:1-39](file://docker-compose.yml#L1-L39)
-- [packages/shared/src/types/agent.ts:1-61](file://packages/shared/src/types/agent.ts#L1-L61)
-- [packages/shared/src/types/feedback.ts:1-61](file://packages/shared/src/types/feedback.ts#L1-L61)
-- [packages/shared/src/types/permission.ts:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
-
-## 性能考虑
-- 数据库索引：针对高频查询字段建立索引（如 agentId、status、submittedAt 等）
-- 分页与过滤：列表接口应支持分页、排序与过滤
-- 缓存策略：对只读配置与元数据可使用短期缓存
-- 并发与超时：工具调用与外部依赖需设置合理的超时与重试上限
-
-[本节为通用指导，无需源码引用]
+**图表来源**
+- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
+- [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
 
 ## 故障排查指南
-- 常见问题
-  - 数据库连接失败：检查 DATABASE_URL 与容器健康状态
-  - 对象存储不可用：确认 MinIO 端口与凭据
-  - 权限不足：核对用户角色与作用域
-- 定位手段
-  - 查看 Prisma 日志（开发模式）
-  - 检索审计日志（AuditLog）
-  - 使用浏览器网络面板与 curl 复现问题
 
-章节来源
-- [apps/web/lib/prisma.ts:1-16](file://apps/web/lib/prisma.ts#L1-L16)
-- [apps/web/prisma/schema.prisma:607-625](file://apps/web/prisma/schema.prisma#L607-L625)
-- [docker-compose.yml:1-39](file://docker-compose.yml#L1-L39)
+### 常见问题
+- **数据库连接失败**: 检查 DATABASE_URL 和容器健康状态
+- **对象存储不可用**: 确认 MinIO 端口和凭据
+- **权限不足**: 核对用户角色和作用域
+- **验证失败**: 检查请求体结构和数据类型
+
+### 定位手段
+- **查看 Prisma 日志**: 开发模式启用详细日志
+- **检索审计日志**: 通过 AuditLog 表追踪关键操作
+- **网络面板调试**: 使用浏览器开发者工具复现问题
+- **API 测试工具**: 使用 Postman 或 curl 独立测试端点
 
 ## 结论
-当前仓库提供了 API 清单端点与完整的数据模型与类型契约，为后续实现 Agent 管理、配置分区、发布审批、回滚与反馈等核心能力奠定了坚实基础。建议尽快补齐鉴权、校验、错误处理与监控能力，确保接口稳定与安全。
-
-[本节为总结性内容，无需源码引用]
+本 API 文档基于 Next.js App Router 架构，提供了完整的 RESTful 接口规范。系统已实现 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作和系统设置等核心功能。所有接口遵循统一的响应格式、错误处理规范和权限控制机制，为后续功能扩展奠定了坚实基础。
 
 ## 附录
 
@@ -415,11 +690,35 @@ WIKI_VAULT ||--o{ WIKI_INGEST_JOB : "执行任务"
 AGENT ||--o| WIKI_VAULT : "关联知识库"
 ```
 
-图表来源
-- [apps/web/prisma/schema.prisma:14-55](file://apps/web/prisma/schema.prisma#L14-L55)
-- [apps/web/prisma/schema.prisma:61-91](file://apps/web/prisma/schema.prisma#L61-L91)
-- [apps/web/prisma/schema.prisma:220-249](file://apps/web/prisma/schema.prisma#L220-L249)
-- [apps/web/prisma/schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
-- [apps/web/prisma/schema.prisma:360-440](file://apps/web/prisma/schema.prisma#L360-L440)
-- [apps/web/prisma/schema.prisma:446-557](file://apps/web/prisma/schema.prisma#L446-L557)
-- [apps/web/prisma/schema.prisma:563-625](file://apps/web/prisma/schema.prisma#L563-L625)
+### API 端点总览
+| 模块 | 方法 | 端点 | 描述 |
+|------|------|------|------|
+| Agent | GET | /api/agents | 获取 Agent 列表 |
+| Agent | POST | /api/agents | 创建 Agent |
+| Agent | GET | /api/agents/:id | 获取 Agent 详情 |
+| Agent | PUT | /api/agents/:id | 更新 Agent |
+| Agent | DELETE | /api/agents/:id | 归档 Agent |
+| Config | GET | /api/agents/:id/config/:partition | 获取分区配置 |
+| Config | PUT | /api/agents/:id/config/:partition | 更新分区配置 |
+| Release | POST | /api/agents/:id/release | 提交发布 |
+| Release | PUT | /api/agents/:id/release | 审批发布 |
+| Release | GET | /api/releases | 获取发布列表 |
+| Feedback | GET | /api/feedback | 获取反馈列表 |
+| Feedback | POST | /api/feedback | 创建反馈 |
+| Feedback | PUT | /api/feedback | 更新反馈 |
+| Skill | GET | /api/skills | 获取技能列表 |
+| Skill | POST | /api/skills | 创建技能 |
+| Skill | GET | /api/skills/:id | 获取技能详情 |
+| Skill | PUT | /api/skills/:id | 更新技能 |
+| Skill | DELETE | /api/skills/:id | 归档技能 |
+| Wiki | GET | /api/wiki/vaults | 获取知识库列表 |
+| Wiki | POST | /api/wiki/vaults | 创建知识库 |
+| Wiki | GET | /api/wiki/vaults/:id | 获取知识库详情 |
+| Wiki | PUT | /api/wiki/vaults/:id | 更新知识库 |
+| Wiki | DELETE | /api/wiki/vaults/:id | 删除知识库 |
+| Wiki | GET | /api/wiki/pages/:id | 获取页面详情 |
+| Wiki | PUT | /api/wiki/pages/:id | 更新页面 |
+| Wiki | DELETE | /api/wiki/pages/:id | 删除页面 |
+| Settings | GET | /api/settings/roles | 获取角色列表 |
+| Settings | POST | /api/settings/roles | 创建角色 |
+| Dashboard | GET | /api/dashboard | 获取统计数据 |

@@ -1,9 +1,8 @@
 schema_version: 1
 module_path: shared_types
-title: Agent 平台共享类型定义包
+title: Agent 改进平台共享类型包
 scope:
     - packages/shared/
 source_files: []
 depends_on: []
-related_to:
-    - path: web_app
+related_to: []
