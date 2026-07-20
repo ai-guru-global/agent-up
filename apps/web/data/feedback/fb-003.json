@@ -1,0 +1,13 @@
+{
+  "id": "fb-003",
+  "agentId": "ecs-assistant",
+  "source": "MANUAL",
+  "title": "SSH 连接排查流程很完善",
+  "content": "用户反馈 SSH 连接失败的排查流程非常完整，从网络连通性到密钥验证到端口检查都覆盖了，一次就解决了问题。",
+  "rating": "POSITIVE",
+  "tags": ["ANSWER_QUALITY"],
+  "severity": "SUGGESTION",
+  "status": "VERIFIED",
+  "submittedBy": "cre-wang",
+  "submittedAt": "2026-07-10T11:00:00.000Z"
+}

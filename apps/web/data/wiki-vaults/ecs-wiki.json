@@ -1,0 +1,16 @@
+{
+  "id": "ecs-wiki",
+  "name": "ECS 知识库",
+  "description": "ECS 云服务器相关知识，包括实例管理、网络、存储、故障排查等",
+  "agentId": "ecs-assistant",
+  "isShared": false,
+  "gitRepoUrl": null,
+  "gitBranch": "main",
+  "pageCount": 3,
+  "avgConfidence": 0.78,
+  "orphanCount": 0,
+  "createdAt": "2026-06-15T08:00:00.000Z",
+  "updatedAt": "2026-07-13T14:00:00.000Z",
+  "_count": { "pages": 3, "ingestJobs": 0 },
+  "agent": { "id": "ecs-assistant", "name": "ECS 工单助手" }
+}

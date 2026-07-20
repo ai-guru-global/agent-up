@@ -1,8 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { prisma } from "@agent-up/db";
-import type { CreateFeedbackInput, UpdateFeedbackInput } from "../schemas";
+import { store } from "@/lib/data/store";
 
-interface ListFeedbackParams {
+function withAgentName<T extends Record<string, unknown>>(item: T): T {
+  const agent = store.read<{ id: string; name: string }>("agents", `${item.agentId}.json`);
+  return { ...item, agent: agent ? { id: agent.id, name: agent.name } : null };
+}
+
+export async function listFeedback(params: {
   skip: number;
   take: number;
   agentId?: string;
@@ -10,95 +13,101 @@ interface ListFeedbackParams {
   severity?: string;
   rating?: string;
   tag?: string;
-}
-
-/** 获取 Feedback 列表 */
-export async function listFeedback(params: ListFeedbackParams) {
-  const where: Record<string, unknown> = {};
-  if (params.agentId) where.agentId = params.agentId;
-  if (params.status && params.status !== "ALL") where.status = params.status;
-  if (params.severity && params.severity !== "ALL") where.severity = params.severity;
-  if (params.rating && params.rating !== "ALL") where.rating = params.rating;
-  if (params.tag) where.tags = { has: params.tag };
-
-  const [items, total] = await Promise.all([
-    prisma.feedback.findMany({
-      where,
-      skip: params.skip,
-      take: params.take,
-      orderBy: { submittedAt: "desc" },
-      include: {
-        agent: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.feedback.count({ where }),
-  ]);
-
-  return { items, total };
-}
-
-/** 获取单个 Feedback */
-export async function getFeedback(id: string) {
-  return prisma.feedback.findUnique({
-    where: { id },
-    include: {
-      agent: { select: { id: true, name: true } },
+}) {
+  return store.queryList<Record<string, unknown>>(
+    ["feedback"],
+    {
+      ...(params.agentId && { agentId: (f) => f.agentId === params.agentId }),
+      ...(params.status && params.status !== "ALL" && {
+        status: (f) => f.status === params.status,
+      }),
+      ...(params.severity && params.severity !== "ALL" && {
+        severity: (f) => f.severity === params.severity,
+      }),
+      ...(params.rating && params.rating !== "ALL" && {
+        rating: (f) => f.rating === params.rating,
+      }),
+      ...(params.tag && {
+        tag: (f) => Array.isArray(f.tags) && (f.tags as string[]).includes(params.tag!),
+      }),
     },
-  });
+    (a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)),
+    params.skip,
+    params.take,
+  );
 }
 
-/** 创建 Feedback */
-export async function createFeedback(input: CreateFeedbackInput) {
-  const agent = await prisma.agent.findUnique({ where: { id: input.agentId } });
+export async function getFeedback(id: string) {
+  const fb = store.read<Record<string, unknown>>("feedback", `${id}.json`);
+  if (!fb) return null;
+  return withAgentName(fb);
+}
+
+export async function createFeedback(input: {
+  agentId: string;
+  title: string;
+  content: string;
+  rating: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
+  tags?: string[];
+  severity?: "CRITICAL" | "MAJOR" | "MINOR" | "SUGGESTION";
+  sessionData?: unknown;
+  targetPartition?: "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING" | null;
+}) {
+  const agent = store.read("agents", `${input.agentId}.json`);
   if (!agent) throw new Error("Agent 不存在");
 
-  return prisma.feedback.create({
-    data: {
-      agentId: input.agentId,
-      source: "MANUAL",
-      title: input.title,
-      content: input.content,
-      rating: input.rating as any,
-      tags: (input.tags ?? []) as any,
-      severity: (input.severity ?? "MINOR") as any,
-      status: "NEW",
-      sessionData: input.sessionData ?? undefined,
-      targetPartition: (input.targetPartition ?? undefined) as any,
-      submittedBy: "system",
-    },
-    include: {
-      agent: { select: { id: true, name: true } },
-    },
-  });
+  const id = store.generateId();
+  const ts = store.now();
+  const feedback = {
+    id,
+    agentId: input.agentId,
+    source: "MANUAL",
+    title: input.title,
+    content: input.content,
+    rating: input.rating,
+    tags: input.tags ?? [],
+    severity: input.severity ?? "MINOR",
+    status: "NEW",
+    targetPartition: input.targetPartition ?? null,
+    sessionData: input.sessionData ?? null,
+    submittedBy: "system",
+    submittedAt: ts,
+  };
+
+  store.write(feedback, "feedback", `${id}.json`);
+  return withAgentName(feedback as Record<string, unknown>);
 }
 
-/** 更新 Feedback */
-export async function updateFeedback(id: string, input: UpdateFeedbackInput) {
-  const fb = await prisma.feedback.findUnique({ where: { id } });
+export async function updateFeedback(id: string, input: {
+  status?: "NEW" | "TRIAGED" | "ASSIGNED" | "IN_PROGRESS" | "RESOLVED" | "VERIFIED" | "CLOSED" | "WONTFIX";
+  severity?: "CRITICAL" | "MAJOR" | "MINOR" | "SUGGESTION";
+  assignedTo?: string | null;
+  resolution?: string | null;
+  targetPartition?: "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING" | null;
+  verificationNote?: string | null;
+}) {
+  const fb = store.read<Record<string, unknown>>("feedback", `${id}.json`);
   if (!fb) throw new Error("Feedback 不存在");
 
-  const data: Record<string, unknown> = {};
+  const ts = store.now();
+  const updated: Record<string, unknown> = { ...fb };
+
   if (input.status !== undefined) {
-    data.status = input.status;
-    if (input.status === "RESOLVED") data.resolvedAt = new Date();
+    updated.status = input.status;
+    if (input.status === "RESOLVED") updated.resolvedAt = ts;
     if (input.status === "ASSIGNED" && input.assignedTo) {
-      data.assignedTo = input.assignedTo;
-      data.assignedAt = new Date();
+      updated.assignedTo = input.assignedTo;
+      updated.assignedAt = ts;
     }
     if (input.status === "VERIFIED") {
-      data.verifiedAt = new Date();
-      if (input.verificationNote) data.verificationNote = input.verificationNote;
+      updated.verifiedAt = ts;
+      if (input.verificationNote) updated.verificationNote = input.verificationNote;
     }
   }
-  if (input.severity !== undefined) data.severity = input.severity;
-  if (input.resolution !== undefined) data.resolution = input.resolution;
-  if (input.targetPartition !== undefined) data.targetPartition = input.targetPartition;
+  if (input.severity !== undefined) updated.severity = input.severity;
+  if (input.resolution !== undefined) updated.resolution = input.resolution;
+  if (input.targetPartition !== undefined) updated.targetPartition = input.targetPartition;
 
-  return prisma.feedback.update({
-    where: { id },
-    data,
-    include: {
-      agent: { select: { id: true, name: true } },
-    },
-  });
+  store.write(updated, "feedback", `${id}.json`);
+  return withAgentName(updated);
 }

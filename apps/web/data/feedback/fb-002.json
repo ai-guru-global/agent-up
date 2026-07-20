@@ -1,0 +1,14 @@
+{
+  "id": "fb-002",
+  "agentId": "ecs-assistant",
+  "source": "MANUAL",
+  "title": "误判磁盘扩容操作风险等级",
+  "content": "用户询问在线扩容云盘时，Agent 将扩容操作标记为'低风险'，但实际在线扩容存在一定数据风险，应提醒用户先创建快照。Agent 对高危操作的风险提示不足。",
+  "rating": "NEGATIVE",
+  "tags": ["ANSWER_QUALITY", "OUTDATED_INFO"],
+  "severity": "MAJOR",
+  "status": "TRIAGED",
+  "targetPartition": "PROMPT",
+  "submittedBy": "cre-li",
+  "submittedAt": "2026-07-11T15:20:00.000Z"
+}

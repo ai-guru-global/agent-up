@@ -1,56 +1,60 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { prisma } from "@agent-up/db";
+import { store } from "@/lib/data/store";
 
-interface ListSkillsParams {
+export async function listSkills(params: {
   skip: number;
   take: number;
   category?: string;
   status?: string;
   search?: string;
-}
-
-export async function listSkills(params: ListSkillsParams) {
-  const where: Record<string, unknown> = {};
-  if (params.category && params.category !== "ALL") where.category = params.category;
-  if (params.status && params.status !== "ALL") where.status = params.status;
-  if (params.search) {
-    where.OR = [
-      { name: { contains: params.search, mode: "insensitive" } },
-      { displayName: { contains: params.search, mode: "insensitive" } },
-      { description: { contains: params.search, mode: "insensitive" } },
-    ];
-  }
-
-  const [items, total] = await Promise.all([
-    prisma.skill.findMany({
-      where,
-      skip: params.skip,
-      take: params.take,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        _count: { select: { bindings: true, versions: true } },
-      },
-    }),
-    prisma.skill.count({ where }),
-  ]);
-
-  return { items, total };
+}) {
+  return store.queryList<Record<string, unknown>>(
+    ["skills"],
+    {
+      ...(params.category && params.category !== "ALL" && {
+        category: (s) => s.category === params.category,
+      }),
+      ...(params.status && params.status !== "ALL" && {
+        status: (s) => s.status === params.status,
+      }),
+      ...(params.search && {
+        search: (s) => {
+          const q = params.search!.toLowerCase();
+          return String(s.name ?? "").toLowerCase().includes(q) ||
+            String(s.displayName ?? "").toLowerCase().includes(q) ||
+            String(s.description ?? "").toLowerCase().includes(q);
+        },
+      }),
+    },
+    (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)),
+    params.skip,
+    params.take,
+  );
 }
 
 export async function getSkill(id: string) {
-  return prisma.skill.findUnique({
-    where: { id },
-    include: {
-      bindings: {
-        include: { agent: { select: { id: true, name: true } } },
-      },
-      versions: {
-        orderBy: { publishedAt: "desc" },
-        take: 10,
-      },
-      _count: { select: { bindings: true, versions: true } },
-    },
-  });
+  const skill = store.read<Record<string, unknown>>("skills", `${id}.json`);
+  if (!skill) return null;
+
+  const agents = store.list<Record<string, unknown>>("agents");
+  const bindings = agents
+    .filter((a) => Array.isArray(a.skillBindings))
+    .flatMap((a) =>
+      (a.skillBindings as Record<string, unknown>[])
+        .filter((b) => b.skillId === id)
+        .map((b) => ({ ...b, agent: { id: a.id, name: a.name } }))
+    );
+
+  const versions = store.list<Record<string, unknown>>("skill-versions")
+    .filter((v) => v.skillId === id)
+    .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))
+    .slice(0, 10);
+
+  return {
+    ...skill,
+    bindings,
+    versions,
+    _count: { bindings: bindings.length, versions: versions.length },
+  };
 }
 
 export async function createSkill(data: {
@@ -59,92 +63,135 @@ export async function createSkill(data: {
   description: string;
   category?: string;
   triggerPatterns?: string[];
-  inputSchema?: any;
-  outputSchema?: any;
+  inputSchema?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
   runtime?: string;
   endpoint?: string;
 }) {
-  return prisma.skill.create({
-    data: {
-      name: data.name,
-      displayName: data.displayName,
-      description: data.description,
-      category: (data.category ?? "GENERAL") as any,
-      triggerPatterns: data.triggerPatterns ?? [],
-      inputSchema: (data.inputSchema ?? {}) as any,
-      outputSchema: (data.outputSchema ?? {}) as any,
-      runtime: (data.runtime ?? "HTTP") as any,
-      endpoint: data.endpoint,
-      status: "DRAFT",
-      authorId: "system",
-      authorName: "System",
-    },
-  });
+  const id = store.generateId();
+  const ts = store.now();
+  const skill = {
+    id,
+    name: data.name,
+    displayName: data.displayName,
+    description: data.description,
+    category: data.category ?? "GENERAL",
+    triggerPatterns: data.triggerPatterns ?? [],
+    inputSchema: data.inputSchema ?? {},
+    outputSchema: data.outputSchema ?? {},
+    runtime: data.runtime ?? "HTTP",
+    endpoint: data.endpoint ?? null,
+    version: "1.0.0",
+    status: "DRAFT",
+    publishedAt: null,
+    downloadCount: 0,
+    authorId: "system",
+    authorName: "System",
+    createdAt: ts,
+    updatedAt: ts,
+    _count: { bindings: 0, versions: 0 },
+  };
+
+  store.write(skill, "skills", `${id}.json`);
+  return skill;
 }
 
-export async function updateSkill(id: string, data: Record<string, any>) {
-  const skill = await prisma.skill.findUnique({ where: { id } });
+export async function updateSkill(id: string, data: Record<string, unknown>) {
+  const skill = store.read<Record<string, unknown>>("skills", `${id}.json`);
   if (!skill) throw new Error("Skill 不存在");
 
-  return prisma.skill.update({
-    where: { id },
-    data: {
-      ...(data.displayName !== undefined && { displayName: data.displayName }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.category !== undefined && { category: data.category }),
-      ...(data.status !== undefined && { status: data.status }),
-      ...(data.endpoint !== undefined && { endpoint: data.endpoint }),
-      ...(data.triggerPatterns !== undefined && { triggerPatterns: data.triggerPatterns }),
-      ...(data.inputSchema !== undefined && { inputSchema: data.inputSchema }),
-      ...(data.outputSchema !== undefined && { outputSchema: data.outputSchema }),
-    },
-  });
+  const updated = { ...skill, ...data, updatedAt: store.now() };
+  store.write(updated, "skills", `${id}.json`);
+  return updated;
 }
 
 export async function deleteSkill(id: string) {
-  return prisma.skill.update({
-    where: { id },
-    data: { status: "ARCHIVED" },
-  });
-}
-
-/** 绑定 Skill 到 Agent */
-export async function bindSkill(agentId: string, skillId: string, config?: any) {
-  const agent = await prisma.agent.findUnique({ where: { id: agentId } });
-  if (!agent) throw new Error("Agent 不存在");
-  const skill = await prisma.skill.findUnique({ where: { id: skillId } });
+  const skill = store.read<Record<string, unknown>>("skills", `${id}.json`);
   if (!skill) throw new Error("Skill 不存在");
 
-  return prisma.agentSkillBinding.upsert({
-    where: { agentId_skillId: { agentId, skillId } },
-    create: {
+  const updated = { ...skill, status: "ARCHIVED", updatedAt: store.now() };
+  store.write(updated, "skills", `${id}.json`);
+  return updated;
+}
+
+export async function bindSkill(
+  agentId: string,
+  skillId: string,
+  config?: Record<string, unknown>
+) {
+  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+  if (!agent) throw new Error("Agent 不存在");
+  const skill = store.read<Record<string, unknown>>("skills", `${skillId}.json`);
+  if (!skill) throw new Error("Skill 不存在");
+
+  const bindings = (agent.skillBindings ?? []) as Record<string, unknown>[];
+  const existing = bindings.find((b) => b.skillId === skillId);
+  const ts = store.now();
+
+  let binding: Record<string, unknown>;
+  if (existing) {
+    binding = { ...existing, ...(config !== undefined && { config }), enabled: true };
+    const idx = bindings.indexOf(existing);
+    bindings[idx] = binding;
+  } else {
+    binding = {
+      id: store.generateId(),
       agentId,
       skillId,
-      config: (config ?? null) as any,
+      config: config ?? null,
       enabled: true,
+      priority: 0,
       boundBy: "system",
-    },
-    update: {
-      ...(config !== undefined && { config: config as any }),
-      enabled: true,
-    },
-    include: {
-      skill: { select: { id: true, name: true, displayName: true } },
-    },
-  });
+      createdAt: ts,
+      skill: { id: skill.id, name: skill.name, displayName: skill.displayName },
+    };
+    bindings.push(binding);
+  }
+
+  const updated = {
+    ...agent,
+    skillBindings: bindings,
+    updatedAt: ts,
+    _count: { ...(agent._count as Record<string, number>), skillBindings: bindings.length },
+  };
+  store.write(updated, "agents", `${agentId}.json`);
+  return binding;
 }
 
-/** 解绑 Skill */
 export async function unbindSkill(agentId: string, skillId: string) {
-  return prisma.agentSkillBinding.delete({
-    where: { agentId_skillId: { agentId, skillId } },
-  });
+  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+  if (!agent) throw new Error("Agent 不存在");
+
+  const bindings = ((agent.skillBindings ?? []) as Record<string, unknown>[])
+    .filter((b) => b.skillId !== skillId);
+
+  const updated = {
+    ...agent,
+    skillBindings: bindings,
+    updatedAt: store.now(),
+    _count: { ...(agent._count as Record<string, number>), skillBindings: bindings.length },
+  };
+  store.write(updated, "agents", `${agentId}.json`);
+  return { deleted: true };
 }
 
-/** 切换 Skill 启用状态 */
+export async function getAgentSkillBindings(agentId: string) {
+  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+  if (!agent) return [];
+
+  const bindings = (agent.skillBindings ?? []) as Record<string, unknown>[];
+  return bindings.sort((a, b) => Number(b.priority ?? 0) - Number(a.priority ?? 0));
+}
+
 export async function toggleSkillBinding(agentId: string, skillId: string, enabled: boolean) {
-  return prisma.agentSkillBinding.update({
-    where: { agentId_skillId: { agentId, skillId } },
-    data: { enabled },
-  });
+  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+  if (!agent) throw new Error("Agent 不存在");
+
+  const bindings = (agent.skillBindings ?? []) as Record<string, unknown>[];
+  const binding = bindings.find((b) => b.skillId === skillId);
+  if (!binding) throw new Error("绑定不存在");
+
+  binding.enabled = enabled;
+  store.write({ ...agent, skillBindings: bindings, updatedAt: store.now() }, "agents", `${agentId}.json`);
+  return binding;
 }

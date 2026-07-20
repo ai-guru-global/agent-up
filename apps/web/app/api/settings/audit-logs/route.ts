@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
+import { store } from "@/lib/data/store";
 import { success, parsePagination, paginationMeta } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
@@ -9,20 +9,14 @@ export async function GET(request: NextRequest) {
   const resource = searchParams.get("resource") || undefined;
   const userId = searchParams.get("userId") || undefined;
 
-  const where: Record<string, unknown> = {};
-  if (action) where.action = action;
-  if (resource) where.resource = resource;
-  if (userId) where.userId = userId;
+  let items = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
+  if (action) items = items.filter((l) => l.action === action);
+  if (resource) items = items.filter((l) => l.resource === resource);
+  if (userId) items = items.filter((l) => l.userId === userId);
 
-  const [items, total] = await Promise.all([
-    prisma.auditLog.findMany({
-      where,
-      skip, take,
-      orderBy: { createdAt: "desc" },
-      include: { user: { select: { id: true, name: true, email: true } } },
-    }),
-    prisma.auditLog.count({ where }),
-  ]);
+  items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const total = items.length;
+  items = items.slice(skip, skip + take);
 
   return success({ items, pagination: paginationMeta(page, pageSize, total) });
 }

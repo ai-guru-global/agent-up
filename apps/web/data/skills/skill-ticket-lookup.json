@@ -1,0 +1,21 @@
+{
+  "id": "skill-ticket-lookup",
+  "name": "ticket-lookup",
+  "displayName": "工单查询",
+  "description": "根据工单号查询工单详情、状态和处理历史",
+  "category": "DATA_FETCH",
+  "triggerPatterns": ["查工单", "工单号", "ticket"],
+  "inputSchema": { "type": "object", "properties": { "ticketId": { "type": "string" } } },
+  "outputSchema": { "type": "object" },
+  "runtime": "HTTP",
+  "endpoint": "https://ticket-api.internal/v1/tickets",
+  "version": "2.0.0",
+  "status": "PUBLISHED",
+  "publishedAt": "2026-07-05T00:00:00.000Z",
+  "downloadCount": 8,
+  "authorId": "system",
+  "authorName": "Platform",
+  "createdAt": "2026-07-03T00:00:00.000Z",
+  "updatedAt": "2026-07-12T00:00:00.000Z",
+  "_count": { "bindings": 1, "versions": 2 }
+}

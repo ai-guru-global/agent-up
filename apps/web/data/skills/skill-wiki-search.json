@@ -1,0 +1,21 @@
+{
+  "id": "skill-wiki-search",
+  "name": "wiki-search",
+  "displayName": "Wiki 知识库搜索",
+  "description": "在 Agent 关联的 Wiki 知识库中进行语义搜索，返回最相关的知识页面",
+  "category": "KNOWLEDGE_QUERY",
+  "triggerPatterns": ["搜索知识", "查一下", "知识库"],
+  "inputSchema": { "type": "object", "properties": { "query": { "type": "string" }, "maxResults": { "type": "number" } } },
+  "outputSchema": { "type": "object", "properties": { "results": { "type": "array" } } },
+  "runtime": "MCP",
+  "endpoint": null,
+  "version": "1.0.0",
+  "status": "PUBLISHED",
+  "publishedAt": "2026-07-01T00:00:00.000Z",
+  "downloadCount": 12,
+  "authorId": "system",
+  "authorName": "Platform",
+  "createdAt": "2026-07-01T00:00:00.000Z",
+  "updatedAt": "2026-07-10T00:00:00.000Z",
+  "_count": { "bindings": 2, "versions": 1 }
+}

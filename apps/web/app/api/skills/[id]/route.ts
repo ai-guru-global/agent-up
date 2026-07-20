@@ -17,7 +17,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await parseBody(request);
+  const body = await parseBody<Record<string, unknown>>(request);
   if (!body) return error("无效的请求体");
   try {
     const skill = await updateSkill(id, body);

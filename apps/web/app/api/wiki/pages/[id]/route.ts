@@ -11,7 +11,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const body = await parseBody(request);
+  const body = await parseBody<Record<string, unknown>>(request);
   if (!body) return error("无效的请求体");
   try {
     const page = await updatePage(id, body);

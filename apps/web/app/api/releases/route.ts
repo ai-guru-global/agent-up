@@ -1,31 +1,28 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
+import { store } from "@/lib/data/store";
 import { success, parsePagination, paginationMeta } from "@/lib/utils";
 
-/** GET /api/releases — 全局 Release 列表 */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const { page, pageSize, skip, take } = parsePagination(searchParams);
   const status = searchParams.get("status") || undefined;
   const agentId = searchParams.get("agentId") || undefined;
 
-  const where: Record<string, unknown> = {};
-  if (status && status !== "ALL") where.status = status;
-  if (agentId) where.agentId = agentId;
+  const agents = store.list<Record<string, unknown>>("agents");
 
-  const [items, total] = await Promise.all([
-    prisma.release.findMany({
-      where,
-      skip,
-      take,
-      orderBy: { submittedAt: "desc" },
-      include: {
-        agent: { select: { id: true, name: true } },
-        version: { select: { id: true, version: true, publishedAt: true } },
-      },
-    }),
-    prisma.release.count({ where }),
-  ]);
+  let items = store.list<Record<string, unknown>>("releases");
+  if (status && status !== "ALL") items = items.filter((r) => r.status === status);
+  if (agentId) items = items.filter((r) => r.agentId === agentId);
+
+  items.sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
+  const total = items.length;
+  items = items.slice(skip, skip + take).map((r) => {
+    const agent = agents.find((a) => a.id === r.agentId);
+    return {
+      ...r,
+      agent: agent ? { id: agent.id, name: agent.name } : null,
+    };
+  });
 
   return success({
     items,

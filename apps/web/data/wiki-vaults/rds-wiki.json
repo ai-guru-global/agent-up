@@ -1,0 +1,16 @@
+{
+  "id": "rds-wiki",
+  "name": "RDS 知识库",
+  "description": "RDS 数据库相关知识，包括连接、性能、备份恢复等",
+  "agentId": "rds-assistant",
+  "isShared": false,
+  "gitRepoUrl": null,
+  "gitBranch": "main",
+  "pageCount": 1,
+  "avgConfidence": 0.85,
+  "orphanCount": 0,
+  "createdAt": "2026-06-20T08:00:00.000Z",
+  "updatedAt": "2026-07-08T10:00:00.000Z",
+  "_count": { "pages": 1, "ingestJobs": 0 },
+  "agent": { "id": "rds-assistant", "name": "RDS 工单助手" }
+}

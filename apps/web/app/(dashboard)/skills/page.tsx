@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/purity */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -23,22 +21,23 @@ const CAT_LABEL: Record<string,string> = {
   KNOWLEDGE_QUERY: "知识检索", DATA_FETCH: "数据查询", ACTION: "动作执行", TRANSFORM: "数据转换", GENERAL: "通用",
 };
 const CAT_COLOR: Record<string,string> = {
-  KNOWLEDGE_QUERY: "bg-blue-100 text-blue-800",
-  DATA_FETCH: "bg-cyan-100 text-cyan-800",
-  ACTION: "bg-orange-100 text-orange-800",
-  TRANSFORM: "bg-purple-100 text-purple-800",
-  GENERAL: "bg-slate-100 text-slate-600",
+  KNOWLEDGE_QUERY: "bg-blue-500/10 text-blue-400",
+  DATA_FETCH: "bg-cyan-500/10 text-cyan-400",
+  ACTION: "bg-orange-500/10 text-orange-400",
+  TRANSFORM: "bg-violet-500/10 text-violet-400",
+  GENERAL: "bg-zinc-500/10 text-zinc-400",
 };
 const STATUS_BADGE: Record<string,string> = {
-  DRAFT: "bg-yellow-100 text-yellow-800",
-  PUBLISHED: "bg-green-100 text-green-800",
-  DEPRECATED: "bg-orange-100 text-orange-700",
-  ARCHIVED: "bg-gray-100 text-gray-600",
+  DRAFT: "bg-amber-500/10 text-amber-400",
+  PUBLISHED: "bg-emerald-500/10 text-emerald-400",
+  DEPRECATED: "bg-zinc-500/10 text-zinc-400",
+  ARCHIVED: "bg-zinc-500/10 text-zinc-400",
 };
 
 export default function SkillsPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [catFilter, setCatFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -46,6 +45,7 @@ export default function SkillsPage() {
 
   const fetchList = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
       const p = new URLSearchParams();
       if (catFilter !== "ALL") p.set("category", catFilter);
@@ -54,22 +54,24 @@ export default function SkillsPage() {
       const res = await fetch(`/api/skills?${p}`);
       const json = await res.json();
       if (json.success) setSkills(json.data.items);
+      else setError(json.error || "加载失败");
+    } catch {
+      setError("网络错误");
     } finally { setLoading(false); }
   }, [catFilter, statusFilter, search]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchList(); }, [catFilter, statusFilter]);
+  useEffect(() => { fetchList(); }, [fetchList]);
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Skills 市场</h1>
-          <p className="mt-1 text-sm text-slate-500">管理和发现可复用的 Agent 技能组件</p>
+          <h1 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Skills 市场</h1>
+          <p className="mt-1 text-sm text-zinc-400">管理和发现可复用的 Agent 技能组件</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98]"
         >
           + 发布 Skill
         </button>
@@ -81,14 +83,14 @@ export default function SkillsPage() {
           placeholder="搜索 Skill..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
         />
         <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+          className="rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
           {CATS.map((c) => <option key={c} value={c}>{c === "ALL" ? "全部分类" : CAT_LABEL[c] || c}</option>)}
         </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+          className="rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
           <option value="ALL">全部状态</option>
           <option value="DRAFT">草稿</option>
           <option value="PUBLISHED">已发布</option>
@@ -96,33 +98,41 @@ export default function SkillsPage() {
         </select>
       </div>
 
+      {error && (
+        <div className="mt-4 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+      )}
+
       {loading ? (
-        <div className="mt-8 text-center text-slate-500">加载中...</div>
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse rounded-md bg-[var(--surface-elevated)] p-5 h-40" />
+          ))}
+        </div>
       ) : skills.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed border-slate-300 p-12 text-center">
-          <p className="text-slate-500">暂无 Skill</p>
-          <button onClick={() => setShowCreate(true)} className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700">
+        <div className="mt-8 rounded-md border border-dashed border-[var(--border)] p-12 text-center">
+          <p className="text-zinc-400">暂无 Skill</p>
+          <button onClick={() => setShowCreate(true)} className="mt-3 text-sm font-medium text-[var(--accent)] hover:opacity-80">
             创建第一个 Skill
           </button>
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {skills.map((sk) => (
-            <div key={sk.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+            <div key={sk.id} className="rounded-md bg-[var(--surface)] p-5 ring-1 ring-[var(--border)] transition hover:ring-[var(--accent-muted)]">
               <div className="flex items-start justify-between">
-                <h3 className="font-semibold text-slate-900">{sk.displayName}</h3>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[sk.status] || ""}`}>{sk.status}</span>
+                <h3 className="font-semibold text-[var(--foreground)]">{sk.displayName}</h3>
+                <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${STATUS_BADGE[sk.status] || ""}`}>{sk.status}</span>
               </div>
-              <p className="mt-1 text-sm text-slate-500 line-clamp-2">{sk.description}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{sk.description}</p>
               <div className="mt-3 flex items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${CAT_COLOR[sk.category] || ""}`}>
+                <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${CAT_COLOR[sk.category] || ""}`}>
                   {CAT_LABEL[sk.category] || sk.category}
                 </span>
-                <span className="text-xs text-slate-400">{sk.runtime}</span>
+                <span className="text-xs text-zinc-500">{sk.runtime}</span>
               </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                <span>v{sk.version}</span>
-                <span>{sk._count.bindings} 个 Agent 使用</span>
+              <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
+                <span className="tabular-nums">v{sk.version}</span>
+                <span className="tabular-nums">{sk._count.bindings} 个 Agent 使用</span>
               </div>
             </div>
           ))}
@@ -163,43 +173,43 @@ function CreateSkillModal({ onClose, onCreated }: { onClose: () => void; onCreat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="text-lg font-semibold text-slate-900">发布 Skill</h2>
-        {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-lg bg-[var(--surface)] p-6 ring-1 ring-[var(--border)]">
+        <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">发布 Skill</h2>
+        {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
         <div className="mt-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium text-slate-700">标识名 *</label>
+              <label className="text-sm font-medium text-[var(--foreground)]">标识名 *</label>
               <input value={name} onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
                 placeholder="wiki-search" />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">显示名 *</label>
+              <label className="text-sm font-medium text-[var(--foreground)]">显示名 *</label>
               <input value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
                 placeholder="Wiki 搜索" />
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">描述 *</label>
+            <label className="text-sm font-medium text-[var(--foreground)]">描述 *</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
               rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm font-medium text-slate-700">分类</label>
+              <label className="text-sm font-medium text-[var(--foreground)]">分类</label>
               <select value={category} onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
                 {CATS.filter(c => c !== "ALL").map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">运行时</label>
+              <label className="text-sm font-medium text-[var(--foreground)]">运行时</label>
               <select value={runtime} onChange={(e) => setRuntime(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
                 <option value="HTTP">HTTP</option>
                 <option value="FUNCTION">Function</option>
                 <option value="MCP">MCP</option>
@@ -208,16 +218,16 @@ function CreateSkillModal({ onClose, onCreated }: { onClose: () => void; onCreat
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">Endpoint</label>
+            <label className="text-sm font-medium text-[var(--foreground)]">Endpoint</label>
             <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
               placeholder="https://api.example.com/skill" />
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">取消</button>
+          <button onClick={onClose} className="rounded-md px-4 py-1.5 text-sm font-medium text-[var(--foreground)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-elevated)] active:scale-[0.98]">取消</button>
           <button onClick={handleSubmit} disabled={submitting}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+            className="rounded-md bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] disabled:opacity-50">
             {submitting ? "创建中..." : "创建"}
           </button>
         </div>

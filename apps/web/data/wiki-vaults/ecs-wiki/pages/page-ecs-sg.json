@@ -1,0 +1,16 @@
+{
+  "id": "page-ecs-sg",
+  "vaultId": "ecs-wiki",
+  "title": "安全组配置指南",
+  "slug": "security-group-guide",
+  "summary": "ECS 安全组的入方向和出方向规则配置方法，包括常见端口放通场景",
+  "provenance": "EXTRACTED",
+  "lifecycle": "VERIFIED",
+  "tier": "CORE",
+  "baseConfidence": 0.9,
+  "tags": ["安全组", "网络", "端口"],
+  "categories": ["network"],
+  "wikilinks": ["vpc-basics", "elastic-ip"],
+  "filePath": "network/security-group-guide.md",
+  "updatedAt": "2026-07-13T14:00:00.000Z"
+}

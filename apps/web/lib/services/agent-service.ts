@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { prisma } from "@agent-up/db";
-import type { CreateAgentInput, UpdateAgentInput } from "../schemas";
+import { store } from "@/lib/data/store";
 
-/** Agent 列表查询参数 */
+type Partition = "prompt" | "knowledge" | "tools" | "routing";
+
 interface ListAgentsParams {
   skip: number;
   take: number;
@@ -11,291 +10,176 @@ interface ListAgentsParams {
   search?: string;
 }
 
-/** 获取 Agent 列表（含关联数据） */
 export async function listAgents(params: ListAgentsParams) {
-  const where: Record<string, unknown> = {};
-  if (params.status && params.status !== "ALL") where.status = params.status;
-  if (params.productGroupId) where.productGroupId = params.productGroupId;
-  if (params.search) {
-    where.OR = [
-      { name: { contains: params.search, mode: "insensitive" } },
-      { description: { contains: params.search, mode: "insensitive" } },
-    ];
-  }
+  const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
 
-  const [items, total] = await Promise.all([
-    prisma.agent.findMany({
-      where,
-      skip: params.skip,
-      take: params.take,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        productGroup: { select: { id: true, name: true, displayName: true } },
-        _count: {
-          select: {
-            feedbacks: true,
-            releases: true,
-            versions: true,
-            skillBindings: true,
-          },
+  return store.queryList<Record<string, unknown>>(
+    ["agents"],
+    {
+      ...(params.status && params.status !== "ALL" && {
+        status: (a) => a.status === params.status,
+      }),
+      ...(params.productGroupId && {
+        productGroupId: (a) => a.productGroupId === params.productGroupId,
+      }),
+      ...(params.search && {
+        search: (a) => {
+          const q = params.search!.toLowerCase();
+          return String(a.name ?? "").toLowerCase().includes(q) ||
+            String(a.description ?? "").toLowerCase().includes(q);
         },
-      },
-    }),
-    prisma.agent.count({ where }),
-  ]);
-
-  return { items, total };
+      }),
+    },
+    (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)),
+    params.skip,
+    params.take,
+  );
 }
 
-/** 获取单个 Agent 详情（含完整配置） */
 export async function getAgent(id: string) {
-  return prisma.agent.findUnique({
-    where: { id },
-    include: {
-      productGroup: { select: { id: true, name: true, displayName: true } },
-      promptConfig: true,
-      knowledgeConfig: true,
-      toolsConfig: true,
-      routingConfig: true,
-      draftConfig: true,
-      versions: {
-        orderBy: { publishedAt: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          version: true,
-          publishedAt: true,
-          publishedBy: true,
-          changeNote: true,
-        },
-      },
-      releases: {
-        where: { status: "PENDING" },
-        orderBy: { submittedAt: "desc" },
-      },
-      _count: {
-        select: {
-          feedbacks: true,
-          releases: true,
-          versions: true,
-          skillBindings: true,
-        },
-      },
-    },
-  });
+  const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
+  if (!agent) return null;
+
+  const releases = store.list<Record<string, unknown>>("releases")
+    .filter((r) => r.agentId === id && r.status === "PENDING")
+    .sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
+
+  const versions = store.list<Record<string, unknown>>("versions")
+    .filter((v) => v.agentId === id)
+    .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))
+    .slice(0, 5);
+
+  return { ...agent, releases, versions };
 }
 
-/** 创建 Agent */
-export async function createAgent(input: CreateAgentInput) {
-  // 验证产品组存在
-  const group = await prisma.productGroup.findUnique({
-    where: { id: input.productGroupId },
-  });
-  if (!group) {
-    throw new Error(`产品组 ${input.productGroupId} 不存在`);
-  }
+export async function createAgent(input: {
+  name: string;
+  description?: string;
+  productGroupId: string;
+}) {
+  const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
+  const group = groups.find((g) => g.id === input.productGroupId);
+  if (!group) throw new Error(`产品组 ${input.productGroupId} 不存在`);
 
-  return prisma.agent.create({
-    data: {
-      name: input.name,
-      description: input.description,
-      productGroupId: input.productGroupId,
-      status: "DRAFT",
-      createdBy: "system", // TODO: 从 auth session 获取
-    },
-    include: {
-      productGroup: { select: { id: true, name: true, displayName: true } },
-    },
-  });
+  const id = store.generateId();
+  const ts = store.now();
+  const agent = {
+    id,
+    name: input.name,
+    description: input.description ?? null,
+    productGroupId: input.productGroupId,
+    status: "DRAFT",
+    createdBy: "system",
+    createdAt: ts,
+    updatedAt: ts,
+    promptConfig: null,
+    knowledgeConfig: null,
+    toolsConfig: null,
+    routingConfig: null,
+    skillBindings: [],
+    productGroup: { id: group.id, name: group.name, displayName: group.displayName },
+    _count: { feedbacks: 0, releases: 0, versions: 0, skillBindings: 0 },
+  };
+
+  store.write(agent, "agents", `${id}.json`);
+  return agent;
 }
 
-/** 更新 Agent */
-export async function updateAgent(id: string, input: UpdateAgentInput) {
-  const agent = await prisma.agent.findUnique({ where: { id } });
+export async function updateAgent(id: string, input: {
+  name?: string;
+  description?: string | null;
+  status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+}) {
+  const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
   if (!agent) throw new Error(`Agent ${id} 不存在`);
 
-  return prisma.agent.update({
-    where: { id },
-    data: {
-      ...(input.name !== undefined && { name: input.name }),
-      ...(input.description !== undefined && { description: input.description }),
-      ...(input.status !== undefined && { status: input.status }),
-    },
-    include: {
-      productGroup: { select: { id: true, name: true, displayName: true } },
-    },
-  });
+  const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
+  const group = groups.find((g) => g.id === agent.productGroupId);
+
+  const updated = {
+    ...agent,
+    ...(input.name !== undefined && { name: input.name }),
+    ...(input.description !== undefined && { description: input.description }),
+    ...(input.status !== undefined && { status: input.status }),
+    updatedAt: store.now(),
+    productGroup: group ? { id: group.id, name: group.name, displayName: group.displayName } : agent.productGroup,
+  };
+
+  store.write(updated, "agents", `${id}.json`);
+  return updated;
 }
 
-/** 删除 Agent */
 export async function deleteAgent(id: string) {
-  const agent = await prisma.agent.findUnique({ where: { id } });
+  const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
   if (!agent) throw new Error(`Agent ${id} 不存在`);
 
-  // 软删除：归档而非物理删除
-  return prisma.agent.update({
-    where: { id },
-    data: { status: "ARCHIVED" },
-  });
+  const updated = { ...agent, status: "ARCHIVED", updatedAt: store.now() };
+  store.write(updated, "agents", `${id}.json`);
+  return updated;
 }
 
-// ============================================================
-// 配置分区操作
-// ============================================================
-
-type Partition = "prompt" | "knowledge" | "tools" | "routing";
-
-const PARTITION_MODEL: Record<Partition, "promptConfig" | "knowledgeConfig" | "toolsConfig" | "routingConfig"> = {
-  prompt: "promptConfig",
-  knowledge: "knowledgeConfig",
-  tools: "toolsConfig",
-  routing: "routingConfig",
-};
-
-/** 获取指定分区配置 */
 export async function getAgentConfig(agentId: string, partition: Partition) {
-  const agent = await prisma.agent.findUnique({
-    where: { id: agentId },
-    include: { [PARTITION_MODEL[partition]]: true } as any,
-  });
+  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
   if (!agent) throw new Error(`Agent ${agentId} 不存在`);
-  return (agent as any)[PARTITION_MODEL[partition]] ?? null;
+
+  const key = `${partition}Config`;
+  return (agent[key] as Record<string, unknown>) ?? null;
 }
 
-/** 更新 Prompt 分区 */
-export async function updatePromptConfig(agentId: string, data: {
-  systemPrompt: string;
-  roleDefinition?: string | null;
-  constraints?: string[];
-  outputFormat?: string | null;
-}) {
-  const existing = await prisma.promptConfig.findUnique({ where: { agentId } });
-  if (existing) {
-    return prisma.promptConfig.update({
-      where: { agentId },
-      data: {
-        ...data,
-        version: { increment: 1 },
-        lastModifiedAt: new Date(),
-      },
-    });
-  }
-  return prisma.promptConfig.create({
-    data: { agentId, ...data },
-  });
+function updateConfigPartition(agentId: string, partition: Partition, data: Record<string, unknown>) {
+  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+  if (!agent) throw new Error(`Agent ${agentId} 不存在`);
+
+  const key = `${partition}Config`;
+  const existing = (agent[key] as Record<string, unknown>) ?? {};
+  const updated = {
+    ...existing,
+    ...data,
+    version: (Number(existing.version) || 0) + 1,
+    lastModifiedAt: store.now(),
+  };
+
+  const updatedAgent = { ...agent, [key]: updated, updatedAt: store.now() };
+  store.write(updatedAgent, "agents", `${agentId}.json`);
+  return updated;
 }
 
-/** 更新 Knowledge 分区 */
-export async function updateKnowledgeConfig(agentId: string, data: {
-  wikiVaultId?: string | null;
-  searchStrategy?: "WIKI_FIRST" | "WIKI_ONLY" | "MCP_FIRST" | "HYBRID";
-  fallbackToMcp?: boolean;
-  maxWikiResults?: number;
-  confidenceThreshold?: number;
-}) {
-  const existing = await prisma.knowledgeConfig.findUnique({ where: { agentId } });
-  if (existing) {
-    return prisma.knowledgeConfig.update({
-      where: { agentId },
-      data: {
-        ...data,
-        version: { increment: 1 },
-        lastModifiedAt: new Date(),
-      },
-    });
-  }
-  return prisma.knowledgeConfig.create({
-    data: { agentId, ...data },
-  });
+export async function updatePromptConfig(agentId: string, data: Record<string, unknown>) {
+  return updateConfigPartition(agentId, "prompt", data);
 }
 
-/** 更新 Tools 分区 */
-export async function updateToolsConfig(agentId: string, data: {
-  mcpTools?: unknown[];
-  wikiQueryTools?: unknown[];
-  maxConcurrentCalls?: number;
-  timeoutMs?: number;
-  retryCount?: number;
-}) {
-  const existing = await prisma.toolsConfig.findUnique({ where: { agentId } });
-  if (existing) {
-    return prisma.toolsConfig.update({
-      where: { agentId },
-      data: {
-        ...(data.mcpTools !== undefined && { mcpTools: data.mcpTools as any }),
-        ...(data.wikiQueryTools !== undefined && { wikiQueryTools: data.wikiQueryTools as any }),
-        ...(data.maxConcurrentCalls !== undefined && { maxConcurrentCalls: data.maxConcurrentCalls }),
-        ...(data.timeoutMs !== undefined && { timeoutMs: data.timeoutMs }),
-        ...(data.retryCount !== undefined && { retryCount: data.retryCount }),
-        version: { increment: 1 },
-        lastModifiedAt: new Date(),
-      },
-    });
-  }
-  return prisma.toolsConfig.create({
-    data: {
-      agentId,
-      mcpTools: (data.mcpTools ?? []) as any,
-      wikiQueryTools: (data.wikiQueryTools ?? []) as any,
-      ...(data.maxConcurrentCalls !== undefined && { maxConcurrentCalls: data.maxConcurrentCalls }),
-      ...(data.timeoutMs !== undefined && { timeoutMs: data.timeoutMs }),
-      ...(data.retryCount !== undefined && { retryCount: data.retryCount }),
-    },
-  });
+export async function updateKnowledgeConfig(agentId: string, data: Record<string, unknown>) {
+  return updateConfigPartition(agentId, "knowledge", data);
 }
 
-/** 更新 Routing 分区 */
-export async function updateRoutingConfig(agentId: string, data: {
-  rules?: unknown[];
-  escalationPolicy?: unknown;
-  humanThreshold?: number;
-  maxConversationTurns?: number;
-  idleTimeoutMinutes?: number;
-}) {
-  const existing = await prisma.routingConfig.findUnique({ where: { agentId } });
-  if (existing) {
-    return prisma.routingConfig.update({
-      where: { agentId },
-      data: {
-        ...(data.rules !== undefined && { rules: data.rules as any }),
-        ...(data.escalationPolicy !== undefined && { escalationPolicy: data.escalationPolicy as any }),
-        ...(data.humanThreshold !== undefined && { humanThreshold: data.humanThreshold }),
-        ...(data.maxConversationTurns !== undefined && { maxConversationTurns: data.maxConversationTurns }),
-        ...(data.idleTimeoutMinutes !== undefined && { idleTimeoutMinutes: data.idleTimeoutMinutes }),
-        version: { increment: 1 },
-        lastModifiedAt: new Date(),
-      },
-    });
-  }
-  return prisma.routingConfig.create({
-    data: {
-      agentId,
-      rules: (data.rules ?? []) as any,
-      ...(data.escalationPolicy !== undefined && { escalationPolicy: data.escalationPolicy as any }),
-      ...(data.humanThreshold !== undefined && { humanThreshold: data.humanThreshold }),
-      ...(data.maxConversationTurns !== undefined && { maxConversationTurns: data.maxConversationTurns }),
-      ...(data.idleTimeoutMinutes !== undefined && { idleTimeoutMinutes: data.idleTimeoutMinutes }),
-    },
-  });
+export async function updateToolsConfig(agentId: string, data: Record<string, unknown>) {
+  return updateConfigPartition(agentId, "tools", data);
 }
 
-/** 记录配置变更 */
+export async function updateRoutingConfig(agentId: string, data: Record<string, unknown>) {
+  return updateConfigPartition(agentId, "routing", data);
+}
+
 export async function recordConfigChange(
   agentId: string,
-  partition: "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING",
+  partition: string,
   before: unknown,
   after: unknown,
   changeNote?: string
 ) {
-  return prisma.configChange.create({
-    data: {
-      agentId,
-      partition,
-      before: before as any,
-      after: after as any,
-      diff: {} as any, // TODO: 实现 JSON diff
-      changedBy: "system",
-      changeNote,
-    },
-  });
+  const { computeJsonDiff } = await import("@/lib/diff");
+  const id = store.generateId();
+  const change = {
+    id,
+    agentId,
+    partition,
+    before,
+    after,
+    diff: computeJsonDiff(before, after),
+    changedBy: "system",
+    changeNote,
+    createdAt: store.now(),
+  };
+  store.write(change, "config-changes", `${id}.json`);
+  return change;
 }

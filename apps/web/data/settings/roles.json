@@ -1,0 +1,41 @@
+[
+  {
+    "id": "role-admin",
+    "name": "platform_admin",
+    "displayName": "平台管理员",
+    "isSystem": true,
+    "description": "拥有所有权限",
+    "_count": { "members": 1 },
+    "permissions": [
+      { "permission": { "id": "perm-1", "resource": "agent", "action": "read" } },
+      { "permission": { "id": "perm-2", "resource": "agent", "action": "write" } },
+      { "permission": { "id": "perm-3", "resource": "agent", "action": "publish" } },
+      { "permission": { "id": "perm-4", "resource": "release", "action": "approve" } },
+      { "permission": { "id": "perm-5", "resource": "settings", "action": "admin" } }
+    ]
+  },
+  {
+    "id": "role-product",
+    "name": "product_member",
+    "displayName": "产品组成员",
+    "isSystem": true,
+    "description": "可编辑本产品组的 Agent 配置",
+    "_count": { "members": 5 },
+    "permissions": [
+      { "permission": { "id": "perm-1", "resource": "agent", "action": "read" } },
+      { "permission": { "id": "perm-2", "resource": "agent", "action": "write" } },
+      { "permission": { "id": "perm-3", "resource": "agent", "action": "publish" } }
+    ]
+  },
+  {
+    "id": "role-cre",
+    "name": "cre_viewer",
+    "displayName": "CRE 查看者",
+    "isSystem": true,
+    "description": "可查看反馈和提交改进建议",
+    "_count": { "members": 8 },
+    "permissions": [
+      { "permission": { "id": "perm-1", "resource": "agent", "action": "read" } }
+    ]
+  }
+]

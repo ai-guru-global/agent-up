@@ -1,31 +1,22 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
 import { success, error, parseBody } from "@/lib/utils";
-import { bindSkill, unbindSkill } from "@/lib/services/skill-service";
+import { bindSkill, unbindSkill, getAgentSkillBindings } from "@/lib/services/skill-service";
 
-/** GET /api/agents/[id]/skills — 获取 Agent 绑定的 Skills */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const bindings = await prisma.agentSkillBinding.findMany({
-    where: { agentId: id },
-    include: {
-      skill: { select: { id: true, name: true, displayName: true, category: true, description: true, status: true } },
-    },
-    orderBy: { priority: "desc" },
-  });
+  const bindings = await getAgentSkillBindings(id);
   return success(bindings);
 }
 
-/** POST /api/agents/[id]/skills — 绑定 Skill */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await parseBody<{ skillId: string; config?: unknown }>(request);
+  const body = await parseBody<{ skillId: string; config?: Record<string, unknown> }>(request);
   if (!body?.skillId) return error("skillId 必填");
   try {
     const binding = await bindSkill(id, body.skillId, body.config);
@@ -35,7 +26,6 @@ export async function POST(
   }
 }
 
-/** DELETE /api/agents/[id]/skills — 解绑 Skill */
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const agentId = searchParams.get("agentId");

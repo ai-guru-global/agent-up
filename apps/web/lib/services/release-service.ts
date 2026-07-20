@@ -1,128 +1,116 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { prisma } from "@agent-up/db";
+import { store } from "@/lib/data/store";
 
-/** 提交发布 */
+function withAgentName<T extends Record<string, unknown>>(item: T): T {
+  const agent = store.read<{ id: string; name: string }>("agents", `${item.agentId}.json`);
+  return { ...item, agent: agent ? { id: agent.id, name: agent.name } : null };
+}
+
 export async function submitRelease(agentId: string, changeNote: string) {
-  const agent = await prisma.agent.findUnique({
-    where: { id: agentId },
-    include: {
-      promptConfig: true,
-      knowledgeConfig: true,
-      toolsConfig: true,
-      routingConfig: true,
-    },
-  });
+  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
   if (!agent) throw new Error("Agent 不存在");
 
-  // 确定变更了哪些分区
   const changedPartitions: string[] = [];
   if (agent.promptConfig) changedPartitions.push("PROMPT");
   if (agent.knowledgeConfig) changedPartitions.push("KNOWLEDGE");
   if (agent.toolsConfig) changedPartitions.push("TOOLS");
   if (agent.routingConfig) changedPartitions.push("ROUTING");
 
-  // 创建配置快照
   const configSnapshot = {
     prompt: agent.promptConfig,
     knowledge: agent.knowledgeConfig,
     tools: agent.toolsConfig,
     routing: agent.routingConfig,
-    snapshotAt: new Date().toISOString(),
+    snapshotAt: store.now(),
   };
 
-  return prisma.release.create({
-    data: {
-      agentId,
-      changeNote,
-      changedPartitions: changedPartitions as any,
-      status: "PENDING",
-      submittedBy: "system", // TODO: 从 auth 获取
-      configSnapshot: configSnapshot as any,
-    },
-    include: {
-      agent: { select: { id: true, name: true } },
-    },
-  });
+  const id = store.generateId();
+  const ts = store.now();
+  const release = {
+    id,
+    agentId,
+    changeNote,
+    changedPartitions,
+    status: "PENDING",
+    submittedBy: "system",
+    submittedAt: ts,
+    approvedBy: null,
+    approvedAt: null,
+    reviewComment: null,
+    configSnapshot,
+    version: null,
+  };
+
+  store.write(release, "releases", `${id}.json`);
+  return withAgentName(release as Record<string, unknown>);
 }
 
-/** 审批发布 */
 export async function reviewRelease(
   releaseId: string,
   action: "APPROVED" | "REJECTED" | "CHANGES_REQUESTED",
   reviewComment?: string
 ) {
-  const release = await prisma.release.findUnique({
-    where: { id: releaseId },
-    include: { agent: true },
-  });
+  const release = store.read<Record<string, unknown>>("releases", `${releaseId}.json`);
   if (!release) throw new Error("Release 不存在");
   if (release.status !== "PENDING") throw new Error("该 Release 已处理");
 
-  const updated = await prisma.release.update({
-    where: { id: releaseId },
-    data: {
-      status: action,
-      approvedBy: "system", // TODO: 从 auth 获取
-      approvedAt: action === "APPROVED" ? new Date() : null,
-      reviewComment: reviewComment ?? null,
-    },
-  });
+  const ts = store.now();
+  const updated: Record<string, unknown> = {
+    ...release,
+    status: action,
+    approvedBy: "system",
+    approvedAt: action === "APPROVED" ? ts : null,
+    reviewComment: reviewComment ?? null,
+  };
 
-  // 审批通过 → 自动生成版本快照
   if (action === "APPROVED") {
-    await createVersionFromRelease(release);
+    const version = createVersionFromRelease(release);
+    updated.version = { id: version.id, version: version.version, publishedAt: version.publishedAt };
   }
 
+  store.write(updated, "releases", `${releaseId}.json`);
   return updated;
 }
 
-/** 从审批通过的 Release 创建版本快照 */
-async function createVersionFromRelease(release: {
-  id: string;
-  agentId: string;
-  changeNote: string;
-  configSnapshot: any;
-}) {
-  // 计算下一个版本号
-  const lastVersion = await prisma.agentVersion.findFirst({
-    where: { agentId: release.agentId },
-    orderBy: { publishedAt: "desc" },
-  });
+function createVersionFromRelease(release: Record<string, unknown>) {
+  const allVersions = store.list<Record<string, unknown>>("versions")
+    .filter((v) => v.agentId === release.agentId)
+    .sort((a, b) => Number(b.minor ?? 0) - Number(a.minor ?? 0));
 
-  const nextMinor = (lastVersion?.minor ?? 0) + 1;
-  const version = `0.${nextMinor}.0`;
+  const nextMinor = (Number(allVersions[0]?.minor) || 0) + 1;
+  const versionStr = `0.${nextMinor}.0`;
+  const ts = store.now();
 
-  const snapshot = release.configSnapshot ?? {};
+  const snapshot = (release.configSnapshot ?? {}) as Record<string, unknown>;
+  const id = store.generateId();
+  const version = {
+    id,
+    agentId: release.agentId,
+    version: versionStr,
+    major: 0,
+    minor: nextMinor,
+    patch: 0,
+    promptSnapshot: snapshot.prompt ?? {},
+    knowledgeSnapshot: snapshot.knowledge ?? {},
+    toolsSnapshot: snapshot.tools ?? {},
+    routingSnapshot: snapshot.routing ?? {},
+    releaseId: release.id,
+    publishedBy: "system",
+    publishedAt: ts,
+    changeNote: release.changeNote,
+  };
 
-  return prisma.agentVersion.create({
-    data: {
-      agentId: release.agentId,
-      version,
-      major: 0,
-      minor: nextMinor,
-      patch: 0,
-      promptSnapshot: snapshot.prompt ?? {} as any,
-      knowledgeSnapshot: snapshot.knowledge ?? {} as any,
-      toolsSnapshot: snapshot.tools ?? {} as any,
-      routingSnapshot: snapshot.routing ?? {} as any,
-      releaseId: release.id,
-      publishedBy: "system",
-      changeNote: release.changeNote,
-    },
-  });
+  store.write(version, "versions", `${id}.json`);
+  return version;
 }
 
-/** 获取 Agent 的 Release 列表 */
 export async function listReleases(agentId: string, status?: string) {
-  const where: Record<string, unknown> = { agentId };
-  if (status && status !== "ALL") where.status = status;
+  let items = store.list<Record<string, unknown>>("releases")
+    .filter((r) => r.agentId === agentId);
 
-  return prisma.release.findMany({
-    where,
-    orderBy: { submittedAt: "desc" },
-    include: {
-      agent: { select: { id: true, name: true } },
-      version: { select: { id: true, version: true, publishedAt: true } },
-    },
-  });
+  if (status && status !== "ALL") {
+    items = items.filter((r) => r.status === status);
+  }
+
+  items.sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
+  return items.map(withAgentName);
 }

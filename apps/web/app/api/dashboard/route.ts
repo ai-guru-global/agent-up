@@ -1,33 +1,34 @@
-import { prisma } from "@agent-up/db";
+import { store } from "@/lib/data/store";
 import { success } from "@/lib/utils";
 
-/** GET /api/dashboard — 工作台统计数据 */
 export async function GET() {
-  const [
-    totalAgents,
-    activeAgents,
-    totalFeedback,
-    pendingFeedback,
-    pendingReleases,
-    recentFeedback,
-    recentReleases,
-  ] = await Promise.all([
-    prisma.agent.count(),
-    prisma.agent.count({ where: { status: "ACTIVE" } }),
-    prisma.feedback.count(),
-    prisma.feedback.count({ where: { status: { in: ["NEW", "TRIAGED", "ASSIGNED", "IN_PROGRESS"] } } }),
-    prisma.release.count({ where: { status: "PENDING" } }),
-    prisma.feedback.findMany({
-      take: 5,
-      orderBy: { submittedAt: "desc" },
-      include: { agent: { select: { id: true, name: true } } },
-    }),
-    prisma.release.findMany({
-      take: 5,
-      orderBy: { submittedAt: "desc" },
-      include: { agent: { select: { id: true, name: true } } },
-    }),
-  ]);
+  const agents = store.list<Record<string, unknown>>("agents");
+  const feedbacks = store.list<Record<string, unknown>>("feedback");
+  const releases = store.list<Record<string, unknown>>("releases");
+
+  const totalAgents = agents.length;
+  const activeAgents = agents.filter((a) => a.status === "ACTIVE").length;
+  const totalFeedback = feedbacks.length;
+  const pendingFeedback = feedbacks.filter((f) =>
+    ["NEW", "TRIAGED", "ASSIGNED", "IN_PROGRESS"].includes(String(f.status))
+  ).length;
+  const pendingReleases = releases.filter((r) => r.status === "PENDING").length;
+
+  const recentFeedback = feedbacks
+    .sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)))
+    .slice(0, 5)
+    .map((f) => {
+      const agent = agents.find((a) => a.id === f.agentId);
+      return { ...f, agent: agent ? { id: agent.id, name: agent.name } : null };
+    });
+
+  const recentReleases = releases
+    .sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)))
+    .slice(0, 5)
+    .map((r) => {
+      const agent = agents.find((a) => a.id === r.agentId);
+      return { ...r, agent: agent ? { id: agent.id, name: agent.name } : null };
+    });
 
   return success({
     agents: { total: totalAgents, active: activeAgents },

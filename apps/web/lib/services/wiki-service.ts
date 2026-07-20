@@ -1,43 +1,27 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { prisma } from "@agent-up/db";
+import { store } from "@/lib/data/store";
+import { existsSync, readdirSync, rmSync, readFileSync } from "fs";
+import { join } from "path";
 
-interface ListVaultsParams {
+export async function listVaults(params: {
   skip: number;
   take: number;
   agentId?: string;
   shared?: boolean;
-}
-
-export async function listVaults(params: ListVaultsParams) {
-  const where: Record<string, unknown> = {};
-  if (params.agentId) where.agentId = params.agentId;
-  if (params.shared !== undefined) where.isShared = params.shared;
-
-  const [items, total] = await Promise.all([
-    prisma.wikiVault.findMany({
-      where,
-      skip: params.skip,
-      take: params.take,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        agent: { select: { id: true, name: true } },
-        _count: { select: { pages: true, ingestJobs: true } },
-      },
-    }),
-    prisma.wikiVault.count({ where }),
-  ]);
-
-  return { items, total };
+}) {
+  return store.queryList<Record<string, unknown>>(
+    ["wiki-vaults"],
+    {
+      ...(params.agentId && { agentId: (v) => v.agentId === params.agentId }),
+      ...(params.shared !== undefined && { shared: (v) => v.isShared === params.shared }),
+    },
+    (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)),
+    params.skip,
+    params.take,
+  );
 }
 
 export async function getVault(id: string) {
-  return prisma.wikiVault.findUnique({
-    where: { id },
-    include: {
-      agent: { select: { id: true, name: true } },
-      _count: { select: { pages: true, ingestJobs: true } },
-    },
-  });
+  return store.read<Record<string, unknown>>("wiki-vaults", `${id}.json`);
 }
 
 export async function createVault(data: {
@@ -47,40 +31,54 @@ export async function createVault(data: {
   gitRepoUrl?: string;
   gitBranch?: string;
 }) {
-  return prisma.wikiVault.create({
-    data: {
-      name: data.name,
-      description: data.description,
-      agentId: data.agentId,
-      gitRepoUrl: data.gitRepoUrl,
-      gitBranch: data.gitBranch ?? "main",
-    },
-  });
+  const id = store.generateId();
+  const ts = store.now();
+  const vault = {
+    id,
+    name: data.name,
+    description: data.description ?? null,
+    agentId: data.agentId ?? null,
+    isShared: false,
+    gitRepoUrl: data.gitRepoUrl ?? null,
+    gitBranch: data.gitBranch ?? "main",
+    pageCount: 0,
+    avgConfidence: 0,
+    orphanCount: 0,
+    createdAt: ts,
+    updatedAt: ts,
+    _count: { pages: 0, ingestJobs: 0 },
+    agent: null,
+  };
+
+  store.write(vault, "wiki-vaults", `${id}.json`);
+  store.ensureDir("wiki-vaults", id, "pages");
+  return vault;
 }
 
-export async function updateVault(id: string, data: Record<string, any>) {
-  return prisma.wikiVault.update({
-    where: { id },
-    data: {
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.gitRepoUrl !== undefined && { gitRepoUrl: data.gitRepoUrl }),
-      ...(data.gitBranch !== undefined && { gitBranch: data.gitBranch }),
-      ...(data.isShared !== undefined && { isShared: data.isShared }),
-    },
-  });
+export async function updateVault(id: string, data: Record<string, unknown>) {
+  const vault = store.read<Record<string, unknown>>("wiki-vaults", `${id}.json`);
+  if (!vault) throw new Error("Vault 不存在");
+
+  const updated = { ...vault, ...data, updatedAt: store.now() };
+  store.write(updated, "wiki-vaults", `${id}.json`);
+  return updated;
 }
 
 export async function deleteVault(id: string) {
-  // Delete all pages and jobs first, then vault
-  await prisma.wikiPage.deleteMany({ where: { vaultId: id } });
-  await prisma.wikiIngestJob.deleteMany({ where: { vaultId: id } });
-  return prisma.wikiVault.delete({ where: { id } });
+  const vault = store.read("wiki-vaults", `${id}.json`);
+  if (!vault) throw new Error("Vault 不存在");
+
+  const pagesDir = join(process.cwd(), "data", "wiki-vaults", id, "pages");
+  if (existsSync(pagesDir)) rmSync(pagesDir, { recursive: true });
+
+  const vaultDir = join(process.cwd(), "data", "wiki-vaults", id);
+  if (existsSync(vaultDir)) rmSync(vaultDir, { recursive: true });
+
+  store.delete("wiki-vaults", `${id}.json`);
+  return { deleted: true };
 }
 
-// ---- Wiki Pages ----
-
-interface ListPagesParams {
+export async function listPages(params: {
   vaultId: string;
   skip: number;
   take: number;
@@ -88,46 +86,46 @@ interface ListPagesParams {
   tier?: string;
   tag?: string;
   search?: string;
-}
+}) {
+  const pagesDir = join(process.cwd(), "data", "wiki-vaults", params.vaultId, "pages");
+  if (!existsSync(pagesDir)) return { items: [], total: 0 };
 
-export async function listPages(params: ListPagesParams) {
-  const where: Record<string, unknown> = { vaultId: params.vaultId };
-  if (params.lifecycle && params.lifecycle !== "ALL") where.lifecycle = params.lifecycle;
-  if (params.tier && params.tier !== "ALL") where.tier = params.tier;
-  if (params.tag) where.tags = { has: params.tag };
+  let items = readdirSync(pagesDir)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => JSON.parse(readFileSync(join(pagesDir, f), "utf-8")) as Record<string, unknown>);
+
+  if (params.lifecycle && params.lifecycle !== "ALL") {
+    items = items.filter((p) => p.lifecycle === params.lifecycle);
+  }
+  if (params.tier && params.tier !== "ALL") {
+    items = items.filter((p) => p.tier === params.tier);
+  }
+  if (params.tag) {
+    items = items.filter((p) => Array.isArray(p.tags) && (p.tags as string[]).includes(params.tag!));
+  }
   if (params.search) {
-    where.OR = [
-      { title: { contains: params.search, mode: "insensitive" } },
-      { content: { contains: params.search, mode: "insensitive" } },
-    ];
+    const q = params.search.toLowerCase();
+    items = items.filter((p) =>
+      String(p.title ?? "").toLowerCase().includes(q) ||
+      String(p.content ?? "").toLowerCase().includes(q)
+    );
   }
 
-  const [items, total] = await Promise.all([
-    prisma.wikiPage.findMany({
-      where,
-      skip: params.skip,
-      take: params.take,
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true, title: true, slug: true, summary: true,
-        provenance: true, lifecycle: true, tier: true,
-        baseConfidence: true, tags: true, categories: true,
-        wikilinks: true, filePath: true,
-        inboundLinks: true, outboundLinks: true,
-        updatedAt: true, reviewedAt: true,
-      },
-    }),
-    prisma.wikiPage.count({ where }),
-  ]);
-
+  items.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  const total = items.length;
+  items = items.slice(params.skip, params.skip + params.take);
   return { items, total };
 }
 
 export async function getPage(id: string) {
-  return prisma.wikiPage.findUnique({
-    where: { id },
-    include: { vault: { select: { id: true, name: true } } },
-  });
+  const vaults = store.list<Record<string, unknown>>("wiki-vaults");
+  for (const vault of vaults) {
+    const page = store.read<Record<string, unknown>>("wiki-vaults", String(vault.id), "pages", `${id}.json`);
+    if (page) {
+      return { ...page, vault: { id: vault.id, name: vault.name } };
+    }
+  }
+  return null;
 }
 
 export async function createPage(data: {
@@ -142,41 +140,59 @@ export async function createPage(data: {
   categories?: string[];
   filePath?: string;
 }) {
-  return prisma.wikiPage.create({
-    data: {
-      vaultId: data.vaultId,
-      title: data.title,
-      slug: data.slug,
-      content: data.content,
-      summary: data.summary,
-      provenance: (data.provenance ?? "EXTRACTED") as any,
-      tier: (data.tier ?? "SUPPORTING") as any,
-      tags: (data.tags ?? []) as any,
-      categories: (data.categories ?? []) as any,
-      filePath: data.filePath ?? `${data.slug}.md`,
-      sourceRefs: [] as any,
-      wikilinks: [],
-    },
-  });
+  const vault = store.read("wiki-vaults", `${data.vaultId}.json`);
+  if (!vault) throw new Error("Vault 不存在");
+
+  const id = store.generateId();
+  const ts = store.now();
+  const page = {
+    id,
+    vaultId: data.vaultId,
+    title: data.title,
+    slug: data.slug,
+    content: data.content,
+    summary: data.summary ?? null,
+    provenance: data.provenance ?? "EXTRACTED",
+    lifecycle: "DRAFT",
+    tier: data.tier ?? "SUPPORTING",
+    baseConfidence: 0.5,
+    tags: data.tags ?? [],
+    categories: data.categories ?? [],
+    wikilinks: [],
+    filePath: data.filePath ?? `${data.slug}.md`,
+    sourceRefs: [],
+    inboundLinks: [],
+    outboundLinks: [],
+    createdAt: ts,
+    updatedAt: ts,
+    reviewedAt: null,
+  };
+
+  store.write(page, "wiki-vaults", data.vaultId, "pages", `${id}.json`);
+  return page;
 }
 
-export async function updatePage(id: string, data: Record<string, any>) {
-  return prisma.wikiPage.update({
-    where: { id },
-    data: {
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.content !== undefined && { content: data.content }),
-      ...(data.summary !== undefined && { summary: data.summary }),
-      ...(data.lifecycle !== undefined && { lifecycle: data.lifecycle }),
-      ...(data.tier !== undefined && { tier: data.tier }),
-      ...(data.baseConfidence !== undefined && { baseConfidence: data.baseConfidence }),
-      ...(data.tags !== undefined && { tags: data.tags }),
-      ...(data.categories !== undefined && { categories: data.categories }),
-      ...(data.wikilinks !== undefined && { wikilinks: data.wikilinks }),
-    },
-  });
+export async function updatePage(id: string, data: Record<string, unknown>) {
+  const vaults = store.list<Record<string, unknown>>("wiki-vaults");
+  for (const vault of vaults) {
+    const page = store.read<Record<string, unknown>>("wiki-vaults", String(vault.id), "pages", `${id}.json`);
+    if (page) {
+      const updated = { ...page, ...data, updatedAt: store.now() };
+      store.write(updated, "wiki-vaults", String(vault.id), "pages", `${id}.json`);
+      return updated;
+    }
+  }
+  throw new Error("Page 不存在");
 }
 
 export async function deletePage(id: string) {
-  return prisma.wikiPage.delete({ where: { id } });
+  const vaults = store.list<Record<string, unknown>>("wiki-vaults");
+  for (const vault of vaults) {
+    const page = store.read("wiki-vaults", String(vault.id), "pages", `${id}.json`);
+    if (page) {
+      store.delete("wiki-vaults", String(vault.id), "pages", `${id}.json`);
+      return { deleted: true };
+    }
+  }
+  throw new Error("Page 不存在");
 }
