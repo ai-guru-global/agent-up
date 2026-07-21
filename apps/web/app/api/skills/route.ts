@@ -1,19 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parsePagination, paginationMeta, parseBody } from "@/lib/utils";
+import { success, parsePagination, paginationMeta, validateBody, handleApiError } from "@/lib/utils";
+import { createSkillSchema } from "@/lib/schemas";
 import { listSkills, createSkill } from "@/lib/services/skill-service";
-import { z } from "zod";
-
-const createSchema = z.object({
-  name: z.string().min(1).max(100),
-  displayName: z.string().min(1).max(200),
-  description: z.string().min(1).max(2000),
-  category: z.enum(["KNOWLEDGE_QUERY","DATA_FETCH","ACTION","TRANSFORM","GENERAL"]).optional(),
-  triggerPatterns: z.array(z.string()).optional(),
-  inputSchema: z.any().optional(),
-  outputSchema: z.any().optional(),
-  runtime: z.enum(["HTTP","FUNCTION","MCP","WORKFLOW"]).optional(),
-  endpoint: z.string().optional(),
-});
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -27,14 +16,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await parseBody(request);
-  if (!body) return error("无效的请求体");
-  const parsed = createSchema.safeParse(body);
-  if (!parsed.success) return error("参数校验失败", 400, parsed.error.errors.map((e) => e.message));
+  const validated = await validateBody(request, createSkillSchema);
+  if (!validated.ok) return validated.response;
+
   try {
-    const skill = await createSkill(parsed.data);
+    const skill = await withActor(resolveActor(request.headers), () =>
+      createSkill(validated.data),
+    );
     return success(skill, 201);
   } catch (err) {
-    return error(err instanceof Error ? err.message : "创建失败", 500);
+    return handleApiError(err);
   }
 }

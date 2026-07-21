@@ -1,5 +1,5 @@
 import { Mermaid } from "../../../components/mermaid";
-import { Insight, PageHeader, Pill, Section, Table } from "../_components/ui";
+import { Insight, PageHeader, Pill, References, Section, Table } from "../_components/ui";
 
 const reactLoop = `
 flowchart TD
@@ -112,6 +112,43 @@ flowchart LR
   style CORE fill:#dbeafe,stroke:#2563eb
 `;
 
+const loopOverview = `
+flowchart TD
+  subgraph FAM["「Loop 这个产品」的全家福"]
+    direction TB
+    SKELETON["通用骨架<br/>while 未完成: 推理→行动→观察"]
+  end
+  subgraph AXES["三条改进轴（差异化所在）"]
+    direction LR
+    A1["轴 1 · 单 loop 健壮性<br/>KV-cache / 循环检测 /<br/>压缩 / logit mask"]
+    A2["轴 2 · 多 Agent 扩展<br/>handoff / 并行 worktree /<br/>orchestrator-worker"]
+    A3["轴 3 · 持久化与可恢复<br/>checkpoint / resume /<br/>彩虹发布"]
+  end
+  SKELETON --> AXES
+  style SKELETON fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+`;
+
+const threeAxes = `
+flowchart LR
+  subgraph A1["轴 1 · 单 loop 健壮性<br/>Manus 是标杆"]
+    A1a["KV-cache 命中率<br/>稳定前缀 + append-only"]
+    A1b["循环检测<br/>同 tool+args 重复 N 次"]
+    A1c["上下文压缩<br/>compaction / reset"]
+    A1d["logit masking<br/>动态收窄工具空间"]
+  end
+  subgraph A2["轴 2 · 多 Agent 扩展"]
+    A2a["OpenAI handoff<br/>A 让位给 B，刷新指令+工具"]
+    A2b["Cursor 并行 worktree<br/>8-10 个 agent 隔离"]
+    A2c["Claude Research<br/>orchestrator fan-out 3-5+"]
+  end
+  subgraph A3["轴 3 · 持久化 / 可恢复"]
+    A3a["LangGraph checkpoint<br/>每 superstep 持久化"]
+    A3b["resume-from-state<br/>断点续跑"]
+    A3c["彩虹发布<br/>灰度 + 回滚"]
+  end
+  style A1 fill:#dbeafe,stroke:#2563eb
+`;
+
 export default function LoopEngineeringPage() {
   return (
     <div>
@@ -120,6 +157,16 @@ export default function LoopEngineeringPage() {
         badge="设计核心"
         subtitle="「Loop」在 AI Agent 语境下指 Agent 的推理-行动-观察循环。每一个严肃的 Agent 都收敛到同一个骨架：while 未完成 → 推理 → 行动 → 观察。差异集中在上下文工程、工具设计、终止条件、多 Agent 扩展。本页把业界 Loop 设计核心展示清楚，并与 AgentUp 自身的三层 Loop 对齐。"
       />
+
+      <Section
+        title="0 · Loop 工程全景"
+        description="每一个严肃的 Agent 都收敛到同一个骨架（左）。差异化全在三条改进轴上（右）：单 loop 健壮性、多 Agent 扩展、持久化与可恢复。本页后续按这条线索展开。"
+      >
+        <Mermaid chart={loopOverview} />
+        <Insight label="一句话定位">
+          <strong>Loop 是产品</strong>。骨架（while + 推理-行动-观察）各家一致；真正决定质量的是三条轴上的工程投入。AgentUp 作为 L2/L3 的改进平台，本质是在「Agent 配置的迭代」这条新 loop 上复用这些工程纪律。
+        </Insight>
+      </Section>
 
       <Section
         title="① ReAct · 一切的源头（Yao et al. 2022）"
@@ -202,6 +249,39 @@ export default function LoopEngineeringPage() {
       </Section>
 
       <Section
+        title="③ bis · Loop 的三条改进轴"
+        description="把上面所有系统的差异化，归纳成三条独立的改进轴。每条轴都可以单独投入，互不阻塞。这是「loop 这个产品」差异化所在的全貌。"
+      >
+        <Mermaid chart={threeAxes} />
+        <Table
+          head={["轴", "解决什么", "标杆实现", "对 AgentUp 的启发"]}
+          rows={[
+            [
+              <span><strong>轴 1 · 单 loop 健壮性</strong></span>,
+              "让单个 Agent 在长任务里不崩：成本可控、不跑飞、不重复、上下文不膨胀",
+              <Pill tone="good">Manus（最深）</Pill>,
+              "L1 Agent 的 Prompt 固定前缀；wiki 检索结果追加在末尾；失败案例不擦除",
+            ],
+            [
+              <span><strong>轴 2 · 多 Agent 扩展</strong></span>,
+              "把单个 loop 扩展成多个协作 loop：专业化、并行、控制转移",
+              "OpenAI handoff / Cursor 并行 worktree / Claude Research fan-out",
+              <span>L2 的「Release 审批」可演进为「agent 自审 + agent 互审」（Anthropic Generator/Evaluator）</span>,
+            ],
+            [
+              <span><strong>轴 3 · 持久化 / 可恢复</strong></span>,
+              "loop 跑到一半崩了能续；代码更新不破坏在跑的 agent",
+              <Pill tone="good">LangGraph checkpoint</Pill>,
+              "AgentVersion 快照 = 配置级 checkpoint；灰度发布 = 彩虹发布的配置版",
+            ],
+          ]}
+        />
+        <Insight label="三条轴的关系">
+          轴 1 是地基（单 loop 不稳，多 Agent 只会更乱）；轴 2 是杠杆（Claude Research 数据：多 Agent 比单 Agent +90.2%）；轴 3 是工程化（从 demo 走向生产）。AgentUp 当前主要在轴 2/3 的「配置层」做文章。
+        </Insight>
+      </Section>
+
+      <Section
         title="④ OpenAI Swarm → Agents SDK · 把 loop 做成 Runner"
         source="openai/swarm · Agents SDK docs"
         description="Swarm 在自己 README 里被描述为「一个简单的 Python loop」。Agents SDK 把它演进成 Runner 循环 + 四原语（Agent / Tool / Handoff / Guardrail）+ Tracing。关键创新是「Handoff 作为一等公民」—— 同一个 loop 既驱动单 Agent，也驱动多 Agent。"
@@ -259,6 +339,61 @@ export default function LoopEngineeringPage() {
       </Section>
 
       <Section
+        title="⑤ bis · Loop 失败模式 · 诊断与修复"
+        description="loop 在生产中最常见的四种崩法。每种都对应一个具体的工程修复——这张表可作为「症状 → 修复」的速查。"
+      >
+        <Table
+          head={["失败模式", "症状", "根因", "修复（对应实现）"]}
+          rows={[
+            [
+              <span><strong>过早终止</strong></span>,
+              "模型说「完成了」但目标没达成",
+              "只检查「模型停没停」而非「目标达没达」（Oracle L3 缺位）",
+              "目标完成校验（Oracle L3）；Anthropic sprint contract 的可测行为",
+            ],
+            [
+              <span><strong>跑飞 / runaway</strong></span>,
+              "同一工具反复调用、永不收敛",
+              "无循环检测、无 max_turns、无预算上限",
+              "max_turns + 预算 + 循环检测（同 tool+args 重复 N 次即断）",
+            ],
+            [
+              <span><strong>上下文膨胀</strong></span>,
+              "跑到一半模型开始「忘记」早期指令、质量骤降",
+              "context window 填满；无压缩、无外置记忆",
+              "compaction（就地摘要）/ context reset（清空+交接）/ 文件系统即上下文（Manus）",
+            ],
+            [
+              <span><strong>重复 rut</strong></span>,
+              "批量任务里模型陷入相同输出模式",
+              "few-shot 过强；序列化模板单一",
+              "引入结构化变异（不同序列化模板、措辞、顺序噪声）—— Manus",
+            ],
+          ]}
+        />
+        <Insight label="AgentUp 对应的诊断">
+          AgentUp 的 L2 loop 也有对应症状：①「Release 通过了但效果没改善」= 过早终止（缺发布后效果报告）；②「同一类反馈反复提交」= 跑飞（缺熵清理）；③「配置越改越乱」= 上下文膨胀（缺 diff 查看器/回滚）。每条都在改进路线图里有对应的修复项。
+        </Insight>
+      </Section>
+
+      <Section
+        title="⑤ ter · AgentUp 该在哪些环节加门"
+        description="把 Anthropic 的 7 种终止条件，反过来用于设计 AgentUp 的改进 loop 该在哪些环节设置中断门。这是「Loop 工程纪律 → AgentUp 落点」的直接映射。"
+      >
+        <Table
+          head={["门类型", "业界来源", "AgentUp 落点", "状态"]}
+          rows={[
+            ["人工中断 / 审批门", "Anthropic HITL", "Release 审批（人工 approve/reject）", <Pill tone="good">已实现</Pill>],
+            ["max_turns / 预算", "通用防 runaway", "Wiki 蒸馏 Job 的迭代上限 + token 预算", <Pill tone="warn">规划中</Pill>],
+            ["循环检测", "Manus / Anthropic", "反馈去重；同一根因重复触发告警", <Pill tone="warn">规划中</Pill>],
+            ["上下文压缩", "compaction / reset", "Release 详情页只显示 diff 而非全量配置", <Pill tone="warn">规划中</Pill>],
+            ["目标完成校验", "Oracle L3", "Release 通过前跑回归（agent 自审 + 历史工单 replay）", <Pill tone="bad">未做（P1）</Pill>],
+            ["外部怀疑式评估", "Anthropic Evaluator", "Release 审批前加 agent 互审（4 标准打分）", <Pill tone="bad">未做（P1）</Pill>],
+          ]}
+        />
+      </Section>
+
+      <Section
         title="⑥ 横向对比：六种 loop 实现"
         description="把上面讨论的 + 几个未展开的放在一起，看清「loop 这个产品」的全貌。"
       >
@@ -284,6 +419,43 @@ export default function LoopEngineeringPage() {
           </a>
           。
         </p>
+      </Section>
+
+      <Section
+        title="⑦ 反直觉最佳实践 · 跨系统汇总"
+        description="多家（Manus / Anthropic / OpenAI）独立收敛出的、与直觉相反的工程实践。值得直接采纳，不必重新试错。"
+      >
+        <Table
+          head={["实践", "反直觉之处", "来源"]}
+          rows={[
+            ["保留失败在上下文，不静默重试", "失败 + 错误栈留在 context，模型隐式降低该动作先验 —— 比擦掉重试更有效", <Pill tone="good">Manus + Anthropic</Pill>],
+            ["append-only 上下文 + 稳定前缀", "永不编辑历史 turn；追加在末尾 —— 为了 KV-cache 命中（10x 成本差）", <Pill tone="good">Manus</Pill>],
+            ["错误作为 observation 直送模型", "不要包装重试逻辑；把错误栈原样回灌，模型自我纠错", <Pill tone="good">Anthropic</Pill>],
+            ["用文件系统绕过上下文限制", "别激进压缩；把可恢复内容落文件，只留引用", <Pill tone="good">Manus</Pill>],
+            ["分离规划与执行", "让更便宜的模型做规划，强模型做执行 —— 降低成本不降质量", <Pill tone="good">Cursor / Anthropic</Pill>],
+            ["引入结构化变异防 rut", "批量任务里用不同序列化/措辞/顺序，防止模型陷入重复模式", <Pill tone="good">Manus</Pill>],
+            ["corrections cheap, waiting expensive", "高通量系统里别无限阻塞；flake 用后续 run 解决", <Pill tone="good">OpenAI</Pill>],
+          ]}
+        />
+      </Section>
+
+      <Section
+        title="⑧ 参考来源"
+        description="本页所有论断的一手出处。点击直达。"
+      >
+        <References
+          items={[
+            { title: "ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al. 2022)", url: "https://arxiv.org/abs/2210.03629", note: "arXiv · Agent loop 奠基论文" },
+            { title: "Building Effective Agents — Anthropic", url: "https://www.anthropic.com/engineering/building-effective-agents", note: "while + tools 最小范式；7 种终止条件" },
+            { title: "Context Engineering for AI Agents — Manus", url: "https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus", note: "上下文工程五个反直觉决策" },
+            { title: "The Anatomy of an Agent Loop — Steve Kinney", url: "https://stevekinney.com/writing/agent-loops", note: "生产级终止条件详解" },
+            { title: "The Agent Loop Decoded: Three Levels — Oracle", url: "https://blogs.oracle.com/developers/the-agent-loop-decoded-three-levels-every-agent-engineer-must-know", note: "loop 三层；L3 目标完成校验" },
+            { title: "openai/swarm — GitHub", url: "https://github.com/openai/swarm", note: "「一个简单 Python loop」" },
+            { title: "How We Built Our Multi-Agent Research System — Anthropic", url: "https://www.anthropic.com/engineering/multi-agent-research-system", note: "orchestrator-worker；多 Agent +90.2%" },
+            { title: "Cursor 2.0 Agent-First Architecture", url: "https://www.digitalapplied.com/blog/cursor-2-0-agent-first-architecture-guide", note: "并行 worktree + Plan Mode" },
+            { title: "LangGraph: Conditional Edge and Loop", url: "https://blog.gopenai.com/conditional-edge-and-cycle-in-langgraph-explained-da4a112bf1ea", note: "cyclic StateGraph + checkpoint" },
+          ]}
+        />
       </Section>
     </div>
   );

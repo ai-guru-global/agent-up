@@ -1,6 +1,8 @@
 import { store } from "@/lib/data/store";
 import { existsSync, readdirSync, rmSync, readFileSync } from "fs";
 import { join } from "path";
+import { NotFoundError } from "@/lib/errors";
+import { recordAudit } from "@/lib/services/audit-service";
 
 export async function listVaults(params: {
   skip: number;
@@ -27,9 +29,10 @@ export async function getVault(id: string) {
 export async function createVault(data: {
   name: string;
   description?: string;
-  agentId?: string;
-  gitRepoUrl?: string;
+  agentId?: string | null;
+  gitRepoUrl?: string | null;
   gitBranch?: string;
+  isShared?: boolean;
 }) {
   const id = store.generateId();
   const ts = store.now();
@@ -38,8 +41,8 @@ export async function createVault(data: {
     name: data.name,
     description: data.description ?? null,
     agentId: data.agentId ?? null,
-    isShared: false,
-    gitRepoUrl: data.gitRepoUrl ?? null,
+    isShared: data.isShared ?? false,
+    gitRepoUrl: data.gitRepoUrl || null,
     gitBranch: data.gitBranch ?? "main",
     pageCount: 0,
     avgConfidence: 0,
@@ -52,21 +55,23 @@ export async function createVault(data: {
 
   store.write(vault, "wiki-vaults", `${id}.json`);
   store.ensureDir("wiki-vaults", id, "pages");
+  recordAudit("wiki.vault.create", "wiki-vault", id, { name: data.name });
   return vault;
 }
 
 export async function updateVault(id: string, data: Record<string, unknown>) {
   const vault = store.read<Record<string, unknown>>("wiki-vaults", `${id}.json`);
-  if (!vault) throw new Error("Vault 不存在");
+  if (!vault) throw new NotFoundError("Vault 不存在");
 
   const updated = { ...vault, ...data, updatedAt: store.now() };
   store.write(updated, "wiki-vaults", `${id}.json`);
+  recordAudit("wiki.vault.update", "wiki-vault", id);
   return updated;
 }
 
 export async function deleteVault(id: string) {
   const vault = store.read("wiki-vaults", `${id}.json`);
-  if (!vault) throw new Error("Vault 不存在");
+  if (!vault) throw new NotFoundError("Vault 不存在");
 
   const pagesDir = join(process.cwd(), "data", "wiki-vaults", id, "pages");
   if (existsSync(pagesDir)) rmSync(pagesDir, { recursive: true });
@@ -75,6 +80,7 @@ export async function deleteVault(id: string) {
   if (existsSync(vaultDir)) rmSync(vaultDir, { recursive: true });
 
   store.delete("wiki-vaults", `${id}.json`);
+  recordAudit("wiki.vault.delete", "wiki-vault", id);
   return { deleted: true };
 }
 
@@ -92,7 +98,14 @@ export async function listPages(params: {
 
   let items = readdirSync(pagesDir)
     .filter((f) => f.endsWith(".json"))
-    .map((f) => JSON.parse(readFileSync(join(pagesDir, f), "utf-8")) as Record<string, unknown>);
+    .map((f) => {
+      const content = readFileSync(join(pagesDir, f), "utf-8");
+      try {
+        return JSON.parse(content) as Record<string, unknown>;
+      } catch {
+        throw new Error(`数据文件损坏：wiki-vaults/${params.vaultId}/pages/${f}`);
+      }
+    });
 
   if (params.lifecycle && params.lifecycle !== "ALL") {
     items = items.filter((p) => p.lifecycle === params.lifecycle);
@@ -135,13 +148,15 @@ export async function createPage(data: {
   content: string;
   summary?: string;
   provenance?: string;
+  lifecycle?: string;
   tier?: string;
+  baseConfidence?: number;
   tags?: string[];
   categories?: string[];
-  filePath?: string;
+  wikilinks?: string[];
 }) {
   const vault = store.read("wiki-vaults", `${data.vaultId}.json`);
-  if (!vault) throw new Error("Vault 不存在");
+  if (!vault) throw new NotFoundError("Vault 不存在");
 
   const id = store.generateId();
   const ts = store.now();
@@ -153,13 +168,13 @@ export async function createPage(data: {
     content: data.content,
     summary: data.summary ?? null,
     provenance: data.provenance ?? "EXTRACTED",
-    lifecycle: "DRAFT",
-    tier: data.tier ?? "SUPPORTING",
-    baseConfidence: 0.5,
+    lifecycle: data.lifecycle ?? "DRAFT",
+    tier: data.tier ?? "SPECIALIZED",
+    baseConfidence: data.baseConfidence ?? 0.5,
     tags: data.tags ?? [],
     categories: data.categories ?? [],
-    wikilinks: [],
-    filePath: data.filePath ?? `${data.slug}.md`,
+    wikilinks: data.wikilinks ?? [],
+    filePath: `${data.slug}.md`,
     sourceRefs: [],
     inboundLinks: [],
     outboundLinks: [],
@@ -169,6 +184,10 @@ export async function createPage(data: {
   };
 
   store.write(page, "wiki-vaults", data.vaultId, "pages", `${id}.json`);
+  recordAudit("wiki.page.create", "wiki-page", id, {
+    vaultId: data.vaultId,
+    title: data.title,
+  });
   return page;
 }
 
@@ -177,22 +196,27 @@ export async function updatePage(id: string, data: Record<string, unknown>) {
   for (const vault of vaults) {
     const page = store.read<Record<string, unknown>>("wiki-vaults", String(vault.id), "pages", `${id}.json`);
     if (page) {
-      const updated = { ...page, ...data, updatedAt: store.now() };
+      const updated: Record<string, unknown> = { ...page, ...data, updatedAt: store.now() };
       store.write(updated, "wiki-vaults", String(vault.id), "pages", `${id}.json`);
+      recordAudit("wiki.page.update", "wiki-page", id, {
+        vaultId: vault.id,
+        title: updated.title,
+      });
       return updated;
     }
   }
-  throw new Error("Page 不存在");
+  throw new NotFoundError("Page 不存在");
 }
 
 export async function deletePage(id: string) {
   const vaults = store.list<Record<string, unknown>>("wiki-vaults");
   for (const vault of vaults) {
-    const page = store.read("wiki-vaults", String(vault.id), "pages", `${id}.json`);
+    const page = store.read<Record<string, unknown>>("wiki-vaults", String(vault.id), "pages", `${id}.json`);
     if (page) {
       store.delete("wiki-vaults", String(vault.id), "pages", `${id}.json`);
+      recordAudit("wiki.page.delete", "wiki-page", id, { vaultId: vault.id });
       return { deleted: true };
     }
   }
-  throw new Error("Page 不存在");
+  throw new NotFoundError("Page 不存在");
 }

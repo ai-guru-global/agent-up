@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, error, validateBody, handleApiError } from "@/lib/utils";
+import { bindSkillSchema } from "@/lib/schemas";
 import { bindSkill, unbindSkill, getAgentSkillBindings } from "@/lib/services/skill-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET(
   _request: NextRequest,
@@ -16,13 +18,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await parseBody<{ skillId: string; config?: Record<string, unknown> }>(request);
-  if (!body?.skillId) return error("skillId 必填");
+  const validated = await validateBody(request, bindSkillSchema);
+  if (!validated.ok) return validated.response;
+
   try {
-    const binding = await bindSkill(id, body.skillId, body.config);
+    const binding = await withActor(resolveActor(request.headers), () =>
+      bindSkill(id, validated.data.skillId, validated.data.config),
+    );
     return success(binding, 201);
   } catch (err) {
-    return error(err instanceof Error ? err.message : "绑定失败", 500);
+    return handleApiError(err);
   }
 }
 
@@ -35,6 +40,6 @@ export async function DELETE(request: NextRequest) {
     await unbindSkill(agentId, skillId);
     return success({ message: "已解绑" });
   } catch (err) {
-    return error(err instanceof Error ? err.message : "解绑失败", 500);
+    return handleApiError(err);
   }
 }

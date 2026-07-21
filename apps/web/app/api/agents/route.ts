@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parsePagination, paginationMeta, parseBody } from "@/lib/utils";
+import { success, parsePagination, paginationMeta, validateBody, handleApiError } from "@/lib/utils";
 import { createAgentSchema } from "@/lib/schemas";
 import { listAgents, createAgent } from "@/lib/services/agent-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 /** GET /api/agents — 获取 Agent 列表 */
 export async function GET(request: NextRequest) {
@@ -27,19 +28,15 @@ export async function GET(request: NextRequest) {
 
 /** POST /api/agents — 创建 Agent */
 export async function POST(request: NextRequest) {
-  const body = await parseBody(request);
-  if (!body) return error("无效的请求体");
-
-  const parsed = createAgentSchema.safeParse(body);
-  if (!parsed.success) {
-    return error("参数校验失败", 400, parsed.error.errors.map((e) => e.message));
-  }
+  const validated = await validateBody(request, createAgentSchema);
+  if (!validated.ok) return validated.response;
 
   try {
-    const agent = await createAgent(parsed.data);
+    const agent = await withActor(resolveActor(request.headers), () =>
+      createAgent(validated.data),
+    );
     return success(agent, 201);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "创建失败";
-    return error(message, 500);
+    return handleApiError(err);
   }
 }

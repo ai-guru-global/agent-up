@@ -1,5 +1,5 @@
 import { Mermaid } from "../../../components/mermaid";
-import { Card, Insight, PageHeader, Pill, Section, Table } from "../_components/ui";
+import { Card, Insight, PageHeader, Pill, References, Section, Table } from "../_components/ui";
 
 const harnessFiveSubsystems = `
 flowchart LR
@@ -94,6 +94,33 @@ flowchart LR
   style HZ fill:#dbeafe,stroke:#2563eb
 `;
 
+const harnessTimeline = `
+flowchart LR
+  T1["2022 · ReAct<br/>Thought-Action-Observation<br/>奠基范式"] --> T2["2023-24 · 工具调用标准化<br/>function calling + while loop<br/>Anthropic 最小范式"]
+  T2 --> T3["2025 · 生产化<br/>Manus 上下文工程<br/>OpenAI 百万行 Codex"]
+  T3 --> T4["2026 · 多 Agent + 评估分离<br/>Anthropic Generator/Evaluator<br/>Claude Research fan-out"]
+  T4 --> T5["未来 · 模型更强<br/>harness 简化<br/>「有趣的组合在移动」"]
+
+  style T3 fill:#dbeafe,stroke:#2563eb
+  style T4 fill:#dbeafe,stroke:#2563eb
+`;
+
+const smolagentsArch = `
+flowchart TD
+  BASE["MultiStepAgent<br/>通用基类：驱动 step loop"] --> CA["CodeAgent<br/>动作 = Python 代码片段"]
+  BASE --> TA["ToolCallingAgent<br/>动作 = 结构化 JSON 调用"]
+  CA --> CA1["沙箱 Python 解释器<br/>local / E2B / Docker / Blaxel"]
+  TA --> TA1["路由到函数<br/>无代码执行"]
+  CA --> CA2["表达力高<br/>能循环/组合/变换"]
+  TA --> TA2["表达力低<br/>原子调用，无控制流"]
+  CA --> CA3["安全风险<br/>需沙箱 + import 白名单"]
+  TA --> TA3["安全<br/>schema 校验，无任意代码"]
+  TERM["终止：final_answer() 或 max_steps"] -.-> BASE
+  CHECKS["final_answer_checks<br/>校验器可拒绝并强制继续"] -.-> BASE
+  style CA fill:#dbeafe,stroke:#2563eb
+  style TERM fill:#dbeafe,stroke:#2563eb
+`;
+
 export default function HarnessEngineeringPage() {
   return (
     <div>
@@ -102,6 +129,25 @@ export default function HarnessEngineeringPage() {
         badge="设计核心"
         subtitle="「Harness」是包裹 LLM 的执行层 —— 它调用模型、处理工具调用、决定何时停止。在 Hugging Face 的术语里：Agent = Model + Harness。本页展示业界 Harness 设计的核心，重点参考 OpenAI 的《Harness Engineering》（百万行 Codex 案例）和 Anthropic 的 Planner/Generator/Evaluator 三体设计，并映射到 AgentUp 自身的工程结构。"
       />
+
+      <Section
+        title="0 · Harness 工程演进时间线"
+        description="从 2022 年 ReAct 奠基到今天，harness 工程经历了四个阶段。理解这条脉络，能判断哪些设计是「模型弱时的权宜之计」（会随模型升级而过时），哪些是「长期价值」。"
+      >
+        <Mermaid chart={harnessTimeline} />
+        <Table
+          head={["阶段", "年代", "核心问题", "代表"]}
+          rows={[
+            ["奠基", "2022", "怎么让 LLM 边推理边行动", "ReAct"],
+            ["标准化", "2023-24", "工具调用格式统一；最小可用范式", "function calling / Anthropic while+tools"],
+            ["生产化", "2025", "长任务不崩；成本可控；工程纪律", <span>Manus / <strong>OpenAI 百万行 Codex</strong></span>],
+            ["多 Agent + 评估分离", "2026", "专业化协作；生成/评估分离", <span><strong>Anthropic Generator/Evaluator</strong> / Claude Research</span>],
+          ]}
+        />
+        <Insight label="时间线的启示">
+          每个阶段解决的「模型做不到的事」都在减少。Anthropic 的 meta-lesson：harness 里每个组件都编码了一条「模型独自做不到」的假设——<strong>模型越强，harness 越简</strong>。所以做 harness 工程要留「可拆卸」的余地，定期重评。
+        </Insight>
+      </Section>
 
       <Section
         title="① 术语 · Scaffold vs Harness（HF Agent Glossary）"
@@ -188,6 +234,38 @@ export default function HarnessEngineeringPage() {
       </Section>
 
       <Section
+        title="③ bis · HuggingFace smolagents · 代码即动作 vs JSON 即动作"
+        source="huggingface.co/docs/smolagents"
+        description="smolagents（约 1000 行）是最干净的开源 harness 参考实现。它用两个 Agent 类体现了 harness 设计的一大分流：CodeAgent（动作=Python 代码）vs ToolCallingAgent（动作=JSON 工具调用）。"
+      >
+        <Mermaid chart={smolagentsArch} />
+        <Table
+          head={["维度", "CodeAgent（默认）", "ToolCallingAgent"]}
+          rows={[
+            ["动作格式", "Python 代码片段", "结构化 JSON 工具调用"],
+            ["执行", "沙箱 Python 解释器（local/E2B/Docker）", "路由到函数，无代码执行"],
+            ["表达力", <Pill tone="good">高</Pill>, "低（原子调用，无控制流）"],
+            ["安全", "需沙箱 + import 白名单", <Pill tone="good">schema 校验，无任意代码</Pill>],
+            ["错误处理", "遇非法操作 / Python 错即停", "schema 前置校验"],
+            ["最佳场景", "解题/编程；可组合函数", "调度/控制；简单原子 API"],
+          ]}
+        />
+        <Table
+          head={["关键原语", "作用"]}
+          rows={[
+            ["MultiStepAgent", "通用基类，驱动 step loop"],
+            ["final_answer()", "显式终止；与 max_steps 共同构成终止控制"],
+            ["final_answer_checks", "校验器可拒绝答案并强制继续 —— 目标完成校验的轻量版"],
+            ["managed_agents", "多 Agent：manager 把子 Agent 当工具调，各自独立记忆/工具集"],
+            ["write_memory_to_messages", "把 logs 压缩成可重新喂入的消息序列"],
+          ]}
+        />
+        <Insight label="对 AgentUp 的启发">
+          AgentUp 的「工具」分区当前只有元数据（无执行环境），对标 smolagents 是明显短板。<strong>Skills 沙箱执行</strong>（P2）应参考 smolagents 的分层授权：local 解释器禁危险 import + E2B/Docker 沙箱兜底。而 <strong>final_answer_checks</strong> 对应 AgentUp 应有的「Release 通过前跑回归」。
+        </Insight>
+      </Section>
+
+      <Section
         title="④ Anthropic · Planner → Generator ↔ Evaluator 三体设计"
         source="anthropic.com/engineering/harness-design-long-running-apps"
         description="受 GAN 启发的三体 harness。解决两个核心问题：(a) 长跑时的上下文一致性；(b) 模型自我评估的偏宽。用「Playwright MCP 点活页面 + 截图 + 打分」的怀疑式 Evaluator，比让 Generator 自我批评有效得多。"
@@ -259,37 +337,42 @@ export default function HarnessEngineeringPage() {
       >
         <Mermaid chart={agentupMapping} />
         <Table
-          head={["Harness 子系统", "AgentUp 对应物", "成熟度", "改进方向"]}
+          head={["Harness 子系统", "AgentUp 对应物", "成熟度", "改进方向", "优先级"]}
           rows={[
             [
               <span><strong>编排循环</strong></span>,
               "L2：反馈→根因→编辑分区→Release→审批→Version→回滚",
               <Pill tone="good">较成熟</Pill>,
               "加 fast-track；加「目标完成校验」（Oracle L3）—— Release 通过前先跑回归",
+              <Pill tone="accent">P1</Pill>,
             ],
             [
               <span><strong>工具执行</strong></span>,
               "Skills（HTTP/Function/MCP/Workflow）+ Wiki 查询工具 + 两层知识架构",
               <Pill tone="warn">中等</Pill>,
               <span><strong>沙箱执行缺失</strong>（对标 smolagents / Codex）；MCP/Workflow 运行时仅建模</span>,
+              <Pill tone="warn">P2</Pill>,
             ],
             [
               <span><strong>记忆</strong></span>,
               "Wiki Vault（蒸馏知识网络，带 provenance/lifecycle/tier）",
               <Pill tone="warn">中等</Pill>,
               <span><strong>蒸馏引擎未实现</strong>（WikiIngestJob 仅有模型）—— 这是 L3 的入口</span>,
+              <Pill tone="warn">P2</Pill>,
             ],
             [
               <span><strong>上下文/状态</strong></span>,
               "四分区 Agent 配置（Prompt / 知识 / 工具 / 路由）+ 分区级 version + 草稿态",
               <Pill tone="good">设计成熟</Pill>,
               "草稿态（AgentDraftConfig）未真正启用；当前直接写 active",
+              <Pill tone="bad">P0</Pill>,
             ],
             [
               <span><strong>验证/护栏</strong></span>,
-              "Release 审批（人工门）+ 审计日志（数据有，未真写）+ RBAC（建模，未强制）",
-              <Pill tone="bad">薄弱</Pill>,
-              <span><strong>鉴权 stub、RBAC 未强制、审计未写</strong> —— 上线前必须补；加「外部怀疑式 Evaluator」（Anthropic）</span>,
+              <span>Release 审批（人工门）+ <strong>审计日志（已实现）</strong> + RBAC（建模，未强制）+ Zod 全量校验（已实现）</span>,
+              <Pill tone="warn">部分</Pill>,
+              <span>鉴权 + RBAC 强制（P0 剩余）；加「外部怀疑式 Evaluator」（Anthropic，P1）</span>,
+              <span><Pill tone="bad">P0</Pill> + <Pill tone="accent">P1</Pill></span>,
             ],
           ]}
         />

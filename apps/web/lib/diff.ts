@@ -1,6 +1,6 @@
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
-interface DiffResult {
+export interface DiffResult {
   added: Record<string, JsonValue>;
   removed: Record<string, JsonValue>;
   changed: Record<string, { before: JsonValue; after: JsonValue }>;

@@ -70,7 +70,7 @@ export default function RoadmapPage() {
 
       <Section
         title="P0 · 可上线基线"
-        description="不做这些就上不了线。属于工程债清理，创意性低但阻塞一切。"
+        description="不做这些就上不了线。属于工程债清理，创意性低但阻塞一切。本轮 P0 稳定层已完成：审计日志、actor 上下文、Zod 全量校验、错误体系、Release diff/semver 修复、反馈状态机、store 加固、全面测试覆盖。鉴权与 Prisma 落地待后续工程。"
       >
         <Table
           head={["改进项", "来源", "落点", "预期收益"]}
@@ -88,9 +88,9 @@ export default function RoadmapPage() {
               "多实例、并发安全、审计基础、为后续所有功能解锁",
             ],
             [
-              <span><strong>审计日志真正写入</strong></span>,
+              <span><strong>审计日志真正写入</strong> <Pill tone="good">已完成</Pill></span>,
               <Pill tone="neutral">通用工程</Pill>,
-              "在每个 service 的写操作后追加 AuditLog（append-only）",
+              "audit-service.ts：所有 service 写操作 append 到 settings/audit-logs.json，actor 从请求头解析（为 NextAuth 留接口）",
               "合规 + 事故溯源；Release 审批的可信基础",
             ],
             [
@@ -205,16 +205,35 @@ export default function RoadmapPage() {
       </Section>
 
       <Section
+        title="本轮已完成 · P0 稳定层（2026-07-21）"
+        description="在现有 JSON store 上用工程纪律把质量拉满，不换存储、不引外部依赖，全面测试覆盖。"
+      >
+        <Table
+          head={["交付项", "文件", "收益"]}
+          rows={[
+            [<span><strong>审计日志真正写入</strong></span>, "lib/services/audit-service.ts", "所有写操作 append 到 audit-logs.json；actor 从请求头解析"],
+            [<span><strong>actor 上下文</strong></span>, "lib/context.ts", "为 NextAuth 留接口；消除散落硬编码 \"system\""],
+            [<span><strong>结构化错误体系</strong></span>, "lib/errors.ts + utils.handleApiError", "AppError 子类映射精确 status；消除 includes(\"不存在\") 字符串匹配"],
+            [<span><strong>Zod 全量校验</strong></span>, "lib/schemas.ts + validateBody", "补齐 skill/wiki/role/permission/product-group 全部 schema；消除内联漂移"],
+            [<span><strong>Release diff/semver 修复</strong></span>, "release-service.ts + versioning.ts", "changedPartitions 与上一版本真实 diff；无变更拒绝提交；真 SemVer"],
+            [<span><strong>反馈状态机</strong></span>, "feedback-service.ts", "非法状态转移（NEW→RESOLVED）被拒"],
+            [<span><strong>store 加固</strong></span>, "lib/data/store.ts", "crypto.randomUUID；损坏文件抛 AppError；可测的 _setDataDir"],
+            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>181 个测试，94.4% 语句覆盖</strong>，含 35 个 API 集成测试</span>],
+          ]}
+        />
+      </Section>
+
+      <Section
         title="总结 · 三条主线"
         description="把整个路线图压缩成三个判断。"
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-              主线 1 · 工程债
+              主线 1 · 工程债 <Pill tone="good">部分完成</Pill>
             </p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              <strong>P0 全部是工程债</strong>（鉴权 / Prisma / 审计 / 草稿态）。设计已就绪、运行时未接通 —— 这是「设计成熟度高于实现成熟度」的代价。补齐才能上线。
+              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>181 个测试（94% 覆盖率）</strong>。剩余鉴权与 Prisma 落地待后续工程。
             </p>
           </Card>
           <Card>

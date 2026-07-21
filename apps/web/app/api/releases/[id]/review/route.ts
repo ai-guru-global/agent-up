@@ -1,27 +1,28 @@
 import { NextRequest } from "next/server";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, validateBody, handleApiError } from "@/lib/utils";
 import { reviewReleaseSchema } from "@/lib/schemas";
 import { reviewRelease } from "@/lib/services/release-service";
+import { withActor, resolveActor } from "@/lib/context";
 
-/** PUT /api/releases/[id]/review — 审批 Release */
+/**
+ * PUT /api/releases/[id]/review — 审批 Release
+ * path 的 id 即 releaseId（权威）；body 里若也带 releaseId 仅作兼容，被 path 覆盖。
+ */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await parseBody(request);
-  if (!body) return error("无效的请求体");
-
-  const parsed = reviewReleaseSchema.safeParse(body);
-  if (!parsed.success) {
-    return error("参数校验失败", 400, parsed.error.errors.map((e) => e.message));
-  }
+  const validated = await validateBody(request, reviewReleaseSchema);
+  if (!validated.ok) return validated.response;
 
   try {
-    const release = await reviewRelease(id, parsed.data.action, parsed.data.reviewComment);
+    const { action, reviewComment } = validated.data;
+    const release = await withActor(resolveActor(request.headers), () =>
+      reviewRelease(id, action, reviewComment),
+    );
     return success(release);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "审批失败";
-    return error(message, 500);
+    return handleApiError(err);
   }
 }

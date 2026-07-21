@@ -77,8 +77,15 @@ pnpm dev
 
 ```bash
 cd apps/web
-pnpm test
+pnpm test                # 运行全部测试（单元 + API 集成）
+pnpm test -- --coverage  # 带覆盖率报告
 ```
+
+测试覆盖 181 个用例（15 个测试文件），语句覆盖率 94.4%：
+
+- **单元测试**（`lib/__tests__/`）：versioning、errors、schemas、diff、store、audit-service、release-service、feedback-service、agent-service、skill-service、wiki-service、utils
+- **API 集成测试**（`app/api/__tests__/`）：agents、releases（含审批流）、feedback、skills、wiki 全链路，验证 status / body / 审计副作用
+- **隔离**：每个测试用临时数据目录（`_setDataDir`），绝不污染仓库种子数据
 
 ## 核心概念
 

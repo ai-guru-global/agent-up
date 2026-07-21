@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { store } from "@/lib/data/store";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, validateBody, handleApiError } from "@/lib/utils";
+import { createPermissionSchema } from "@/lib/schemas";
+import { recordAudit } from "@/lib/services/audit-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET() {
   const permissions = store.readArray<Record<string, unknown>>("settings", "permissions.json");
@@ -8,18 +11,29 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await parseBody<{ resource: string; action: string; description?: string }>(request);
-  if (!body?.resource || !body?.action) return error("resource 和 action 必填");
+  const validated = await validateBody(request, createPermissionSchema);
+  if (!validated.ok) return validated.response;
 
-  const permissions = store.readArray<Record<string, unknown>>("settings", "permissions.json");
-  const perm = {
-    id: store.generateId(),
-    resource: body.resource,
-    action: body.action,
-    description: body.description ?? null,
-    _count: { roles: 0 },
-  };
-  permissions.push(perm);
-  store.writeArray(permissions, "settings", "permissions.json");
-  return success(perm, 201);
+  try {
+    const perm = withActor(resolveActor(request.headers), () => {
+      const permissions = store.readArray<Record<string, unknown>>("settings", "permissions.json");
+      const newPerm = {
+        id: store.generateId(),
+        resource: validated.data.resource,
+        action: validated.data.action,
+        description: validated.data.description ?? null,
+        _count: { roles: 0 },
+      };
+      permissions.push(newPerm);
+      store.writeArray(permissions, "settings", "permissions.json");
+      recordAudit("permission.create", "permission", String(newPerm.id), {
+        resource: validated.data.resource,
+        action: validated.data.action,
+      });
+      return newPerm;
+    });
+    return success(perm, 201);
+  } catch (err) {
+    return handleApiError(err);
+  }
 }

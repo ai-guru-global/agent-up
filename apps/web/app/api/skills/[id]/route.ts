@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, error, validateBody, handleApiError } from "@/lib/utils";
+import { updateSkillSchema } from "@/lib/schemas";
 import { getSkill, updateSkill, deleteSkill } from "@/lib/services/skill-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET(
   _request: NextRequest,
@@ -17,25 +19,28 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await parseBody<Record<string, unknown>>(request);
-  if (!body) return error("无效的请求体");
+  const validated = await validateBody(request, updateSkillSchema);
+  if (!validated.ok) return validated.response;
+
   try {
-    const skill = await updateSkill(id, body);
+    const skill = await withActor(resolveActor(request.headers), () =>
+      updateSkill(id, validated.data),
+    );
     return success(skill);
   } catch (err) {
-    return error(err instanceof Error ? err.message : "更新失败", 500);
+    return handleApiError(err);
   }
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    await deleteSkill(id);
+    await withActor(resolveActor(request.headers), () => deleteSkill(id));
     return success({ message: "Skill 已归档" });
   } catch (err) {
-    return error(err instanceof Error ? err.message : "操作失败", 500);
+    return handleApiError(err);
   }
 }

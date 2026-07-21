@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parsePagination, paginationMeta, parseBody } from "@/lib/utils";
+import { success, parsePagination, paginationMeta, validateBody, handleApiError } from "@/lib/utils";
+import { createWikiVaultSchema } from "@/lib/schemas";
 import { listVaults, createVault } from "@/lib/services/wiki-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -13,12 +15,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await parseBody<{name: string; description?: string; agentId?: string; gitRepoUrl?: string; gitBranch?: string}>(request);
-  if (!body?.name) return error("name 必填");
+  const validated = await validateBody(request, createWikiVaultSchema);
+  if (!validated.ok) return validated.response;
+
   try {
-    const vault = await createVault(body);
+    const vault = await withActor(resolveActor(request.headers), () =>
+      createVault(validated.data),
+    );
     return success(vault, 201);
   } catch (err) {
-    return error(err instanceof Error ? err.message : "创建失败", 500);
+    return handleApiError(err);
   }
 }

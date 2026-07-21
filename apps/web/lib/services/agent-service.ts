@@ -1,4 +1,8 @@
 import { store } from "@/lib/data/store";
+import { getActor } from "@/lib/context";
+import { NotFoundError, ValidationError } from "@/lib/errors";
+import { recordAudit } from "@/lib/services/audit-service";
+import { computeJsonDiff } from "@/lib/diff";
 
 type Partition = "prompt" | "knowledge" | "tools" | "routing";
 
@@ -11,8 +15,6 @@ interface ListAgentsParams {
 }
 
 export async function listAgents(params: ListAgentsParams) {
-  const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
-
   return store.queryList<Record<string, unknown>>(
     ["agents"],
     {
@@ -59,8 +61,11 @@ export async function createAgent(input: {
 }) {
   const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
   const group = groups.find((g) => g.id === input.productGroupId);
-  if (!group) throw new Error(`产品组 ${input.productGroupId} 不存在`);
+  if (!group) {
+    throw new NotFoundError(`产品组 ${input.productGroupId} 不存在`);
+  }
 
+  const actor = getActor();
   const id = store.generateId();
   const ts = store.now();
   const agent = {
@@ -69,7 +74,7 @@ export async function createAgent(input: {
     description: input.description ?? null,
     productGroupId: input.productGroupId,
     status: "DRAFT",
-    createdBy: "system",
+    createdBy: actor.id,
     createdAt: ts,
     updatedAt: ts,
     promptConfig: null,
@@ -82,6 +87,7 @@ export async function createAgent(input: {
   };
 
   store.write(agent, "agents", `${id}.json`);
+  recordAudit("agent.create", "agent", id, { name: input.name });
   return agent;
 }
 
@@ -91,7 +97,7 @@ export async function updateAgent(id: string, input: {
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
 }) {
   const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
-  if (!agent) throw new Error(`Agent ${id} 不存在`);
+  if (!agent) throw new NotFoundError(`Agent ${id} 不存在`);
 
   const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
   const group = groups.find((g) => g.id === agent.productGroupId);
@@ -106,21 +112,23 @@ export async function updateAgent(id: string, input: {
   };
 
   store.write(updated, "agents", `${id}.json`);
+  recordAudit("agent.update", "agent", id, input);
   return updated;
 }
 
 export async function deleteAgent(id: string) {
   const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
-  if (!agent) throw new Error(`Agent ${id} 不存在`);
+  if (!agent) throw new NotFoundError(`Agent ${id} 不存在`);
 
   const updated = { ...agent, status: "ARCHIVED", updatedAt: store.now() };
   store.write(updated, "agents", `${id}.json`);
+  recordAudit("agent.archive", "agent", id);
   return updated;
 }
 
 export async function getAgentConfig(agentId: string, partition: Partition) {
   const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
-  if (!agent) throw new Error(`Agent ${agentId} 不存在`);
+  if (!agent) throw new NotFoundError(`Agent ${agentId} 不存在`);
 
   const key = `${partition}Config`;
   return (agent[key] as Record<string, unknown>) ?? null;
@@ -128,7 +136,7 @@ export async function getAgentConfig(agentId: string, partition: Partition) {
 
 function updateConfigPartition(agentId: string, partition: Partition, data: Record<string, unknown>) {
   const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
-  if (!agent) throw new Error(`Agent ${agentId} 不存在`);
+  if (!agent) throw new NotFoundError(`Agent ${agentId} 不存在`);
 
   const key = `${partition}Config`;
   const existing = (agent[key] as Record<string, unknown>) ?? {};
@@ -160,6 +168,11 @@ export async function updateRoutingConfig(agentId: string, data: Record<string, 
   return updateConfigPartition(agentId, "routing", data);
 }
 
+/**
+ * 记录一次配置分区变更（含 diff 明细）。
+ * 写 data/config-changes/<id>.json，并同步写一条审计日志。
+ * changedBy 从 actor context 取，不再硬编码。
+ */
 export async function recordConfigChange(
   agentId: string,
   partition: string,
@@ -167,7 +180,8 @@ export async function recordConfigChange(
   after: unknown,
   changeNote?: string
 ) {
-  const { computeJsonDiff } = await import("@/lib/diff");
+  const actor = getActor();
+  const diff = computeJsonDiff(before, after);
   const id = store.generateId();
   const change = {
     id,
@@ -175,11 +189,20 @@ export async function recordConfigChange(
     partition,
     before,
     after,
-    diff: computeJsonDiff(before, after),
-    changedBy: "system",
+    diff,
+    changedBy: actor.id,
     changeNote,
     createdAt: store.now(),
   };
   store.write(change, "config-changes", `${id}.json`);
+  recordAudit("agent.config.update", "agent", agentId, {
+    partition,
+    changeNote,
+    diffSummary: {
+      added: Object.keys(diff.added),
+      removed: Object.keys(diff.removed),
+      changed: Object.keys(diff.changed),
+    },
+  });
   return change;
 }

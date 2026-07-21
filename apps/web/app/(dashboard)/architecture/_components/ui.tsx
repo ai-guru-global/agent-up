@@ -201,3 +201,28 @@ export function Insight({
     </div>
   );
 }
+
+/** 参考来源列表（带可点击链接） */
+export function References({
+  items,
+}: {
+  items: { title: string; url: string; note?: string }[];
+}) {
+  return (
+    <ul className="mt-4 space-y-1.5">
+      {items.map((it) => (
+        <li key={it.url} className="text-[12px] leading-relaxed">
+          <a
+            href={it.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-[var(--accent)] hover:underline"
+          >
+            {it.title}
+          </a>
+          {it.note ? <span className="text-zinc-400"> — {it.note}</span> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}

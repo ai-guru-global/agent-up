@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { store } from "@/lib/data/store";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, validateBody, handleApiError } from "@/lib/utils";
+import { createRoleSchema } from "@/lib/schemas";
+import { recordAudit } from "@/lib/services/audit-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET() {
   const roles = store.readArray<Record<string, unknown>>("settings", "roles.json");
@@ -8,20 +11,28 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await parseBody<{ name: string; displayName: string; description?: string }>(request);
-  if (!body?.name || !body?.displayName) return error("name 和 displayName 必填");
+  const validated = await validateBody(request, createRoleSchema);
+  if (!validated.ok) return validated.response;
 
-  const roles = store.readArray<Record<string, unknown>>("settings", "roles.json");
-  const role = {
-    id: store.generateId(),
-    name: body.name,
-    displayName: body.displayName,
-    isSystem: false,
-    description: body.description ?? null,
-    _count: { members: 0 },
-    permissions: [],
-  };
-  roles.push(role);
-  store.writeArray(roles, "settings", "roles.json");
-  return success(role, 201);
+  try {
+    const role = withActor(resolveActor(request.headers), () => {
+      const roles = store.readArray<Record<string, unknown>>("settings", "roles.json");
+      const newRole = {
+        id: store.generateId(),
+        name: validated.data.name,
+        displayName: validated.data.displayName,
+        isSystem: false,
+        description: validated.data.description ?? null,
+        _count: { members: 0 },
+        permissions: [],
+      };
+      roles.push(newRole);
+      store.writeArray(roles, "settings", "roles.json");
+      recordAudit("role.create", "role", String(newRole.id), { name: validated.data.name });
+      return newRole;
+    });
+    return success(role, 201);
+  } catch (err) {
+    return handleApiError(err);
+  }
 }

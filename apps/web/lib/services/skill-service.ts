@@ -1,4 +1,7 @@
 import { store } from "@/lib/data/store";
+import { getActor } from "@/lib/context";
+import { NotFoundError } from "@/lib/errors";
+import { recordAudit } from "@/lib/services/audit-service";
 
 export async function listSkills(params: {
   skip: number;
@@ -68,6 +71,7 @@ export async function createSkill(data: {
   runtime?: string;
   endpoint?: string;
 }) {
+  const actor = getActor();
   const id = store.generateId();
   const ts = store.now();
   const skill = {
@@ -85,32 +89,35 @@ export async function createSkill(data: {
     status: "DRAFT",
     publishedAt: null,
     downloadCount: 0,
-    authorId: "system",
-    authorName: "System",
+    authorId: actor.id,
+    authorName: actor.name,
     createdAt: ts,
     updatedAt: ts,
     _count: { bindings: 0, versions: 0 },
   };
 
   store.write(skill, "skills", `${id}.json`);
+  recordAudit("skill.create", "skill", id, { name: data.name });
   return skill;
 }
 
 export async function updateSkill(id: string, data: Record<string, unknown>) {
   const skill = store.read<Record<string, unknown>>("skills", `${id}.json`);
-  if (!skill) throw new Error("Skill 不存在");
+  if (!skill) throw new NotFoundError("Skill 不存在");
 
   const updated = { ...skill, ...data, updatedAt: store.now() };
   store.write(updated, "skills", `${id}.json`);
+  recordAudit("skill.update", "skill", id, data);
   return updated;
 }
 
 export async function deleteSkill(id: string) {
   const skill = store.read<Record<string, unknown>>("skills", `${id}.json`);
-  if (!skill) throw new Error("Skill 不存在");
+  if (!skill) throw new NotFoundError("Skill 不存在");
 
   const updated = { ...skill, status: "ARCHIVED", updatedAt: store.now() };
   store.write(updated, "skills", `${id}.json`);
+  recordAudit("skill.archive", "skill", id);
   return updated;
 }
 
@@ -120,9 +127,9 @@ export async function bindSkill(
   config?: Record<string, unknown>
 ) {
   const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
-  if (!agent) throw new Error("Agent 不存在");
+  if (!agent) throw new NotFoundError("Agent 不存在");
   const skill = store.read<Record<string, unknown>>("skills", `${skillId}.json`);
-  if (!skill) throw new Error("Skill 不存在");
+  if (!skill) throw new NotFoundError("Skill 不存在");
 
   const bindings = (agent.skillBindings ?? []) as Record<string, unknown>[];
   const existing = bindings.find((b) => b.skillId === skillId);
@@ -141,7 +148,7 @@ export async function bindSkill(
       config: config ?? null,
       enabled: true,
       priority: 0,
-      boundBy: "system",
+      boundBy: getActor().id,
       createdAt: ts,
       skill: { id: skill.id, name: skill.name, displayName: skill.displayName },
     };
@@ -155,12 +162,13 @@ export async function bindSkill(
     _count: { ...(agent._count as Record<string, number>), skillBindings: bindings.length },
   };
   store.write(updated, "agents", `${agentId}.json`);
+  recordAudit("skill.bind", "agent", agentId, { skillId });
   return binding;
 }
 
 export async function unbindSkill(agentId: string, skillId: string) {
   const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
-  if (!agent) throw new Error("Agent 不存在");
+  if (!agent) throw new NotFoundError("Agent 不存在");
 
   const bindings = ((agent.skillBindings ?? []) as Record<string, unknown>[])
     .filter((b) => b.skillId !== skillId);
@@ -172,6 +180,7 @@ export async function unbindSkill(agentId: string, skillId: string) {
     _count: { ...(agent._count as Record<string, number>), skillBindings: bindings.length },
   };
   store.write(updated, "agents", `${agentId}.json`);
+  recordAudit("skill.unbind", "agent", agentId, { skillId });
   return { deleted: true };
 }
 
@@ -185,11 +194,11 @@ export async function getAgentSkillBindings(agentId: string) {
 
 export async function toggleSkillBinding(agentId: string, skillId: string, enabled: boolean) {
   const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
-  if (!agent) throw new Error("Agent 不存在");
+  if (!agent) throw new NotFoundError("Agent 不存在");
 
   const bindings = (agent.skillBindings ?? []) as Record<string, unknown>[];
   const binding = bindings.find((b) => b.skillId === skillId);
-  if (!binding) throw new Error("绑定不存在");
+  if (!binding) throw new NotFoundError("绑定不存在");
 
   binding.enabled = enabled;
   store.write({ ...agent, skillBindings: bindings, updatedAt: store.now() }, "agents", `${agentId}.json`);

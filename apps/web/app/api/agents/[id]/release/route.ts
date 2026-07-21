@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, error, validateBody, handleApiError } from "@/lib/utils";
 import { submitReleaseSchema, reviewReleaseSchema } from "@/lib/schemas";
 import { submitRelease, reviewRelease } from "@/lib/services/release-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 /** POST /api/agents/[id]/release — 提交发布 */
 export async function POST(
@@ -9,50 +10,41 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await parseBody(request);
-  if (!body) return error("无效的请求体");
-
-  const parsed = submitReleaseSchema.safeParse(body);
-  if (!parsed.success) {
-    return error("参数校验失败", 400, parsed.error.errors.map((e) => e.message));
-  }
+  const validated = await validateBody(request, submitReleaseSchema);
+  if (!validated.ok) return validated.response;
 
   try {
-    const release = await submitRelease(id, parsed.data.changeNote);
+    const release = await withActor(resolveActor(request.headers), () =>
+      submitRelease(id, validated.data.changeNote),
+    );
     return success(release, 201);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "提交失败";
-    return error(message, 500);
+    return handleApiError(err);
   }
 }
 
-/** PUT /api/agents/[id]/release — 审批发布 */
+/**
+ * PUT /api/agents/[id]/release — 审批发布
+ *
+ * @deprecated 推荐使用 /api/releases/[id]/review，本端点为向后兼容保留。
+ * 修复：此前用 `body as {...}` 绕过刚校验过的 parsed.data，且 path `id` 被丢弃；
+ *      现在统一从 reviewReleaseSchema（含 releaseId）的 parsed.data 取值。
+ */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await params;
-  const body = await parseBody(request);
-  if (!body) return error("无效的请求体");
-
-  const parsed = reviewReleaseSchema.safeParse(body);
-  if (!parsed.success) {
-    return error("参数校验失败", 400, parsed.error.errors.map((e) => e.message));
-  }
-
-  const { releaseId, action, reviewComment } = body as {
-    releaseId: string;
-    action: "APPROVED" | "REJECTED" | "CHANGES_REQUESTED";
-    reviewComment?: string;
-  };
-
-  if (!releaseId) return error("releaseId 必填");
+  await params; // 向后兼容端点，path id 不参与（releaseId 在 body 中）
+  const validated = await validateBody(request, reviewReleaseSchema);
+  if (!validated.ok) return validated.response;
 
   try {
-    const release = await reviewRelease(releaseId, action, reviewComment);
+    const { releaseId, action, reviewComment } = validated.data;
+    const release = await withActor(resolveActor(request.headers), () =>
+      reviewRelease(releaseId, action, reviewComment),
+    );
     return success(release);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "审批失败";
-    return error(message, 500);
+    return handleApiError(err);
   }
 }

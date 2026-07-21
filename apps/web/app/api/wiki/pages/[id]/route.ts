@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, error, validateBody, handleApiError } from "@/lib/utils";
+import { updateWikiPageSchema } from "@/lib/schemas";
 import { getPage, updatePage, deletePage } from "@/lib/services/wiki-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,22 +13,25 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const body = await parseBody<Record<string, unknown>>(request);
-  if (!body) return error("无效的请求体");
+  const validated = await validateBody(request, updateWikiPageSchema);
+  if (!validated.ok) return validated.response;
+
   try {
-    const page = await updatePage(id, body);
+    const page = await withActor(resolveActor(request.headers), () =>
+      updatePage(id, validated.data),
+    );
     return success(page);
   } catch (err) {
-    return error(err instanceof Error ? err.message : "更新失败", 500);
+    return handleApiError(err);
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    await deletePage(id);
+    await withActor(resolveActor(request.headers), () => deletePage(id));
     return success({ message: "Page 已删除" });
   } catch (err) {
-    return error(err instanceof Error ? err.message : "删除失败", 500);
+    return handleApiError(err);
   }
 }

@@ -1,12 +1,6 @@
 import { NextRequest } from "next/server";
-import { success, error, parseBody } from "@/lib/utils";
-import {
-  updatePromptConfigSchema,
-  updateKnowledgeConfigSchema,
-  updateToolsConfigSchema,
-  updateRoutingConfigSchema,
-} from "@/lib/schemas";
-import type { ZodSchema } from "zod";
+import { success, error, validateBody, handleApiError } from "@/lib/utils";
+import { PARTITION_SCHEMA } from "@/lib/schemas";
 import {
   getAgentConfig,
   updatePromptConfig,
@@ -15,16 +9,10 @@ import {
   updateRoutingConfig,
   recordConfigChange,
 } from "@/lib/services/agent-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 const VALID_PARTITIONS = ["prompt", "knowledge", "tools", "routing"] as const;
 type Partition = (typeof VALID_PARTITIONS)[number];
-
-const PARTITION_SCHEMA: Record<Partition, ZodSchema> = {
-  prompt: updatePromptConfigSchema,
-  knowledge: updateKnowledgeConfigSchema,
-  tools: updateToolsConfigSchema,
-  routing: updateRoutingConfigSchema,
-};
 
 const PARTITION_ENUM: Record<Partition, "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING"> = {
   prompt: "PROMPT",
@@ -51,7 +39,7 @@ export async function GET(
     const config = await getAgentConfig(id, partition);
     return success(config);
   } catch (err) {
-    return error(err instanceof Error ? err.message : "获取失败", 404);
+    return handleApiError(err);
   }
 }
 
@@ -65,38 +53,33 @@ export async function PUT(
     return error(`无效的分区: ${partition}`, 400);
   }
 
-  const body = await parseBody(request);
-  if (!body) return error("无效的请求体");
-
-  const schema = PARTITION_SCHEMA[partition];
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    return error("参数校验失败", 400, parsed.error.errors.map((e) => e.message));
-  }
+  const validated = await validateBody(request, PARTITION_SCHEMA[partition]);
+  if (!validated.ok) return validated.response;
 
   try {
-    const before = await getAgentConfig(id, partition);
+    return await withActor(resolveActor(request.headers), async () => {
+      const before = await getAgentConfig(id, partition);
 
-    let result: unknown;
-    switch (partition) {
-      case "prompt":
-        result = await updatePromptConfig(id, parsed.data);
-        break;
-      case "knowledge":
-        result = await updateKnowledgeConfig(id, parsed.data);
-        break;
-      case "tools":
-        result = await updateToolsConfig(id, parsed.data);
-        break;
-      case "routing":
-        result = await updateRoutingConfig(id, parsed.data);
-        break;
-    }
+      let result: unknown;
+      switch (partition) {
+        case "prompt":
+          result = await updatePromptConfig(id, validated.data);
+          break;
+        case "knowledge":
+          result = await updateKnowledgeConfig(id, validated.data);
+          break;
+        case "tools":
+          result = await updateToolsConfig(id, validated.data);
+          break;
+        case "routing":
+          result = await updateRoutingConfig(id, validated.data);
+          break;
+      }
 
-    await recordConfigChange(id, PARTITION_ENUM[partition], before, result);
-
-    return success(result);
+      await recordConfigChange(id, PARTITION_ENUM[partition], before, result);
+      return success(result);
+    });
   } catch (err) {
-    return error(err instanceof Error ? err.message : "更新失败", 500);
+    return handleApiError(err);
   }
 }

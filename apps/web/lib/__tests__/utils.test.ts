@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { parsePagination, paginationMeta, parseBody, success, error } from "../utils";
+import { z } from "zod";
+import {
+  parsePagination,
+  paginationMeta,
+  parseBody,
+  success,
+  error,
+  validateBody,
+  handleApiError,
+} from "../utils";
+import { NotFoundError, ValidationError } from "../errors";
 
 describe("parsePagination", () => {
   it("returns defaults for empty params", () => {
@@ -97,5 +107,69 @@ describe("parseBody", () => {
     });
     const result = await parseBody(request);
     expect(result).toBeNull();
+  });
+});
+
+describe("validateBody", () => {
+  const schema = z.object({ name: z.string().min(1) });
+
+  it("returns ok + data for valid body", async () => {
+    const request = new Request("http://test", {
+      method: "POST",
+      body: JSON.stringify({ name: "abc" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await validateBody(request, schema);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data).toEqual({ name: "abc" });
+  });
+
+  it("returns 400 response for unparseable body", async () => {
+    const request = new Request("http://test", {
+      method: "POST",
+      body: "not json",
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await validateBody(request, schema);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.response.status).toBe(400);
+      const json = await result.response.json();
+      expect(json.success).toBe(false);
+    }
+  });
+
+  it("returns 422 response for schema-invalid body", async () => {
+    const request = new Request("http://test", {
+      method: "POST",
+      body: JSON.stringify({ name: "" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await validateBody(request, schema);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.response.status).toBe(422);
+    }
+  });
+});
+
+describe("handleApiError", () => {
+  it("maps NotFoundError to 404", async () => {
+    const res = handleApiError(new NotFoundError("x"));
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json.code).toBe("NOT_FOUND");
+  });
+
+  it("maps ValidationError to 422", async () => {
+    const res = handleApiError(new ValidationError("y"));
+    expect(res.status).toBe(422);
+  });
+
+  it("maps unknown error to 500", async () => {
+    const res = handleApiError(new Error("boom"));
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.code).toBe("INTERNAL");
   });
 });

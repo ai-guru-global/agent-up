@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parseBody } from "@/lib/utils";
+import { success, error, validateBody, handleApiError } from "@/lib/utils";
 import { updateAgentSchema } from "@/lib/schemas";
 import { getAgent, updateAgent, deleteAgent } from "@/lib/services/agent-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 /** GET /api/agents/[id] — 获取 Agent 详情 */
 export async function GET(
@@ -20,34 +21,29 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await parseBody(request);
-  if (!body) return error("无效的请求体");
-
-  const parsed = updateAgentSchema.safeParse(body);
-  if (!parsed.success) {
-    return error("参数校验失败", 400, parsed.error.errors.map((e) => e.message));
-  }
+  const validated = await validateBody(request, updateAgentSchema);
+  if (!validated.ok) return validated.response;
 
   try {
-    const agent = await updateAgent(id, parsed.data);
+    const agent = await withActor(resolveActor(request.headers), () =>
+      updateAgent(id, validated.data),
+    );
     return success(agent);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "更新失败";
-    return error(message, err instanceof Error && err.message.includes("不存在") ? 404 : 500);
+    return handleApiError(err);
   }
 }
 
 /** DELETE /api/agents/[id] — 归档 Agent */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    await deleteAgent(id);
+    await withActor(resolveActor(request.headers), () => deleteAgent(id));
     return success({ message: "Agent 已归档" });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "操作失败";
-    return error(message, 500);
+    return handleApiError(err);
   }
 }

@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
-import { success, error, parsePagination, paginationMeta, parseBody } from "@/lib/utils";
+import { success, parsePagination, paginationMeta, validateBody, handleApiError } from "@/lib/utils";
+import { createWikiPageSchema } from "@/lib/schemas";
 import { listPages, createPage } from "@/lib/services/wiki-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,12 +18,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const body = await parseBody<{title: string; slug: string; content: string; summary?: string; provenance?: string; tier?: string; tags?: string[]; categories?: string[]}>(request);
-  if (!body?.title || !body?.slug || !body?.content) return error("title/slug/content 必填");
+  const validated = await validateBody(request, createWikiPageSchema);
+  if (!validated.ok) return validated.response;
+
   try {
-    const page = await createPage({ vaultId: id, ...body });
+    const page = await withActor(resolveActor(request.headers), () =>
+      // path 的 id 为权威 vaultId，覆盖 body 中可能存在的 vaultId
+      createPage({ ...validated.data, vaultId: id }),
+    );
     return success(page, 201);
   } catch (err) {
-    return error(err instanceof Error ? err.message : "创建失败", 500);
+    return handleApiError(err);
   }
 }
