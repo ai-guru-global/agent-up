@@ -1,0 +1,245 @@
+import { Mermaid } from "../../../components/mermaid";
+import { Card, Insight, PageHeader, Pill, Section, Table } from "../_components/ui";
+
+const priorityMatrix = `
+quadrantChart
+    title 影响力 × 实现成本（右下 = 高性价比优先做）
+    x-axis "成本低" --> "成本高"
+    y-axis "影响低" --> "影响高"
+    quadrant-1 "高影响 / 高成本（战略性投入）"
+    quadrant-2 "高影响 / 低成本（立即做）"
+    quadrant-3 "低影响 / 低成本（顺手做）"
+    quadrant-4 "低影响 / 高成本（暂缓）"
+    "鉴权 + RBAC 强制": [0.2, 0.92]
+    "Prisma/PG 落地": [0.35, 0.95]
+    "审计日志真正写入": [0.22, 0.7]
+    "草稿态启用": [0.18, 0.6]
+    "外部怀疑式 Evaluator": [0.55, 0.88]
+    "Wiki 蒸馏引擎": [0.68, 0.9]
+    "L1 自动采集管道": [0.6, 0.82]
+    "发布效果 7 天报告": [0.5, 0.72]
+    "diff 查看器 + 分区回滚": [0.32, 0.65]
+    "灰度发布": [0.62, 0.68]
+    "改进看板": [0.3, 0.55]
+    "Skill 沙箱执行": [0.78, 0.75]
+    "熵清理 agent": [0.72, 0.6]
+    "共享概念池": [0.82, 0.5]
+`;
+
+const roadmapPhases = `
+flowchart LR
+  P0["P0 · 可上线基线<br/>~2-3 周"] --> P1["P1 · Harness 纪律<br/>~3-4 周"]
+  P1 --> P2["P2 · L3 智能化<br/>~4-6 周"]
+  P2 --> P3["P3 · 规模化<br/>季度级"]
+
+  P0 -.-> G0["鉴权/RBAC<br/>Prisma 落地<br/>审计真写<br/>草稿态"]
+  P1 -.-> G1["外部 Evaluator<br/>diff/回滚<br/>效果报告<br/>灰度"]
+  P2 -.-> G2["Wiki 蒸馏<br/>L1 采集<br/>熵清理<br/>Skill 沙箱"]
+  P3 -.-> G3["共享概念池<br/>多租户<br/>开放 API<br/>Skill 市场"]
+
+  style P0 fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+`;
+
+export default function RoadmapPage() {
+  return (
+    <div>
+      <PageHeader
+        title="改进路线图"
+        badge="落地"
+        subtitle="把 Harness 工程与 Loop 工程的业界经验，转化为 AgentUp 的 P0/P1/P2/P3 改进项。每一项标注：来源（哪家经验）→ 落点（改哪个模块）→ 预期收益。优先做右下角「高影响 / 低成本」的事。"
+      />
+
+      <Section
+        title="优先级矩阵 · 影响力 × 实现成本"
+        description="右下象限（高影响 / 低成本）是立即该做的；左上（高影响 / 高成本）是战略性投入；右上暂缓。"
+      >
+        <Mermaid chart={priorityMatrix} />
+        <Insight label="矩阵读法">
+          <strong>立即做</strong>：鉴权/RBAC、审计真写、草稿态、diff 查看 + 回滚、改进看板。<br />
+          <strong>战略性投入</strong>：Prisma 落地、外部 Evaluator、Wiki 蒸馏、L1 自动采集。<br />
+          <strong>暂缓</strong>：Skill 沙箱、共享概念池（L3 后期）。
+        </Insight>
+      </Section>
+
+      <Section
+        title="分阶段路线"
+        description="从「能上线」到「智能进化」到「规模化」的四阶段。每个阶段都是上一阶段的 prerequisite。"
+      >
+        <Mermaid chart={roadmapPhases} />
+      </Section>
+
+      <Section
+        title="P0 · 可上线基线"
+        description="不做这些就上不了线。属于工程债清理，创意性低但阻塞一切。"
+      >
+        <Table
+          head={["改进项", "来源", "落点", "预期收益"]}
+          rows={[
+            [
+              <span><strong>鉴权 + RBAC 强制</strong></span>,
+              <Pill tone="neutral">通用工程</Pill>,
+              "NextAuth 5 + 中间件 + API 级 ACL（复用已建模的 Role/Permission/UserRole）",
+              "从「任何人可改任何 Agent」到最小权限；为审计提供主体",
+            ],
+            [
+              <span><strong>Prisma / Postgres 落地</strong></span>,
+              <Pill tone="neutral">通用工程</Pill>,
+              "接通已就绪的 626 行 schema + 首个迁移；把 store.ts 的 JSON 读写替换为 Prisma client",
+              "多实例、并发安全、审计基础、为后续所有功能解锁",
+            ],
+            [
+              <span><strong>审计日志真正写入</strong></span>,
+              <Pill tone="neutral">通用工程</Pill>,
+              "在每个 service 的写操作后追加 AuditLog（append-only）",
+              "合规 + 事故溯源；Release 审批的可信基础",
+            ],
+            [
+              <span><strong>草稿态（AgentDraftConfig）启用</strong></span>,
+              <Pill tone="accent">OpenAI ⑦ 全自主阈值</Pill>,
+              "四分区编辑写入 draft；Release 提交时把 draft 提升为 active",
+              "改一半的配置不会污染线上；为「目标完成校验」留出预演空间",
+            ],
+          ]}
+        />
+      </Section>
+
+      <Section
+        title="P1 · Harness 纪律（最有创意性的改进）"
+        description="这一档是把 Harness 工程的核心纪律产品化。是 AgentUp 区别于「普通配置后台」的关键，也是创意性最高的改进。"
+      >
+        <Table
+          head={["改进项", "来源", "落点", "预期收益"]}
+          rows={[
+            [
+              <span><strong>外部怀疑式 Evaluator</strong></span>,
+              <Pill tone="accent">Anthropic Generator/Evaluator</Pill>,
+              <span>Release 提交后、人工审批前，加一道「agent 自审 + agent 互审」：<br />用另一个 Agent 按契约（4 标准：正确性/覆盖/风格/可读）打分 + 写批评；可选 replay 历史工单做回归</span>,
+              <span><strong>最大质量杠杆</strong>；把「Ralph Wiggum loop」搬到 Agent 配置上；低 block、高 throughput</span>,
+            ],
+            [
+              <span><strong>目标完成校验（Oracle L3）</strong></span>,
+              <Pill tone="accent">Oracle · agent loop 三层</Pill>,
+              "Release 通过条件 = 不仅要人工 approve，还要通过一组可测行为（对标 Anthropic sprint contract）",
+              "防止「模型停了≠目标达了」；让改进可验证",
+            ],
+            [
+              <span><strong>diff 查看器 + 分区级回滚</strong></span>,
+              <Pill tone="neutral">OpenAI ① Repo 即真相源</Pill>,
+              "复用已有的 lib/diff.ts，做 Release 详情页的 partition diff；Version 快照支持分区级一键回滚",
+              "改了能看清、错了能回退；降低审批认知负担",
+            ],
+            [
+              <span><strong>发布效果 7 天报告</strong></span>,
+              <Pill tone="neutral">通用可观测</Pill>,
+              "Release 通过后定时任务：对比发布前后 7 天的同 Agent 反馈率/严重度/解决率",
+              "改进 loop 的「observation」—— 知道改得对不对",
+            ],
+            [
+              <span><strong>灰度发布（Canary）</strong></span>,
+              <Pill tone="accent">OpenAI ⑤ 最小阻塞门禁</Pill>,
+              "复用已建模的 CanaryRelease/CanaryStage；新 Version 先按 % 灰度，异常自动回滚",
+              "「corrections cheap, waiting expensive」—— 高频小改走 fast-track",
+            ],
+          ]}
+        />
+        <Insight label="为什么「外部 Evaluator」是 P1 之首">
+          Anthropic 的数据：solo agent 20 分钟 $9 出来的东西「看起来对但坏了」；完整 harness 6 小时 $200（20× 成本）出来的是可发布的精品。
+          <span className="text-zinc-500"> → AgentUp 的 Release 审批现在 100% 靠人工，是 throughput 瓶颈。加一道 agent Evaluator，是把 OpenAI「逐步把审查推到 agent-to-agent」的纪律落到本平台 —— 这是 AgentUp 最该有的差异化能力。</span>
+        </Insight>
+      </Section>
+
+      <Section
+        title="P2 · L3 智能化（实现三层 Loop 的最后一层）"
+        description="这一档兑现「三层 Loop」设计里的 L3，把平台从「改进工具」升级为「自进化系统」。"
+      >
+        <Table
+          head={["改进项", "来源", "落点", "预期收益"]}
+          rows={[
+            [
+              <span><strong>Wiki 蒸馏引擎</strong></span>,
+              <Pill tone="accent">Manus ③ 文件系统即上下文 + llm-wiki</Pill>,
+              "把 WikiIngestJob 接 LLM：反馈/会话 → 草稿 wiki 页（带 provenance/lifecycle/tier/base-confidence）",
+              <span><strong>两层知识架构的核心一半</strong>；「Compile, don't retrieve」从口号变现实</span>,
+            ],
+            [
+              <span><strong>L1 反馈自动采集管道</strong></span>,
+              <Pill tone="accent">通用 loop 改进</Pill>,
+              "L1 Agent 会话结束 → 自动抽取（问题/解决路径/CRE 评分）入反馈表",
+              <span><strong>改进 loop 的输入不再靠手填</strong>；闭环 L1→L2 数据流</span>,
+            ],
+            [
+              <span><strong>熵清理 agent</strong></span>,
+              <Pill tone="accent">OpenAI ⑥ garbage collection</Pill>,
+              "定期扫描所有 Agent 配置，发现偏离 golden principles 的 Prompt/知识，开「建议 PR」",
+              "防止配置漂移；把 OpenAI 的「tech debt 当高息贷款」纪律产品化",
+            ],
+            [
+              <span><strong>Skill 沙箱执行</strong></span>,
+              <Pill tone="accent">smolagents / Codex 沙箱</Pill>,
+              "Function/MCP 运行时接到 E2B/Docker 沙箱；按 Skill 类别授权 import 白名单",
+              "让「工具」分区真正可执行；当前只有元数据是明显短板",
+            ],
+            [
+              <span><strong>改进看板（Kanban）</strong></span>,
+              <Pill tone="neutral">通用</Pill>,
+              "把反馈 → 根因 → Release 串成看板视图，按 Agent/分区/状态分组",
+              "让 L2 loop 的「进行中工作」可视化",
+            ],
+          ]}
+        />
+      </Section>
+
+      <Section
+        title="P3 · 规模化（季度级）"
+        description="单租户跑通后再做。属于扩展性投入。"
+      >
+        <Table
+          head={["改进项", "来源", "落点"]}
+          rows={[
+            ["共享概念池（跨 vault 知识共享）", <Pill tone="accent">L3 共享记忆</Pill>, "Wiki Vault 间的概念抽取 + 共享层；解「每个 Agent 重复学同样的基础知识」"],
+            ["多租户隔离", <Pill tone="neutral">通用</Pill>, "数据模型加 tenantId；RBAC 升级为租户内 + 跨租户两层"],
+            ["开放 API + Webhook", <Pill tone="neutral">通用</Pill>, "让 L1 Agent / 外部系统订阅 Release 事件、查询 Version"],
+            ["Skill 市场", <Pill tone="accent">OpenAI ⑦ 全自主</Pill>, "Skill 跨产品组共享；带评分 + 沙箱验证"],
+          ]}
+        />
+      </Section>
+
+      <Section
+        title="总结 · 三条主线"
+        description="把整个路线图压缩成三个判断。"
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Card>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              主线 1 · 工程债
+            </p>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
+              <strong>P0 全部是工程债</strong>（鉴权 / Prisma / 审计 / 草稿态）。设计已就绪、运行时未接通 —— 这是「设计成熟度高于实现成熟度」的代价。补齐才能上线。
+            </p>
+          </Card>
+          <Card>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)]">
+              主线 2 · Harness 产品化
+            </p>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
+              <strong>P1 是创意性最高的档</strong>：外部 Evaluator、目标完成校验、灰度 —— 把 OpenAI/Anthropic 的 harness 纪律产品化给业务团队。这是 AgentUp 的真正差异化。
+            </p>
+          </Card>
+          <Card>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              主线 3 · L3 兑现
+            </p>
+            <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
+              <strong>P2 兑现三层 Loop 的 L3</strong>：Wiki 蒸馏 + L1 采集 + 熵清理。从「改进工具」升级为「自进化系统」，完整闭合 L1↔L2↔L3 数据流。
+            </p>
+          </Card>
+        </div>
+        <Insight label="一句话定位">
+          AgentUp 的产品价值，本质是 <strong>「把 Harness 工程纪律，产品化给业务团队」</strong> ——
+          让非开发者也能像 OpenAI/Anthropic 的 harness 工程师一样，用受控 loop + 外部评估 + 版本化 + 可观测，去持续改进 Agent。
+          <span className="text-zinc-500">当前 MVP 已经把「产品形」做对了（四分区 + Release + Version + 三层 Loop 概念），下一步是把「harness 纪律」真正填进去。</span>
+        </Insight>
+      </Section>
+    </div>
+  );
+}

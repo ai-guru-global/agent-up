@@ -14,6 +14,13 @@ const navItems = [
   { label: "设置", href: "/settings" },
 ];
 
+const archItems = [
+  { label: "架构总览", href: "/architecture" },
+  { label: "Loop 工程", href: "/architecture/loop" },
+  { label: "Harness 工程", href: "/architecture/harness" },
+  { label: "改进路线图", href: "/architecture/roadmap" },
+];
+
 function isActive(href: string, pathname: string) {
   if (href === "/") return pathname === "/";
   return pathname.startsWith(href);
@@ -36,6 +43,25 @@ export default function DashboardLayout({
         </div>
         <nav className="flex-1 space-y-0.5 px-3 py-3">
           {navItems.map((item) => {
+            const active = isActive(item.href, pathname);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`block rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+                  active
+                    ? "bg-[var(--accent-muted)] text-[var(--accent)]"
+                    : "text-zinc-500 hover:bg-[var(--surface-elevated)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+          <div className="px-3 pb-1 pt-5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+            架构参考
+          </div>
+          {archItems.map((item) => {
             const active = isActive(item.href, pathname);
             return (
               <Link
