@@ -387,6 +387,117 @@ export default function HarnessEngineeringPage() {
           。
         </p>
       </Section>
+
+      <Section
+        title="⑦ Harness 反模式 · 常见错误"
+        description="harness 工程里最常踩的坑。每条都来自公开的事后复盘。对照检查 AgentUp 有没有踩。"
+      >
+        <Table
+          head={["反模式", "后果", "正确做法", "AgentUp 现状"]}
+          rows={[
+            [
+              <span><strong>过度工程化</strong></span>,
+              "为简单任务套上全自动 Agent；维护成本高、debug 难",
+              "Anthropic：多数场景应是「增强 LLM + 检索 + 工具」，而非全自动",
+              <Pill tone="good">克制（L2 是受控改进，非全自动）</Pill>,
+            ],
+            [
+              <span><strong>单一 Agent 塞太多</strong></span>,
+              "一个 Agent 干所有事；上下文污染、工具集爆炸",
+              "拆成专业化 sub-agent，各自独立记忆/工具集（smolagents managed_agents）",
+              <Pill tone="good">已按产品线拆 Agent（ECS/RDS）</Pill>,
+            ],
+            [
+              <span><strong>无目标完成校验</strong></span>,
+              "只看「模型停没停」，不看「目标达没达」→ 提前收尾",
+              "Oracle L3：harness 主动验证目标达成",
+              <Pill tone="bad">缺位（P1 待做）</Pill>,
+            ],
+            [
+              <span><strong>自我评估偏宽</strong></span>,
+              "让 Generator 自己审自己 → 识别问题后「说服自己通过」",
+              "分离 Generator 与 Evaluator；调 Evaluator 怀疑",
+              <Pill tone="bad">当前 100% 人工审（P1 待做 agent 互审）</Pill>,
+            ],
+            [
+              <span><strong>配置漂移无治理</strong></span>,
+              "Agent 复制仓库里已有模式（含坏的）→ 越改越乱",
+              "OpenAI 熵清理：后台 agent 扫偏离 + 开自动合并的 refactor PR",
+              <Pill tone="bad">缺位（P2 待做）</Pill>,
+            ],
+            [
+              <span><strong>harness 组件不随模型升级</strong></span>,
+              "为弱模型设计的护栏，在强模型上变成累赘",
+              "Anthropic meta-lesson：定期压力测试每个组件的假设",
+              <Pill tone="warn">尚未建立重评机制</Pill>,
+            ],
+          ]}
+        />
+      </Section>
+
+      <Section
+        title="⑧ 按模型升级重评护栏 · 可操作清单"
+        description="Anthropic 最重要的 meta-lesson 落地为一张检查表。每次基座模型升级（或季度）过一遍，决定哪些 harness 组件该简化/移除。"
+      >
+        <Table
+          head={["检查项", "问题", "如果模型现在能做到了"]}
+          rows={[
+            [
+              <span><strong>sprint 契约</strong></span>,
+              "模型能否自己把任务切成合理块？",
+              "删掉 sprint 结构（Anthropic 在 Opus 4.6 删了）",
+            ],
+            [
+              <span><strong>逐 sprint 评估</strong></span>,
+              "模型能否在一次 end-of-run 评估里保证质量？",
+              "改成单次 end-of-run 评估，省掉中间 QA 轮",
+            ],
+            [
+              <span><strong>context reset</strong></span>,
+              "模型长跑还有 context anxiety 吗？",
+              "去掉 reset，直接连续跑（Opus 4.5+ 可省）",
+            ],
+            [
+              <span><strong>外部 Evaluator</strong></span>,
+              "模型能否可靠地自我批评？",
+              "降低 Evaluator 的怀疑度，或只在超阈值时启用",
+            ],
+            [
+              <span><strong>logit masking</strong></span>,
+              "模型能否自己选对工具？",
+              "放宽 mask，减少状态机复杂度",
+            ],
+            [
+              <span><strong>人工审批门</strong></span>,
+              "模型的改动是否已足够可靠？",
+              "高频小改走 fast-track（灰度+自动回滚），仅大改人工审",
+            ],
+          ]}
+        />
+        <Insight label="对 AgentUp 的落地">
+          把这张表纳入 AgentUp 的<strong>季度架构评审</strong>：每次基座模型（或 L1 Agent 依赖的模型）升级后，逐项过一遍。尤其「人工审批门」——随着 L1 Agent 改进质量提升，Release 审批的阻塞比例应该逐步下降，更多走 fast-track。
+        </Insight>
+      </Section>
+
+      <Section
+        title="⑨ 参考来源"
+        description="本页所有论断的一手出处。点击直达。"
+      >
+        <References
+          items={[
+            { title: "Harness engineering: leveraging Codex — OpenAI", url: "https://openai.com/index/harness-engineering/", note: "百万行 Codex 案例 · 七大决策" },
+            { title: "Harness design for long-running apps — Anthropic", url: "https://www.anthropic.com/engineering/harness-design-long-running-apps", note: "Planner/Generator/Evaluator 三体设计" },
+            { title: "Building Effective Agents — Anthropic", url: "https://www.anthropic.com/engineering/building-effective-agents", note: "while+tools 最小范式；反过度工程" },
+            { title: "How we built our multi-agent research system — Anthropic", url: "https://www.anthropic.com/engineering/multi-agent-research-system", note: "orchestrator-worker；token 占 80% 性能方差" },
+            { title: "Agent Glossary: Scaffold vs Harness — Hugging Face", url: "https://huggingface.co/blog/agent-glossary", note: "术语权威定义" },
+            { title: "smolagents Guided Tour — Hugging Face", url: "https://huggingface.co/docs/smolagents/guided_tour", note: "CodeAgent vs ToolCallingAgent；最干净的开源 harness" },
+            { title: "The Anatomy of an Agent Harness — Daily Dose of DS", url: "https://blog.dailydoseofds.com/p/the-anatomy-of-an-agent-harness", note: "五大子系统拆解" },
+            { title: "The Agent Loop Decoded: Three Levels — Oracle", url: "https://blogs.oracle.com/developers/the-agent-loop-decoded-three-levels-every-agent-engineer-must-know", note: "loop 三层；L3 目标完成校验" },
+            { title: "Agent Harness Engineering — Medium (Adnan Masood)", url: "https://medium.com/@adnanmasood/agent-harness-engineering-the-rise-of-the-ai-control-plane-938ead884b1d", note: "harness 作为 AI 控制面" },
+            { title: "anthropics/cwc-long-running-agents — GitHub", url: "https://github.com/anthropics/cwc-long-running-agents", note: "Anthropic 三体设计配套仓库" },
+          ]}
+        />
+      </Section>
     </div>
   );
 }
