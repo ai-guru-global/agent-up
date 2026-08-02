@@ -15,15 +15,22 @@
 - [apps/web/lib/schemas.ts](file://apps/web/lib/schemas.ts)
 - [package.json](file://package.json)
 - [apps/web/package.json](file://apps/web/package.json)
+- [.agents/skills/brandkit/SKILL.md](file://.agents/skills/brandkit/SKILL.md)
+- [.agents/skills/design-taste-frontend/SKILL.md](file://.agents/skills/design-taste-frontend/SKILL.md)
+- [.agents/skills/imagegen-frontend-web/SKILL.md](file://.agents/skills/imagegen-frontend-web/SKILL.md)
+- [.agents/skills/imagegen-frontend-mobile/SKILL.md](file://.agents/skills/imagegen-frontend-mobile/SKILL.md)
+- [.agents/skills/stitch-design-taste/SKILL.md](file://.agents/skills/stitch-design-taste/SKILL.md)
+- [.agents/skills/stitch-design-taste/DESIGN.md](file://.agents/skills/stitch-design-taste/DESIGN.md)
+- [skills-lock.json](file://skills-lock.json)
 </cite>
 
 ## 更新摘要
 **变更内容**   
-- 新增四种 Skill 运行时类型支持：HTTP、FUNCTION、MCP、WORKFLOW
-- 完善依赖管理系统和权限控制机制
-- 增强版本管理和发布流程
+- 新增完整的AI Agent技能框架，包含13个专门技能定义
+- 新增imagegen、design-taste、brandkit等前端生成、图像处理和设计任务技能
+- 完善技能发现、安装和管理流程
+- 增强版本管理和依赖关系处理机制
 - 添加性能监控和错误处理配置
-- 实现完整的技能发现、安装和管理流程
 
 ## 目录
 1. [简介](#简介)
@@ -31,20 +38,24 @@
 3. [核心组件](#核心组件)
 4. [架构总览](#架构总览)
 5. [详细组件分析](#详细组件分析)
-6. [依赖关系分析](#依赖关系分析)
-7. [性能与可观测性](#性能与可观测性)
-8. [故障排查指南](#故障排查指南)
-9. [结论](#结论)
-10. [附录](#附录)
+6. [AI Agent技能框架](#ai-agent技能框架)
+7. [依赖关系分析](#依赖关系分析)
+8. [性能与可观测性](#性能与可观测性)
+9. [故障排查指南](#故障排查指南)
+10. [结论](#结论)
+11. [附录](#附录)
 
 ## 简介
 本仓库实现了完整的 Agent 改进平台前端应用与共享类型定义，包含"Skills 市场"的完整功能实现。系统采用插件化技能架构，支持四种运行时环境（HTTP、FUNCTION、MCP、WORKFLOW），提供依赖管理、权限控制、版本管理等企业级特性。当前 Skills 市场页面已实现完整的发现、创建、管理和绑定功能，为 Agent 提供可扩展的能力生态系统。
+
+**最新更新**：新增了完整的AI Agent技能框架，包含13个专门技能定义，涵盖前端生成、图像处理和设计任务等多个领域，大幅扩展了系统的功能范围和应用场景。
 
 ## 项目结构
 - 前端应用位于 apps/web，使用 Next.js 构建，包含完整的仪表盘路由与 Skills 市场页面
 - 共享类型位于 packages/shared，统一导出 Skill 相关类型、权限角色与常量
 - 数据库模型位于 packages/db/prisma/schema.prisma，定义 Skill、SkillVersion、AgentSkillBinding 等核心表结构
 - API 服务层位于 apps/web/lib/services，提供技能管理的业务逻辑
+- AI Agent技能定义位于 .agents/skills/ 目录，包含13个专门技能
 - 根 package.json 与 apps/web/package.json 提供脚本与依赖声明
 
 ```mermaid
@@ -55,17 +66,25 @@ B["Skills 市场页面<br/>apps/web/app/(dashboard)/skills/page.tsx"]
 C["API 路由<br/>apps/web/app/api/skills/route.ts"]
 D["技能服务层<br/>apps/web/lib/services/skill-service.ts"]
 end
+subgraph "AI Agent技能框架"
+E["品牌技能<br/>.agents/skills/brandkit/"]
+F["设计品味技能<br/>.agents/skills/design-taste-frontend/"]
+G["图像生成技能<br/>.agents/skills/imagegen-frontend-web/"]
+H["移动端图像生成<br/>.agents/skills/imagegen-frontend-mobile/"]
+I["缝合设计品味<br/>.agents/skills/stitch-design-taste/"]
+J["其他13个专门技能<br/>.agents/skills/*/SKILL.md"]
+end
 subgraph "共享类型"
-E["Skill 类型定义<br/>packages/shared/src/types/skill.ts"]
-F["权限与角色类型<br/>packages/shared/src/types/permission.ts"]
-G["Agent 配置类型<br/>packages/shared/src/types/agent.ts"]
-H["公共常量与导出<br/>packages/shared/src/index.ts"]
+K["Skill 类型定义<br/>packages/shared/src/types/skill.ts"]
+L["权限与角色类型<br/>packages/shared/src/types/permission.ts"]
+M["Agent 配置类型<br/>packages/shared/src/types/agent.ts"]
+N["公共常量与导出<br/>packages/shared/src/index.ts"]
 end
 subgraph "数据库"
-I["Prisma Schema<br/>packages/db/prisma/schema.prisma"]
-J["ToolsConfig 模型<br/>packages/db/prisma/schema.prisma:147-159"]
-K["Skill 核心模型<br/>packages/db/prisma/schema.prisma:360-422"]
-L["权限审计模型<br/>packages/db/prisma/schema.prisma:563-619"]
+O["Prisma Schema<br/>packages/db/prisma/schema.prisma"]
+P["ToolsConfig 模型<br/>packages/db/prisma/schema.prisma:147-159"]
+Q["Skill 核心模型<br/>packages/db/prisma/schema.prisma:360-422"]
+R["权限审计模型<br/>packages/db/prisma/schema.prisma:563-619"]
 end
 A --> B
 A --> C
@@ -75,20 +94,26 @@ A --> F
 A --> G
 A --> H
 A --> I
+A --> J
+A --> K
+A --> L
+A --> M
+A --> N
+A --> O
 C --> D
-D --> I
+D --> O
 ```
 
 **图表来源**
 - [apps/web/app/(dashboard)/skills/page.tsx:1-228](file://apps/web/app/(dashboard)/skills/page.tsx#L1-L228)
 - [apps/web/app/api/skills/route.ts:1-40](file://apps/web/app/api/skills/route.ts#L1-L40)
 - [apps/web/lib/services/skill-service.ts:1-151](file://apps/web/lib/services/skill-service.ts#L1-L151)
+- [.agents/skills/brandkit/SKILL.md:1-100](file://.agents/skills/brandkit/SKILL.md#L1-L100)
+- [.agents/skills/design-taste-frontend/SKILL.md:1-100](file://.agents/skills/design-taste-frontend/SKILL.md#L1-L100)
+- [.agents/skills/imagegen-frontend-web/SKILL.md:1-100](file://.agents/skills/imagegen-frontend-web/SKILL.md#L1-L100)
 - [packages/shared/src/types/skill.ts:1-48](file://packages/shared/src/types/skill.ts#L1-L48)
-- [packages/shared/src/types/permission.ts:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
-- [packages/shared/src/types/agent.ts:74-81](file://packages/shared/src/types/agent.ts#L74-L81)
 - [packages/db/prisma/schema.prisma:147-159](file://packages/db/prisma/schema.prisma#L147-L159)
 - [packages/db/prisma/schema.prisma:360-422](file://packages/db/prisma/schema.prisma#L360-L422)
-- [packages/db/prisma/schema.prisma:563-619](file://packages/db/prisma/schema.prisma#L563-L619)
 
 **章节来源**
 - [README.md:1-3](file://README.md#L1-L3)
@@ -107,6 +132,7 @@ D --> I
 - **绑定关系**：Agent 与 Skill 的多对多绑定，支持配置、启用开关、优先级与作用域限制
 - **权限与角色**：平台内置多种角色与动作，用于控制 Skill 的读写、发布、审批、回滚、删除与管理操作
 - **性能监控**：ToolsConfig 提供并发数、超时、重试等性能策略配置
+- **AI Agent技能框架**：新增13个专门技能，涵盖品牌管理、设计品味、图像生成、前端开发等领域
 
 **章节来源**
 - [packages/shared/src/types/skill.ts:1-48](file://packages/shared/src/types/skill.ts#L1-L48)
@@ -199,10 +225,21 @@ class SkillRuntime {
 +MCP
 +WORKFLOW
 }
+class AIAgentSkill {
++string name
++string category
++string description
++string[] capabilities
++string[] dependencies
++string version
++string author
++DateTime createdAt
+}
 Skill "1" o-- "*" SkillVersion : "versions"
 Skill "1" o-- "*" AgentSkillBinding : "bindings"
 Agent "1" o-- "*" AgentSkillBinding : "bindings"
 Agent "1" o-- "1" ToolsConfig : "config"
+AIAgentSkill "1" o-- "*" Skill : "implements"
 ```
 
 **图表来源**
@@ -439,14 +476,113 @@ ToolsConfig 中的 maxConcurrentCalls、timeoutMs、retryCount 可作为 Skill �
 
 **章节来源**
 - [packages/shared/src/types/permission.ts:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
-- [packages/db/prisma/schema.prisma:298-326](file://packages/db/prisma/schema.prisma#L298-L326)
-- [packages/db/prisma/schema.prisma:332-354](file://packages/db/prisma/schema.prisma#L332-L354)
-- [packages/db/prisma/schema.prisma:607-619](file://packages/db/prisma/schema.prisma#L607-L619)
+- [packages/db/prisma/schema.prisma:298-326](file://packages/db/prisma/schema.prisma#L298-326)
+- [packages/db/prisma/schema.prisma:332-354](file://packages/db/prisma/schema.prisma#L332-354)
+- [packages/db/prisma/schema.prisma:607-619](file://packages/db/prisma/schema.prisma#L607-619)
+
+## AI Agent技能框架
+
+### 技能框架概述
+新增的AI Agent技能框架包含13个专门技能定义，涵盖了前端生成、图像处理、设计任务等多个专业领域。这些技能通过标准化的SKILL.md文件格式定义，提供了统一的技能描述、能力声明和依赖关系管理。
+
+### 专门技能分类
+
+#### 品牌与设计类技能
+- **brandkit**：品牌资产管理与品牌规范应用技能
+- **design-taste-frontend**：前端设计品味评估与优化技能
+- **high-end-visual-design**：高端视觉设计指导技能
+- **industrial-brutalist-ui**：工业极简主义UI设计技能
+- **minimalist-ui**：极简主义界面设计技能
+- **stitch-design-taste**：设计品味缝合与整合技能
+
+#### 图像生成类技能
+- **imagegen-frontend-web**：Web前端图像生成技能
+- **imagegen-frontend-mobile**：移动端图像生成技能
+- **image-to-code**：图像转代码生成技能
+
+#### 开发辅助类技能
+- **full-output-enforcement**：完整输出生成强制技能
+- **gpt-taste**：GPT设计品味评估技能
+- **redesign-existing-projects**：现有项目重新设计技能
+
+### 技能定义格式
+每个技能通过SKILL.md文件定义，包含以下核心要素：
+
+```markdown
+# 技能名称
+
+## 描述
+[技能详细描述]
+
+## 能力
+- [能力1]
+- [能力2]
+- [能力3]
+
+## 依赖
+- [依赖技能1]
+- [依赖技能2]
+
+## 版本
+- v1.0.0: 初始版本
+- v1.1.0: 功能增强
+
+## 作者
+[作者信息]
+
+## 创建时间
+[创建日期]
+```
+
+### 技能发现与集成
+技能框架支持自动发现和集成，通过skills-lock.json文件管理技能版本锁定和依赖关系。
+
+```mermaid
+flowchart TD
+Start(["技能发现"]) --> Scan[".agents/skills/ 目录扫描"]
+Scan --> Parse["解析 SKILL.md 文件"]
+Parse --> Validate["验证技能格式"]
+Validate --> Register["注册到技能库"]
+Register --> Lock["更新 skills-lock.json"]
+Lock --> Ready["技能就绪"]
+subgraph "技能分类"
+Brand["品牌设计类"]
+ImageGen["图像生成类"]
+DevTools["开发辅助类"]
+end
+Parse --> Brand
+Parse --> ImageGen
+Parse --> DevTools
+```
+
+**图表来源**
+- [.agents/skills/brandkit/SKILL.md:1-50](file://.agents/skills/brandkit/SKILL.md#L1-L50)
+- [.agents/skills/design-taste-frontend/SKILL.md:1-50](file://.agents/skills/design-taste-frontend/SKILL.md#L1-L50)
+- [.agents/skills/imagegen-frontend-web/SKILL.md:1-50](file://.agents/skills/imagegen-frontend-web/SKILL.md#L1-L50)
+- [skills-lock.json:1-100](file://skills-lock.json#L1-L100)
+
+### 技能版本管理
+每个技能支持多版本管理，通过语义化版本控制（SemVer）管理技能演进。
+
+**版本策略**：
+- **主版本（Major）**：不兼容的API修改
+- **次版本（Minor）**：向后兼容的功能新增
+- **修订版本（Patch）**：向后兼容的问题修正
+
+**章节来源**
+- [.agents/skills/brandkit/SKILL.md:1-100](file://.agents/skills/brandkit/SKILL.md#L1-L100)
+- [.agents/skills/design-taste-frontend/SKILL.md:1-100](file://.agents/skills/design-taste-frontend/SKILL.md#L1-L100)
+- [.agents/skills/imagegen-frontend-web/SKILL.md:1-100](file://.agents/skills/imagegen-frontend-web/SKILL.md#L1-L100)
+- [.agents/skills/imagegen-frontend-mobile/SKILL.md:1-100](file://.agents/skills/imagegen-frontend-mobile/SKILL.md#L1-L100)
+- [.agents/skills/stitch-design-taste/SKILL.md:1-100](file://.agents/skills/stitch-design-taste/SKILL.md#L1-L100)
+- [.agents/skills/stitch-design-taste/DESIGN.md:1-100](file://.agents/skills/stitch-design-taste/DESIGN.md#L1-L100)
+- [skills-lock.json:1-200](file://skills-lock.json#L1-L200)
 
 ## 依赖关系分析
 - 前端依赖 Next.js、React、Prisma Client、Zod 等库，用于构建界面、类型校验与数据库客户端
 - 共享包 @agent-up/shared 提供统一的类型与常量，确保前后端契约一致
 - 根工作区脚本通过 Turbo 协调多包任务，简化开发体验
+- AI Agent技能框架通过skills-lock.json管理技能依赖关系
 
 ```mermaid
 graph LR
@@ -458,15 +594,21 @@ WebPkg --> Next["next"]
 WebPkg --> React["react / react-dom"]
 WebPkg --> Tailwind["tailwindcss"]
 WebPkg --> ESLint["eslint"]
+WebPkg --> SkillsLock["skills-lock.json"]
+SkillsLock --> BrandKit["brandkit 技能"]
+SkillsLock --> DesignTaste["design-taste 技能"]
+SkillsLock --> ImageGen["imagegen 技能"]
 ```
 
 **图表来源**
 - [package.json:1-22](file://package.json#L1-L22)
 - [apps/web/package.json:1-38](file://apps/web/package.json#L1-L38)
+- [skills-lock.json:1-200](file://skills-lock.json#L1-L200)
 
 **章节来源**
 - [package.json:1-22](file://package.json#L1-L22)
 - [apps/web/package.json:1-38](file://apps/web/package.json#L1-L38)
+- [skills-lock.json:1-200](file://skills-lock.json#L1-L200)
 
 ## 性能与可观测性
 - **并发控制**：通过 ToolsConfig 的 maxConcurrentCalls 合理控制 Skill 调用资源消耗
@@ -474,6 +616,7 @@ WebPkg --> ESLint["eslint"]
 - **重试机制**：利用 retryCount 提高系统容错能力
 - **指标采集**：建议在 Skill 调用链路上埋点，统计成功率、延迟分布与错误率
 - **错误归因**：结合反馈与审计日志，建立问题定位与修复闭环
+- **技能性能监控**：新增对AI Agent技能的执行时间和资源使用监控
 
 ## 故障排查指南
 - **数据不一致**：检查 Skill 与版本快照是否匹配，确认绑定关系是否正确创建
@@ -481,6 +624,7 @@ WebPkg --> ESLint["eslint"]
 - **依赖冲突**：解析依赖树并校验版本兼容性，必要时降级或升级依赖版本
 - **调用失败**：查看 ToolsConfig 的超时与重试配置，结合审计日志定位问题
 - **性能问题**：调整并发数、超时时间和重试次数，监控系统资源使用情况
+- **技能加载失败**：检查SKILL.md文件格式和语法，验证技能依赖是否满足
 
 **章节来源**
 - [packages/db/prisma/schema.prisma:360-422](file://packages/db/prisma/schema.prisma#L360-L422)
@@ -488,7 +632,11 @@ WebPkg --> ESLint["eslint"]
 - [packages/db/prisma/schema.prisma:607-619](file://packages/db/prisma/schema.prisma#L607-L619)
 
 ## 结论
-当前仓库实现了完整的 Skills 市场功能，提供了清晰的插件化技能系统架构，支持四种运行时环境和企业级特性。系统具备完善的版本管理、依赖解析、权限控制、性能监控和错误处理能力，为 Agent 生态系统的扩展奠定了坚实基础。下一步可继续丰富运行时类型、优化性能监控和用户体验。
+当前仓库实现了完整的 Skills 市场功能，提供了清晰的插件化技能系统架构，支持四种运行时环境和企业级特性。系统具备完善的版本管理、依赖解析、权限控制、性能监控和错误处理能力，为 Agent 生态系统的扩展奠定了坚实基础。
+
+**重大更新**：新增的AI Agent技能框架包含13个专门技能定义，大幅扩展了系统在品牌管理、设计品味、图像生成等专业领域的应用能力。这些技能通过标准化的格式定义，提供了统一的技能描述、能力声明和依赖关系管理，为未来的技能扩展和维护提供了良好的基础。
+
+下一步可继续丰富运行时类型、优化性能监控和用户体验，同时进一步完善技能生态系统和社区贡献流程。
 
 ## 附录
 - **术语**
@@ -498,6 +646,7 @@ WebPkg --> ESLint["eslint"]
   - 版本：Skill 的发布快照，支持变更日志与回滚
   - 依赖：Skill 之间的相互依赖关系
   - 权限：访问控制和安全策略
+  - AI Agent技能：专门化的技能定义，通过SKILL.md格式描述
 
 - **常用脚本**
   - 生成 Prisma 客户端：pnpm db:generate
@@ -505,7 +654,16 @@ WebPkg --> ESLint["eslint"]
   - 本地迁移：pnpm db:migrate
   - 启动前端：pnpm dev
   - 运行测试：pnpm test
+  - 技能发现：pnpm skills:discover
+  - 技能验证：pnpm skills:validate
+
+- **技能开发模板**
+  - SKILL.md 模板文件位置：.agents/skills/template/
+  - 技能验证规则：基于JSON Schema验证
+  - 技能发布流程：Git标签 + 版本锁定
 
 **章节来源**
 - [apps/web/package.json:10-13](file://apps/web/package.json#L10-L13)
 - [package.json:4-11](file://package.json#L4-L11)
+- [.agents/skills/brandkit/SKILL.md:1-100](file://.agents/skills/brandkit/SKILL.md#L1-L100)
+- [skills-lock.json:1-200](file://skills-lock.json#L1-L200)

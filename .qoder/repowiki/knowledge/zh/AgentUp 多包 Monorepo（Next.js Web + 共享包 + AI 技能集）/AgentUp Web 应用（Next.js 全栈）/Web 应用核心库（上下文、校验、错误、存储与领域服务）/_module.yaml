@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web/lib_core
+title: Web 应用核心库（上下文、校验、错误、存储与领域服务）
+scope:
+    - apps/web/lib/
+source_files: []
+depends_on: []
+related_to: []

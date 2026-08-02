@@ -9,7 +9,17 @@
 - [pnpm-workspace.yaml](file://pnpm-workspace.yaml)
 - [tsconfig.json](file://tsconfig.json)
 - [package.json](file://apps/web/package.json)
+- [error-boundary.tsx](file://apps/web/app/components/error-boundary.tsx)
+- [globals.css](file://apps/web/app/globals.css)
+- [layout.tsx](file://apps/web/app/(dashboard)/layout.tsx)
 </cite>
+
+## 更新摘要
+**所做更改**   
+- 增强了仪表板组件的布局系统
+- 添加了错误边界处理机制
+- 改进了全局样式管理
+- 更新了组件架构以支持更好的可维护性
 
 ## 目录
 1. [简介](#简介)
@@ -26,7 +36,7 @@
 ## 简介
 本文件面向 @agent-up/ui 组件库，系统性说明其构建与发布流程、React 组件设计原则与 API 约定、样式与主题管理、响应式实现策略、测试与 Storybook 集成方案、打包与 Tree Shaking 优化、依赖管理与版本控制、变更日志与发布自动化，以及开发规范、代码审查清单与质量保证流程。同时提供实际组件开发与集成指南，帮助团队在现有 Monorepo（pnpm + Turbo）环境下高效产出高质量可复用 React 组件。
 
-当前仓库中 packages/ui 已具备基础骨架：TypeScript 编译输出、声明与源码入口、Turbo 任务编排与 pnpm workspace 配置。后续可在该基础上扩展 shadcn/ui 等生态能力，完善文档与测试体系。
+当前仓库中 packages/ui 已具备基础骨架：TypeScript 编译输出、声明与源码入口、Turbo 任务编排与 pnpm workspace 配置。近期已增强仪表板组件，改进布局系统，添加错误边界处理和全局样式改进，为后续扩展 shadcn/ui 等生态能力奠定基础。
 
 ## 项目结构
 packages/ui 采用最小化骨架，便于快速迭代与统一治理：
@@ -48,6 +58,9 @@ U3["src/index.ts"]
 end
 subgraph "应用: apps/web"
 W1["package.json"]
+W2["error-boundary.tsx"]
+W3["globals.css"]
+W4["layout.tsx"]
 end
 A --> U1
 B --> U1
@@ -55,25 +68,28 @@ C --> U2
 U2 --> U1
 U1 --> U3
 W1 --> U1
+W2 --> W1
+W3 --> W1
+W4 --> W1
 ```
 
-图表来源
+**图表来源**
 - [pnpm-workspace.yaml:1-4](file://pnpm-workspace.yaml#L1-L4)
 - [turbo.json:1-31](file://turbo.json#L1-L31)
 - [tsconfig.json:1-22](file://tsconfig.json#L1-L22)
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
 - [tsconfig.json:1-10](file://packages/ui/tsconfig.json#L1-L10)
 - [index.ts:1-5](file://packages/ui/src/index.ts#L1-L5)
-- [package.json:1-38](file://apps/web/package.json#L1-L38)
+- [package.json:1-38](file://apps/web/package.json#L1-38)
 
-章节来源
+**章节来源**
 - [pnpm-workspace.yaml:1-4](file://pnpm-workspace.yaml#L1-L4)
 - [turbo.json:1-31](file://turbo.json#L1-L31)
 - [tsconfig.json:1-22](file://tsconfig.json#L1-L22)
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
 - [tsconfig.json:1-10](file://packages/ui/tsconfig.json#L1-L10)
 - [index.ts:1-5](file://packages/ui/src/index.ts#L1-L5)
-- [package.json:1-38](file://apps/web/package.json#L1-L38)
+- [package.json:1-38](file://apps/web/package.json#L1-38)
 
 ## 核心组件
 目前 @agent-up/ui 尚未包含具体 UI 组件，仅暴露一个版本常量作为示例导出，用于验证模块结构与类型声明。后续将在此处集中导出所有组件与工具函数，形成稳定的公共 API。
@@ -82,13 +98,13 @@ W1 --> U1
 - 导出策略：按功能域组织 barrel 文件，避免深层路径耦合
 - 类型策略：保持 strict 模式，开启 declaration 与 sourceMap，确保消费端获得完整类型提示与调试体验
 
-章节来源
+**章节来源**
 - [index.ts:1-5](file://packages/ui/src/index.ts#L1-L5)
-- [tsconfig.json:1-22](file://tsconfig.json#L1-L22)
+- [tsconfig.json:1-22](file://packages/ui/tsconfig.json#L1-L22)
 - [tsconfig.json:1-10](file://packages/ui/tsconfig.json#L1-L10)
 
 ## 架构总览
-下图展示了 @agent-up/ui 在 Monorepo 中的角色与交互关系：应用通过 pnpm workspace 引用该包；Turbo 负责跨包任务编排；TypeScript 负责类型与构建产物生成。
+下图展示了 @agent-up/ui 在 Monorepo 中的角色与交互关系：应用通过 pnpm workspace 引用该包；Turbo 负责跨包任务编排；TypeScript 负责类型与构建产物生成。新增的错误边界和布局系统为组件提供了更好的稳定性和可维护性。
 
 ```mermaid
 graph TB
@@ -97,7 +113,13 @@ UI["@agent-up/ui 包"]
 Pnpm["pnpm workspace"]
 Turbo["Turbo 任务编排"]
 TS["TypeScript 编译/类型"]
+ErrorBoundary["错误边界处理"]
+LayoutSystem["改进的布局系统"]
+GlobalStyles["全局样式管理"]
 App --> UI
+App --> ErrorBoundary
+App --> LayoutSystem
+App --> GlobalStyles
 Pnpm --> App
 Pnpm --> UI
 Turbo --> App
@@ -105,11 +127,14 @@ Turbo --> UI
 TS --> UI
 ```
 
-图表来源
+**图表来源**
 - [pnpm-workspace.yaml:1-4](file://pnpm-workspace.yaml#L1-L4)
 - [turbo.json:1-31](file://turbo.json#L1-L31)
-- [package.json:1-38](file://apps/web/package.json#L1-L38)
+- [package.json:1-38](file://apps/web/package.json#L1-38)
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
+- [error-boundary.tsx](file://apps/web/app/components/error-boundary.tsx)
+- [layout.tsx](file://apps/web/app/(dashboard)/layout.tsx)
+- [globals.css](file://apps/web/app/globals.css)
 
 ## 详细组件分析
 
@@ -136,12 +161,12 @@ Version --> |是| Publish["发布到私有/公共仓库"]
 Publish --> End
 ```
 
-图表来源
+**图表来源**
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
 - [tsconfig.json:1-10](file://packages/ui/tsconfig.json#L1-L10)
 - [turbo.json:1-31](file://turbo.json#L1-L31)
 
-章节来源
+**章节来源**
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
 - [tsconfig.json:1-10](file://packages/ui/tsconfig.json#L1-L10)
 - [turbo.json:1-31](file://turbo.json#L1-L31)
@@ -160,20 +185,22 @@ Publish --> End
   - 类型安全：严格 TS 类型约束，必要时引入泛型提升复用性
   - 稳定性：对破坏性变更遵循语义化版本控制
 
-[本节为通用设计指导，不直接分析具体文件]
-
 ### 样式管理、主题定制与响应式设计
 - 样式管理
   - 推荐 CSS-in-JS 或原子化 CSS（如 Tailwind），结合 PostCSS 处理浏览器兼容
   - 组件内样式与作用域隔离，避免全局污染
+  - **新增**：全局样式统一管理，通过 globals.css 集中定义基础样式变量
 - 主题定制
   - 通过 CSS 变量或主题对象集中管理颜色、字号、间距、断点等
   - 提供主题切换能力，支持明暗模式与品牌色替换
 - 响应式设计
   - 基于容器查询或媒体查询实现自适应布局
   - 组件内部提供尺寸变体（sm/md/lg/xl）与密度选项
+  - **新增**：改进的布局系统支持更灵活的响应式网格
 
-[本节为通用实现指导，不直接分析具体文件]
+**章节来源**
+- [globals.css](file://apps/web/app/globals.css)
+- [layout.tsx](file://apps/web/app/(dashboard)/layout.tsx)
 
 ### 组件测试策略与 Storybook 集成
 - 测试策略
@@ -184,8 +211,6 @@ Publish --> End
   - 为每个组件编写多个故事，覆盖不同 props、主题与交互
   - 使用 Controls 与 ArgsTable 自动生成文档
   - 结合 Chromatic 进行视觉回归测试
-
-[本节为通用实践指导，不直接分析具体文件]
 
 ### 打包、Tree Shaking 优化与依赖管理
 - 打包
@@ -199,7 +224,7 @@ Publish --> End
   - 运行时依赖放入 dependencies，开发依赖放入 devDependencies
   - 将 react/react-dom 声明为 peerDependencies，避免重复打包
 
-章节来源
+**章节来源**
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
 - [tsconfig.json:1-10](file://packages/ui/tsconfig.json#L1-L10)
 
@@ -214,8 +239,6 @@ Publish --> End
   - 在 CI 中执行构建、测试、打包与发布步骤
   - 使用 npm/pnpm publish 或私有仓库 CLI 完成发布
 
-[本节为通用流程指导，不直接分析具体文件]
-
 ### 组件开发规范、代码审查清单与质量保证
 - 开发规范
   - 统一 ESLint/Prettier 规则，强制代码风格一致
@@ -229,8 +252,6 @@ Publish --> End
   - 预提交钩子（lint-staged + husky）
   - CI 流水线：构建、类型检查、测试、覆盖率报告
 
-[本节为通用流程指导，不直接分析具体文件]
-
 ### 实际组件开发示例与集成指南
 - 新增组件步骤
   - 在 src 下创建组件目录与 index.ts 导出
@@ -241,10 +262,27 @@ Publish --> End
   - 通过 pnpm workspace 引用 @agent-up/ui
   - 在 Next.js 项目中按需导入组件并使用
   - 配置主题与样式资源（如 Tailwind 配置）
+  - **新增**：集成错误边界处理，确保组件异常不影响整体应用
 
-章节来源
-- [package.json:1-38](file://apps/web/package.json#L1-L38)
+**章节来源**
+- [package.json:1-38](file://apps/web/package.json#L1-38)
 - [index.ts:1-5](file://packages/ui/src/index.ts#L1-L5)
+- [error-boundary.tsx](file://apps/web/app/components/error-boundary.tsx)
+
+### 错误边界处理与全局样式改进
+- 错误边界处理
+  - **新增**：实现了全局错误边界组件，捕获组件树中的 JavaScript 错误
+  - 提供友好的错误界面，防止应用崩溃
+  - 支持错误上报与监控集成
+- 全局样式改进
+  - **新增**：统一的 CSS 变量管理系统，支持主题切换
+  - 响应式布局系统，适配不同屏幕尺寸
+  - 标准化的间距、颜色和字体系统
+
+**章节来源**
+- [error-boundary.tsx](file://apps/web/app/components/error-boundary.tsx)
+- [globals.css](file://apps/web/app/globals.css)
+- [layout.tsx](file://apps/web/app/(dashboard)/layout.tsx)
 
 ## 依赖分析
 @agent-up/ui 的依赖与对等依赖如下：
@@ -267,10 +305,10 @@ UI --- TRD
 UI --- TSC
 ```
 
-图表来源
+**图表来源**
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
 
-章节来源
+**章节来源**
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
 
 ## 性能考虑
@@ -278,8 +316,7 @@ UI --- TSC
 - 懒加载与代码分割：大组件与第三方库按需加载
 - 样式体积控制：避免引入未使用的样式类，启用 PurgeCSS/Tailwind 优化
 - 类型与声明：保持 strict 与增量编译，缩短构建时间
-
-[本节为通用性能指导，不直接分析具体文件]
+- **新增**：错误边界减少级联失败影响，提高应用稳定性
 
 ## 故障排查指南
 - 构建失败
@@ -291,16 +328,18 @@ UI --- TSC
 - 运行时警告
   - 确认 react/react-dom 未被重复打包
   - 检查组件是否在服务端/客户端正确渲染
+- **新增**：错误边界问题
+  - 检查错误边界是否正确包裹组件树
+  - 确认错误处理逻辑是否正常工作
 
-章节来源
+**章节来源**
 - [tsconfig.json:1-10](file://packages/ui/tsconfig.json#L1-L10)
 - [tsconfig.json:1-22](file://tsconfig.json#L1-L22)
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)
+- [error-boundary.tsx](file://apps/web/app/components/error-boundary.tsx)
 
 ## 结论
-@agent-up/ui 已具备清晰的包结构与构建基础，适合在 Monorepo 中持续演进。建议在现有骨架上逐步完善组件实现、样式与主题系统、测试与文档、发布自动化与质量门禁，最终形成高可用、高性能、易维护的企业级 UI 组件库。
-
-[本节为总结性内容，不直接分析具体文件]
+@agent-up/ui 已具备清晰的包结构与构建基础，适合在 Monorepo 中持续演进。近期增强的仪表板组件、改进的布局系统、错误边界处理和全局样式改进为组件库奠定了更好的基础。建议在现有骨架上逐步完善组件实现、样式与主题系统、测试与文档、发布自动化与质量门禁，最终形成高可用、高性能、易维护的企业级 UI 组件库。
 
 ## 附录
 - 常用命令
@@ -312,7 +351,7 @@ UI --- TSC
   - pnpm workspace 与 Turbo 任务编排
   - TypeScript 编译与类型声明
 
-章节来源
+**章节来源**
 - [pnpm-workspace.yaml:1-4](file://pnpm-workspace.yaml#L1-L4)
 - [turbo.json:1-31](file://turbo.json#L1-L31)
 - [package.json:1-25](file://packages/ui/package.json#L1-L25)

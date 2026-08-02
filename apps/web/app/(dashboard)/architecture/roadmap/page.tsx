@@ -40,6 +40,24 @@ flowchart LR
   style P0 fill:#dbeafe,stroke:#2563eb,stroke-width:2px
 `;
 
+const retroFlowChart = `
+flowchart LR
+  T["失败工单上下文<br/>工单号 · 产品 · 会话 · 检索轨迹"] --> R["复盘引擎<br/>回放检索 + LLM 归因"]
+  R --> C1["语料缺失"]
+  R --> C2["语料有但检索未命中"]
+  R --> C3["语料过期/错误"]
+  R --> C4["Skill 缺失/失败"]
+  R --> C5["超出能力边界"]
+  C1 & C2 & C3 --> W["语料补丁草稿<br/>DRAFT wiki 页 / 变更建议单"]
+  C4 --> S["Skill 加强建议"]
+  W & S --> REL["Release 审批流"]
+  REL --> E["评测集回放<br/>修复 N 张 / 回归 0 张"]
+  E -. 每张复盘过的工单沉淀为 eval case .-> E
+
+  style R fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+  style E fill:#dbeafe,stroke:#2563eb
+`;
+
 export default function RoadmapPage() {
   return (
     <div>
@@ -221,6 +239,65 @@ export default function RoadmapPage() {
             [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>181 个测试，94.4% 语句覆盖</strong>，含 35 个 API 集成测试</span>],
           ]}
         />
+      </Section>
+
+      <Section
+        title="场景优先级复评 · 工单复盘 + 语料/Skills 加强（2026-07-31）"
+        description="面向真实使用场景：维护两个阿里云专有云语料库（工单 ack 库 / AI Stack 库），把未能闭环的工单传入平台做复盘与加强。据此对上方通用路线图做一次优先级复评：不建议先修 auth/Prisma，而是沿「复盘有据 → 归因有理 → 加强有验」主线补齐智能核。"
+        source="docs/reports/2026-07-31 评估报告 · 第三/五章"
+      >
+        <Mermaid chart={retroFlowChart} />
+        <Table
+          head={["阶段", "改进项", "落点", "解决什么问题"]}
+          rows={[
+            [
+              <Pill tone="bad">P0 · 1-2 周</Pill>,
+              <strong>工单上下文结构化 + 批量导入</strong>,
+              "扩展 Feedback 模型：工单号、产品线、Agent 实际回答、检索命中列表、skill 调用记录；提供批量导入 API/脚本",
+              "复盘的证据链 —— 对应行业差距 1（无 Trace）",
+            ],
+            [
+              <Pill tone="bad">P0 · 1-2 周</Pill>,
+              <strong>外部语料库检索探针</strong>,
+              "给工单 ack 库、AI Stack 库各接一个查询接口（MCP 或 HTTP），拿失败工单的问题去「回放检索」",
+              "回答「语料里到底有没有」这个复盘核心问题",
+            ],
+            [
+              <Pill tone="warn">P1 · 2-3 周</Pill>,
+              <span><strong>LLM 根因分析（复盘引擎）</strong><br /><span className="text-xs text-zinc-400">第一处该引入 LLM 的地方</span></span>,
+              "输入工单上下文 + 回放检索结果，输出五类归因（语料缺失/检索未命中/语料过期/skill 缺失/超出边界）+ 证据 + 建议 targetPartition，人工确认后写回 Feedback",
+              "归因不再靠人拍脑袋 —— 对应行业差距 2（Error Analysis）",
+            ],
+            [
+              <Pill tone="warn">P1 · 2-3 周</Pill>,
+              <strong>归因聚合看板</strong>,
+              "按产品线/归因类别统计，发现共性缺口（如「AI Stack 库在某组件的排障语料系统性缺失」）",
+              "从单张工单复盘升级到共性缺口发现",
+            ],
+            [
+              <Pill tone="accent">P2 · 3-4 周</Pill>,
+              <strong>加强闭环：复盘产出 → 语料补丁/Skill 建议</strong>,
+              "复盘结论直接生成 DRAFT wiki 页 / 外部语料库变更建议单 / skill 加强建议，走现有 Release 审批流",
+              "把「加强」从手工劳动变成平台能力 —— 对应行业差距 4（蒸馏引擎）",
+            ],
+            [
+              <Pill tone="accent">P2 · 3-4 周</Pill>,
+              <span><strong>失败工单 → 评测集（Golden Set）</strong></span>,
+              "每张复盘过的工单沉淀为一条 eval case；发布审批前自动回放评测集，给审批人看「修复 N 张 / 回归 0 张」",
+              "发布不再盲批 —— 对应行业差距 3（无回归评测），与 P1 档「外部 Evaluator」理念一致",
+            ],
+            [
+              <Pill tone="neutral">P3 · 按需</Pill>,
+              <strong>工程债</strong>,
+              "Prisma/Postgres 落地、真实认证与 RBAC 强制、CI/CD、审计入库",
+              "单用户阶段可后置；使用规模扩大时自动升回高优（即上方通用路线图的 P0）",
+            ],
+          ]}
+        />
+        <Insight label="与通用路线图的关系">
+          通用路线图的 P0（鉴权 + Prisma + 审计）是「多人上线」视角；本复评是「单用户价值交付」视角 ——
+          先让平台对工单复盘场景产生真实价值，再按使用规模补工程债。两者不冲突，只是排序不同。
+        </Insight>
       </Section>
 
       <Section

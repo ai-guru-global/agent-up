@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: apps_web/app_pages/app_shell
+title: Web 应用根布局与全局 Shell
+scope:
+    - apps/web/app/components/
+    - apps/web/app/layout.tsx
+    - apps/web/app/page.tsx
+    - apps/web/app/globals.css
+    - apps/web/app/global-error.tsx
+source_files: []
+depends_on: []
+related_to: []

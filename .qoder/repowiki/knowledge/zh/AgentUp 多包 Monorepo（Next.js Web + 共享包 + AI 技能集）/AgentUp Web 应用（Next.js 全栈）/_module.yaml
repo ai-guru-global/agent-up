@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web
+title: AgentUp Web 应用（Next.js 全栈）
+scope:
+    - apps/web/
+source_files: []
+depends_on: []
+related_to: []

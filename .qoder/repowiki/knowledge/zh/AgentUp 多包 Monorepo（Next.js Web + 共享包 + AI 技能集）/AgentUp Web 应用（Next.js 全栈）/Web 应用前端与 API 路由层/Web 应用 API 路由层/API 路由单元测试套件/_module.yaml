@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web/app_pages/api_routes/api_tests
+title: API 路由单元测试套件
+scope:
+    - apps/web/app/api/__tests__/
+source_files: []
+depends_on: []
+related_to: []

@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web/app_pages/api_routes/agents
+title: Agent REST API 路由
+scope:
+    - apps/web/app/api/agents/
+source_files: []
+depends_on: []
+related_to: []

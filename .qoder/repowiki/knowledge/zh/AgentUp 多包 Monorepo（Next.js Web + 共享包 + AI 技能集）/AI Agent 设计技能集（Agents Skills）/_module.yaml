@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: agents_skills
+title: AI Agent 设计技能集（Agents Skills）
+scope:
+    - .agents/skills/
+source_files: []
+depends_on: []
+related_to: []

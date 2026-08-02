@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web/app_pages/api_routes
+title: Web 应用 API 路由层
+scope:
+    - apps/web/app/api/
+source_files: []
+depends_on: []
+related_to: []

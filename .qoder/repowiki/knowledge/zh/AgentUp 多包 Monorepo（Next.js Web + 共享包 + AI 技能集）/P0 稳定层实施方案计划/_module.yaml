@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: zcode_plans
+title: P0 稳定层实施方案计划
+scope:
+    - .zcode/plans/
+source_files: []
+depends_on: []
+related_to: []

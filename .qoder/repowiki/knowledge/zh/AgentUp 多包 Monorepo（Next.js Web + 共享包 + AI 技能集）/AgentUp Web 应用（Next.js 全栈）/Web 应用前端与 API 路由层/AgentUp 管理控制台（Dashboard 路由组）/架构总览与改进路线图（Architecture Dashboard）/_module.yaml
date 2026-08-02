@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: apps_web/app_pages/dashboard_routes/architecture
+title: 架构总览与改进路线图（Architecture Dashboard）
+scope:
+    - apps/web/app/(dashboard)/architecture/
+source_files: []
+depends_on: []
+related_to: []
