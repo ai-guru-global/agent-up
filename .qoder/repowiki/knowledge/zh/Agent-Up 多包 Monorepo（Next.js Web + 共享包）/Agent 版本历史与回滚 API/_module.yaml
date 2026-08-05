@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: web_app_api_agents_versions
+title: Agent 版本历史与回滚 API
+scope:
+    - apps/web/app/api/agents/[id]/versions/
+    - apps/web/app/api/agents/[id]/config/[partition]/rollback/
+    - apps/web/app/api/agents/[id]/rollback/
+source_files: []
+depends_on: []
+related_to: []

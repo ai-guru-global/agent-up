@@ -46,6 +46,16 @@ export default function LoginPage() {
         </h1>
         <p className="mt-1 text-sm text-zinc-400">Agent 改进平台</p>
 
+        {/* MOCK 标注：认证未接入真实系统（NextAuth 预留位），此页为 mock 登录 */}
+        <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+            MOCK 登录 · 未接入真实认证
+          </p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+            演示账号：allengaller / 123（硬编码于 api/auth/login，仅本地演示用）
+          </p>
+        </div>
+
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">

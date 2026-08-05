@@ -1,3 +1,9 @@
+/*
+ * 本页大量把 JSX 写在 <Table rows={[...]}> 的静态数据数组里；
+ * Table 内部 map 渲染时已统一赋 key（见 _components/ui.tsx），
+ * react/jsx-key 无法跨函数边界追踪，属于误报，故在本页豁免。
+ */
+/* eslint-disable react/jsx-key */
 import { Mermaid } from "../../../components/mermaid";
 import { Card, Insight, PageHeader, Pill, Section, Table } from "../_components/ui";
 
@@ -177,7 +183,7 @@ export default function RoadmapPage() {
               <span><strong>Wiki 蒸馏引擎</strong></span>,
               <Pill tone="accent">Manus ③ 文件系统即上下文 + llm-wiki</Pill>,
               "把 WikiIngestJob 接 LLM：反馈/会话 → 草稿 wiki 页（带 provenance/lifecycle/tier/base-confidence）",
-              <span><strong>两层知识架构的核心一半</strong>；「Compile, don't retrieve」从口号变现实</span>,
+              <span><strong>两层知识架构的核心一半</strong>；「Compile, don&apos;t retrieve」从口号变现实</span>,
             ],
             [
               <span><strong>L1 反馈自动采集管道</strong></span>,

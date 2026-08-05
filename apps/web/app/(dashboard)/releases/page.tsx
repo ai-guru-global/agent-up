@@ -56,6 +56,8 @@ export default function ReleasesPage() {
     } finally { setLoading(false); }
   }, [statusFilter]);
 
+  // 拉取前同步重置 loading/error 是有意的；setState 均在 await 前完成，无级联风险
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchList(); }, [fetchList]);
 
   const handleReview = async (releaseId: string, action: "APPROVED" | "REJECTED") => {

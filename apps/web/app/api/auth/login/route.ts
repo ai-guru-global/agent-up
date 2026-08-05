@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { success, error, parseBody } from "@/lib/utils";
 
+// MOCK：硬编码演示凭据，未接入真实认证（NextAuth 预留位）；本地演示专用
 const VALID_USERNAME = "allengaller";
 const VALID_PASSWORD = "123";
 

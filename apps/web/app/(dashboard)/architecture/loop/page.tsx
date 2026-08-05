@@ -1,3 +1,9 @@
+/*
+ * 本页大量把 JSX 写在 <Table rows={[...]}> 的静态数据数组里；
+ * Table 内部 map 渲染时已统一赋 key（见 _components/ui.tsx），
+ * react/jsx-key 无法跨函数边界追踪，属于误报，故在本页豁免。
+ */
+/* eslint-disable react/jsx-key */
 import { Mermaid } from "../../../components/mermaid";
 import { Insight, PageHeader, Pill, References, Section, Table } from "../_components/ui";
 

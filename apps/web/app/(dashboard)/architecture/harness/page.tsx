@@ -1,3 +1,9 @@
+/*
+ * 本页大量把 JSX 写在 <Table rows={[...]}> 的静态数据数组里；
+ * Table 内部 map 渲染时已统一赋 key（见 _components/ui.tsx），
+ * react/jsx-key 无法跨函数边界追踪，属于误报，故在本页豁免。
+ */
+/* eslint-disable react/jsx-key */
 import { Mermaid } from "../../../components/mermaid";
 import { Card, Insight, PageHeader, Pill, References, Section, Table } from "../_components/ui";
 
@@ -195,8 +201,8 @@ export default function HarnessEngineeringPage() {
         <Table
           head={["#", "子系统", "职责", "常见失败 / 改进点"]}
           rows={[
-            ["1", <span><strong>编排循环</strong><br /><span className="text-xs text-zinc-400">"心跳"</span></span>, "驱动 observe→think→act→observe", "只检查「模型停没停」而非「目标达没达」 —— Oracle 的第 3 层 loop 缺位"],
-            ["2", <span><strong>工具</strong><br /><span className="text-xs text-zinc-400">"Agent 的手"</span></span>, "执行有副作用的动作", "模型只发意图 → harness 路由 → 回灌结果；参数校验 / 沙箱是重点"],
+            ["1", <span><strong>编排循环</strong><br /><span className="text-xs text-zinc-400">「心跳」</span></span>, "驱动 observe→think→act→observe", "只检查「模型停没停」而非「目标达没达」 —— Oracle 的第 3 层 loop 缺位"],
+            ["2", <span><strong>工具</strong><br /><span className="text-xs text-zinc-400">「Agent 的手」</span></span>, "执行有副作用的动作", "模型只发意图 → harness 路由 → 回灌结果；参数校验 / 沙箱是重点"],
             ["3", <span><strong>记忆</strong></span>, "短期 in-context + 长期 external", "harness 要主动管理「什么留在上下文」—— Manus 的文件系统即上下文"],
             ["4", <span><strong>上下文/状态</strong></span>, "模型每步看到什么", "渐进式披露 ——「给一张地图，不是 1000 页手册」"],
             ["5", <span><strong>验证 / 护栏</strong></span>, "权限、错误处理、停止条件", "边界校验、linters-as-feedback、Ralph Wiggum loop 检测"],

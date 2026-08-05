@@ -1,3 +1,9 @@
+/*
+ * 本页大量把 JSX 写在 <Table rows={[...]}> 的静态数据数组里；
+ * Table 内部 map 渲染时已统一赋 key（见 _components/ui.tsx），
+ * react/jsx-key 无法跨函数边界追踪，属于误报，故在本页豁免。
+ */
+/* eslint-disable react/jsx-key */
 import { Mermaid } from "../../components/mermaid";
 import {
   Card,
@@ -245,7 +251,7 @@ export default function ArchitectureOverviewPage() {
             [
               <span><strong>两层知识架构</strong><br /><span className="text-xs text-zinc-400">Wiki 蒸馏优先，MCP 工具兜底</span></span>,
               <Pill tone="good">高</Pill>,
-              <span>「Compile, don't retrieve」—— 先查高质量蒸馏知识，再回退到实时 MCP 数据。WIKI_FIRST / HYBRID 等策略可配。比单纯 RAG 更工程化</span>,
+              <span>「Compile, don&apos;t retrieve」—— 先查高质量蒸馏知识，再回退到实时 MCP 数据。WIKI_FIRST / HYBRID 等策略可配。比单纯 RAG 更工程化</span>,
             ],
             [
               <span><strong>三层 Loop 时间尺度</strong><br /><span className="text-xs text-zinc-400">L1 分钟 / L2 小时天 / L3 周月</span></span>,

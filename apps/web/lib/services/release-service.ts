@@ -284,10 +284,11 @@ export async function createRollbackRelease(agentId: string, targetVersionId: st
     const { version: _v, lastModifiedAt: _l, ...payload } = raw;
     void _v; void _l;
     configSnapshot[p.toLowerCase()] = payload;
-    (agent as Record<string, unknown>)[activeKey[p]] = payload;
+    // AgentLike 无 index signature，需先转 unknown 再转 Record
+    (agent as unknown as Record<string, unknown>)[activeKey[p]] = payload;
   }
-  (agent as Record<string, unknown>).updatedAt = ts;
-  store.write(agent as Record<string, unknown>, "agents", `${agentId}.json`);
+  (agent as unknown as Record<string, unknown>).updatedAt = ts;
+  store.write(agent as unknown as Record<string, unknown>, "agents", `${agentId}.json`);
 
   // 2) 创建一个 status=APPROVED 的 release（不走审批）
   const actor = getActor();

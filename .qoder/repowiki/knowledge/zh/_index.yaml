@@ -3,15 +3,17 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-08-03T08:41:01Z"
+exported_at: "2026-08-05T15:16:08Z"
 modules:
     "":
-        dir_name: AgentUp 多包 Monorepo（Next.js Web + 共享包 + 文档）
-        title: AgentUp 多包 Monorepo（Next.js Web + 共享包 + 文档）
+        dir_name: Agent-Up 多包 Monorepo（Next.js Web + 共享包）
+        title: Agent-Up 多包 Monorepo（Next.js Web + 共享包）
         scope: []
         source_files: []
         children:
-            - docs_reports
+            - web_app_api_agents_versions
+            - web_data_versions
+            - web_lib_services_effectiveness
         depends_on: []
         related_to: []
     docs_reports:
@@ -19,6 +21,35 @@ modules:
         title: 项目评估与行业差距分析报告集
         scope:
             - docs/reports/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app_api_agents_versions:
+        dir_name: Agent 版本历史与回滚 API
+        title: Agent 版本历史与回滚 API
+        scope:
+            - apps/web/app/api/agents/[id]/versions/
+            - apps/web/app/api/agents/[id]/config/[partition]/rollback/
+            - apps/web/app/api/agents/[id]/rollback/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_data_versions:
+        dir_name: Agent 版本快照数据
+        title: Agent 版本快照数据
+        scope:
+            - apps/web/data/versions/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_lib_services_effectiveness:
+        dir_name: 版本效果报告服务（Effectiveness Report Service）
+        title: 版本效果报告服务（Effectiveness Report Service）
+        scope:
+            - apps/web/lib/services/effectiveness-service.ts
         source_files: []
         children: []
         depends_on: []

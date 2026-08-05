@@ -2,7 +2,7 @@
 
 <cite>
 **本文引用的文件列表**
-- [schema.prisma](file://packages/db/prisma/schema.prisma)
+- [schema.prisma](file://apps/web/prisma/schema.prisma)
 - [agents API 路由](file://apps/web/app/api/agents/route.ts)
 - [Agent 管理页面](file://apps/web/app/(dashboard)/agents/page.tsx)
 - [Agent 详情页面](file://apps/web/app/(dashboard)/agents/[id]/page.tsx)
@@ -27,7 +27,7 @@
 本文件系统化阐述 Agent Up 中 AI Agent 的完整生命周期管理机制，覆盖状态模型（DRAFT、ACTIVE、ARCHIVED）、创建/编辑/删除/状态变更流程、与产品组的关联及数据隔离机制，并提供面向开发者的实践建议与常见陷阱。文档从概念到实现逐层展开，帮助读者快速理解并落地 Agent 全生命周期管理。
 
 ## 项目结构
-本项目采用 Next.js App Router + Prisma 的数据建模方式，前端页面位于 apps/web/app 下，API 路由在 apps/web/app/api 下，数据库模型定义在 packages/db/prisma/schema.prisma，共享类型定义位于 packages/shared/src/types。
+本项目采用 Next.js App Router + Prisma 的数据建模方式，前端页面位于 apps/web/app 下，API 路由在 apps/web/app/api 下，数据库模型定义在 apps/web/prisma/schema.prisma，共享类型定义位于 packages/shared/src/types。
 
 ```mermaid
 graph TB
@@ -40,7 +40,7 @@ C["/api/agents<br/>apps/web/app/api/agents/route.ts"]
 end
 subgraph "数据访问"
 D["Prisma 客户端<br/>apps/web/lib/prisma.ts"]
-E["数据库模型<br/>packages/db/prisma/schema.prisma"]
+E["数据库模型<br/>apps/web/prisma/schema.prisma"]
 end
 subgraph "共享类型"
 F["权限与角色类型<br/>packages/shared/src/types/permission.ts"]
@@ -60,7 +60,7 @@ C -.-> G
 - [Agent 详情页面](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L43)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
 - [Prisma 客户端初始化:1-17](file://apps/web/lib/prisma.ts#L1-L17)
-- [schema.prisma:1-626](file://packages/db/prisma/schema.prisma#L1-L626)
+- [schema.prisma:1-626](file://apps/web/prisma/schema.prisma#L1-L626)
 - [权限与角色类型定义:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
 - [发布与版本类型定义:1-35](file://packages/shared/src/types/release.ts#L1-L35)
 
@@ -69,7 +69,7 @@ C -.-> G
 - [Agent 详情页面](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L43)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
 - [Prisma 客户端初始化:1-17](file://apps/web/lib/prisma.ts#L1-L17)
-- [schema.prisma:1-626](file://packages/db/prisma/schema.prisma#L1-L626)
+- [schema.prisma:1-626](file://apps/web/prisma/schema.prisma#L1-L626)
 - [权限与角色类型定义:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
 - [发布与版本类型定义:1-35](file://packages/shared/src/types/release.ts#L1-L35)
 
@@ -81,10 +81,10 @@ C -.-> G
 - 权限与审计：Role、Permission、UserRole、AuditLog 支撑 RBAC 与操作审计。
 
 章节来源
-- [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
-- [schema.prisma:14-36](file://packages/db/prisma/schema.prisma#L14-L36)
-- [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-L354)
-- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-L625)
+- [schema.prisma:61-97](file://apps/web/prisma/schema.prisma#L61-L97)
+- [schema.prisma:14-36](file://apps/web/prisma/schema.prisma#L14-L36)
+- [schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
+- [schema.prisma:563-625](file://apps/web/prisma/schema.prisma#L563-L625)
 - [权限与角色类型定义:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
 - [发布与版本类型定义:1-35](file://packages/shared/src/types/release.ts#L1-L35)
 
@@ -101,7 +101,7 @@ ARCHIVED --> DRAFT : "恢复为草稿(可选)"
 ```
 
 图表来源
-- [schema.prisma:93-97](file://packages/db/prisma/schema.prisma#L93-L97)
+- [schema.prisma:93-97](file://apps/web/prisma/schema.prisma#L93-L97)
 
 ## 详细组件分析
 
@@ -111,8 +111,8 @@ ARCHIVED --> DRAFT : "恢复为草稿(可选)"
 - ARCHIVED（归档）：Agent 被下线或停用，不再参与生产流量，但保留历史数据用于审计与回溯。
 
 章节来源
-- [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
-- [schema.prisma:175-186](file://packages/db/prisma/schema.prisma#L175-L186)
+- [schema.prisma:61-97](file://apps/web/prisma/schema.prisma#L61-L97)
+- [schema.prisma:175-186](file://apps/web/prisma/schema.prisma#L175-L186)
 
 ### 创建流程（新建 Agent）
 - 入口：Agent 管理页提供“新建 Agent”按钮，进入创建流程。
@@ -138,13 +138,13 @@ UI-->>U : 跳转至 Agent 详情页
 - [Agent 管理页面](file://apps/web/app/(dashboard)/agents/page.tsx#L1-L28)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
 - [Prisma 客户端初始化:1-17](file://apps/web/lib/prisma.ts#L1-L17)
-- [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
+- [schema.prisma:61-97](file://apps/web/prisma/schema.prisma#L61-L97)
 
 章节来源
 - [Agent 管理页面](file://apps/web/app/(dashboard)/agents/page.tsx#L1-L28)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
 - [Prisma 客户端初始化:1-17](file://apps/web/lib/prisma.ts#L1-L17)
-- [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
+- [schema.prisma:61-97](file://apps/web/prisma/schema.prisma#L61-L97)
 
 ### 编辑流程（四分区配置与 Draft 环境）
 - 入口：Agent 详情页提供 Prompt、知识库、工具/MCP、路由四个配置 Tab。
@@ -181,16 +181,16 @@ ContinueEdit --> End
 图表来源
 - [Agent 详情页面](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L43)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
-- [schema.prisma:175-186](file://packages/db/prisma/schema.prisma#L175-L186)
-- [schema.prisma:192-214](file://packages/db/prisma/schema.prisma#L192-L214)
-- [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-L354)
+- [schema.prisma:175-186](file://apps/web/prisma/schema.prisma#L175-L186)
+- [schema.prisma:192-214](file://apps/web/prisma/schema.prisma#L192-L214)
+- [schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
 
 章节来源
 - [Agent 详情页面](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L43)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
-- [schema.prisma:175-186](file://packages/db/prisma/schema.prisma#L175-L186)
-- [schema.prisma:192-214](file://packages/db/prisma/schema.prisma#L192-L214)
-- [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-L354)
+- [schema.prisma:175-186](file://apps/web/prisma/schema.prisma#L175-L186)
+- [schema.prisma:192-214](file://apps/web/prisma/schema.prisma#L192-L214)
+- [schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
 
 ### 删除流程（软删除与硬删除）
 - 软删除：建议将 Agent 状态置为 ARCHIVED，保留历史数据与审计轨迹。
@@ -198,8 +198,8 @@ ContinueEdit --> End
 - 关联清理：若存在强关联（如 WikiVault、SkillBindings），需在事务中处理级联逻辑或显式清理。
 
 章节来源
-- [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
-- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-L625)
+- [schema.prisma:61-97](file://apps/web/prisma/schema.prisma#L61-L97)
+- [schema.prisma:563-625](file://apps/web/prisma/schema.prisma#L563-L625)
 
 ### 状态变更流程（DRAFT → ACTIVE → ARCHIVED）
 - DRAFT → ACTIVE：通过 Release 审批通过后，更新 Agent.status=ACTIVE。
@@ -223,13 +223,13 @@ API-->>Dev : 返回发布成功
 
 图表来源
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
-- [schema.prisma:93-97](file://packages/db/prisma/schema.prisma#L93-L97)
-- [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-L354)
+- [schema.prisma:93-97](file://apps/web/prisma/schema.prisma#L93-L97)
+- [schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
 
 章节来源
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
-- [schema.prisma:93-97](file://packages/db/prisma/schema.prisma#L93-L97)
-- [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-L354)
+- [schema.prisma:93-97](file://apps/web/prisma/schema.prisma#L93-L97)
+- [schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
 
 ### 与产品组的关联与数据隔离
 - 关联关系：Agent.productGroupId 指向 ProductGroup，确保每个 Agent 属于特定产品组。
@@ -252,12 +252,12 @@ PRODUCT_GROUP ||--o{ AGENT : "拥有"
 ```
 
 图表来源
-- [schema.prisma:14-24](file://packages/db/prisma/schema.prisma#L14-L24)
-- [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
+- [schema.prisma:14-24](file://apps/web/prisma/schema.prisma#L14-L24)
+- [schema.prisma:61-97](file://apps/web/prisma/schema.prisma#L61-L97)
 
 章节来源
-- [schema.prisma:14-24](file://packages/db/prisma/schema.prisma#L14-L24)
-- [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
+- [schema.prisma:14-24](file://apps/web/prisma/schema.prisma#L14-L24)
+- [schema.prisma:61-97](file://apps/web/prisma/schema.prisma#L61-L97)
 - [权限与角色类型定义:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
 
 ### 代码示例路径（如何在应用中操作 Agent 实体）
@@ -293,7 +293,7 @@ Types_Release["发布与版本类型"] -.-> API_Agents
 - [Agent 详情页面](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L43)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
 - [Prisma 客户端初始化:1-17](file://apps/web/lib/prisma.ts#L1-L17)
-- [schema.prisma:1-626](file://packages/db/prisma/schema.prisma#L1-L626)
+- [schema.prisma:1-626](file://apps/web/prisma/schema.prisma#L1-L626)
 - [权限与角色类型定义:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
 - [发布与版本类型定义:1-35](file://packages/shared/src/types/release.ts#L1-L35)
 
@@ -302,7 +302,7 @@ Types_Release["发布与版本类型"] -.-> API_Agents
 - [Agent 详情页面](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L43)
 - [agents API 路由:1-19](file://apps/web/app/api/agents/route.ts#L1-L19)
 - [Prisma 客户端初始化:1-17](file://apps/web/lib/prisma.ts#L1-L17)
-- [schema.prisma:1-626](file://packages/db/prisma/schema.prisma#L1-L626)
+- [schema.prisma:1-626](file://apps/web/prisma/schema.prisma#L1-L626)
 - [权限与角色类型定义:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
 - [发布与版本类型定义:1-35](file://packages/shared/src/types/release.ts#L1-L35)
 
@@ -313,8 +313,8 @@ Types_Release["发布与版本类型"] -.-> API_Agents
 - 并发控制：提交发布与回滚操作应加锁或幂等键，防止重复提交导致不一致。
 
 章节来源
-- [schema.prisma:89-91](file://packages/db/prisma/schema.prisma#L89-L91)
-- [schema.prisma:192-214](file://packages/db/prisma/schema.prisma#L192-L214)
+- [schema.prisma:89-91](file://apps/web/prisma/schema.prisma#L89-L91)
+- [schema.prisma:192-214](file://apps/web/prisma/schema.prisma#L192-L214)
 
 ## 故障排查指南
 - 权限问题：确认用户角色与产品组成员身份，检查 Role/Permission/UserRole 配置是否正确。
@@ -323,8 +323,8 @@ Types_Release["发布与版本类型"] -.-> API_Agents
 - 审计追踪：通过 AuditLog 检索关键操作的 userId、action、resource、details，辅助定位问题。
 
 章节来源
-- [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-L354)
-- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-L625)
+- [schema.prisma:298-354](file://apps/web/prisma/schema.prisma#L298-L354)
+- [schema.prisma:563-625](file://apps/web/prisma/schema.prisma#L563-L625)
 - [权限与角色类型定义:1-36](file://packages/shared/src/types/permission.ts#L1-L36)
 
 ## 结论

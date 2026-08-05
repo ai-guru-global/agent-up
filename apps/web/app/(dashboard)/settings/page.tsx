@@ -109,9 +109,12 @@ function ProductGroupsTab() {
     }
   }, []);
 
+  // 拉取前同步重置 loading/error 是有意的；setState 均在 await 前完成，无级联风险
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchGroups();
   }, [fetchGroups]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleCreate = async () => {
     if (!name || !displayName) return;
@@ -244,9 +247,11 @@ function RolesTab() {
     }
   }, []);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleCreate = async () => {
     if (!name || !displayName) return;
@@ -408,6 +413,8 @@ function AuditLogsTab() {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
 
+  // 翻页时同步重置 loading/error 是有意的；后续 setState 均在异步回调中
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setLoading(true);
     setError("");
@@ -420,6 +427,7 @@ function AuditLogsTab() {
       .catch(() => setError("网络错误"))
       .finally(() => setLoading(false));
   }, [page]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div>

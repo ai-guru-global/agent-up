@@ -5,8 +5,12 @@
 - [apps/web/app/api/agents/route.ts](file://apps/web/app/api/agents/route.ts)
 - [apps/web/app/api/agents/[id]/route.ts](file://apps/web/app/api/agents/[id]/route.ts)
 - [apps/web/app/api/agents/[id]/config/[partition]/route.ts](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts)
+- [apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts](file://apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts)
 - [apps/web/app/api/agents/[id]/release/route.ts](file://apps/web/app/api/agents/[id]/release/route.ts)
 - [apps/web/app/api/agents/[id]/skills/route.ts](file://apps/web/app/api/agents/[id]/skills/route.ts)
+- [apps/web/app/api/agents/[id]/versions/route.ts](file://apps/web/app/api/agents/[id]/versions/route.ts)
+- [apps/web/app/api/agents/[id]/versions/[versionId]/route.ts](file://apps/web/app/api/agents/[id]/versions/[versionId]/route.ts)
+- [apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts](file://apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts)
 - [apps/web/app/api/feedback/route.ts](file://apps/web/app/api/feedback/route.ts)
 - [apps/web/app/api/releases/route.ts](file://apps/web/app/api/releases/route.ts)
 - [apps/web/app/api/releases/[id]/review/route.ts](file://apps/web/app/api/releases/[id]/review/route.ts)
@@ -21,11 +25,12 @@
 
 ## 更新摘要
 **变更内容**
-- 基于 Next.js App Router 重构了所有 RESTful API 端点
-- 新增了完整的 Agent、反馈、发布、技能、知识库和设置管理接口
-- 实现了统一的请求验证、错误处理和分页机制
-- 添加了配置分区管理和版本控制功能
-- 完善了权限控制和审计日志支持
+- 新增了完整的版本管理API端点，支持版本历史查询和回滚操作
+- 添加了GET /api/agents/[id]/versions用于列出所有已发布版本
+- 添加了GET /api/agents/[id]/versions/[versionId]用于获取版本详细信息
+- 添加了POST /api/agents/[id]/config/[partition]/rollback用于单分区回滚
+- 添加了POST /api/agents/[id]/rollback/[versionId]用于整版本回滚
+- 增强了版本控制功能和配置快照机制
 
 ## 目录
 1. [简介](#简介)
@@ -47,6 +52,8 @@
 ## 简介
 本文件为 Agent 改进平台的完整 RESTful API 接口文档。系统采用 Next.js App Router 架构，提供了全面的 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作以及系统设置等功能。所有接口遵循统一的响应格式和错误处理规范，支持分页查询、参数验证和权限控制。
 
+**最新更新**：新增了完整的版本管理功能，包括版本历史查询、版本详情获取、单分区回滚和整版本回滚等高级特性。
+
 ## 项目结构
 - Web 应用基于 Next.js App Router，API 路由位于 apps/web/app/api 下
 - 使用 Prisma ORM 进行数据库操作，支持 PostgreSQL
@@ -65,10 +72,6 @@ API --> Storage["MinIO 对象存储<br/>可选"]
 
 **图表来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
-- [apps/web/app/api/utils.ts](file://apps/web/app/api/utils.ts)
-
-**章节来源**
-- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
 
 ## 核心组件
@@ -77,6 +80,7 @@ API --> Storage["MinIO 对象存储<br/>可选"]
 - **分页支持**：统一的分页参数处理和元数据返回
 - **错误处理**：统一的错误码和消息格式
 - **服务层抽象**：业务逻辑与路由层分离，便于维护和测试
+- **版本管理**：完整的版本历史追踪和回滚机制
 
 **章节来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
@@ -196,6 +200,106 @@ R-->>C : "标准化响应"
 
 **章节来源**
 - [apps/web/app/api/agents/[id]/config/[partition]/route.ts:1-105](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L1-L105)
+
+### 版本管理接口
+
+#### 获取 Agent 版本历史
+- **方法**: GET
+- **URL**: `/api/agents/:id/versions`
+- **认证**: 需要
+- **路径参数**: `id` (Agent 标识)
+- **描述**: 返回该 Agent 的所有已发布版本，按发布时间倒序排列
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "data": {
+      "items": [
+        {
+          "id": "ver-002",
+          "agentId": "ecs-assistant",
+          "version": "0.2.0",
+          "publishedAt": "2024-01-01T00:00:00Z",
+          "promptSnapshot": {...},
+          "knowledgeSnapshot": {...},
+          "toolsSnapshot": {...},
+          "routingSnapshot": {...}
+        }
+      ],
+      "total": 2
+    }
+  }
+  ```
+
+#### 获取版本详情
+- **方法**: GET
+- **URL**: `/api/agents/:id/versions/:versionId`
+- **认证**: 需要
+- **路径参数**:
+  - `id`: Agent 标识
+  - `versionId`: 版本标识
+- **描述**: 返回指定版本的详细信息，包含四个分区的完整快照
+- **响应**: 返回版本对象的完整信息
+
+#### 单分区回滚
+- **方法**: POST
+- **URL**: `/api/agents/:id/config/:partition/rollback`
+- **认证**: 需要
+- **路径参数**:
+  - `id`: Agent 标识
+  - `partition`: 分区类型（prompt/knowledge/tools/routing）
+- **请求体**:
+  ```json
+  {
+    "versionId": "string (必填)"
+  }
+  ```
+- **描述**: 从指定版本的快照中恢复单个分区的配置
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "data": {
+      "partition": "prompt",
+      "restoredFromVersion": "0.1.0",
+      "config": {...}
+    }
+  }
+  ```
+
+#### 整版本回滚
+- **方法**: POST
+- **URL**: `/api/agents/:id/rollback/:versionId`
+- **认证**: 需要
+- **路径参数**:
+  - `id`: Agent 标识
+  - `versionId`: 目标版本标识
+- **描述**: 将 Agent 的所有四个分区一次性回滚到指定版本
+- **行为**:
+  1. 覆盖 Agent 的四个 active config 为目标版本的 snapshot
+  2. 写入一个 status=APPROVED 的 release（含 configSnapshot）做追溯
+  3. 派生新 Version（版本号自增），确保历史快照不可变
+  4. 写入 audit，action = "agent.rollback"
+- **响应**: 
+  ```json
+  {
+    "success": true,
+    "data": {
+      "release": {...},
+      "version": {...},
+      "restoredFrom": {
+        "id": "ver-001",
+        "version": "0.1.0"
+      }
+    }
+  }
+  ```
+
+**章节来源**
+- [apps/web/app/api/agents/[id]/versions/route.ts:1-44](file://apps/web/app/api/agents/[id]/versions/route.ts#L1-L44)
+- [apps/web/app/api/agents/[id]/versions/[versionId]/route.ts:1-36](file://apps/web/app/api/agents/[id]/versions/[versionId]/route.ts#L1-L36)
+- [apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts:1-118](file://apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts#L1-L118)
+- [apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts:1-37](file://apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts#L1-L37)
 
 ### 发布管理接口
 
@@ -578,6 +682,40 @@ async function updateConfigPartition(agentId, partition, config) {
   );
   return response.json();
 }
+
+// 获取版本历史
+async function getVersions(agentId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agents/${agentId}/versions`,
+    { headers }
+  );
+  return response.json();
+}
+
+// 单分区回滚
+async function rollbackPartition(agentId, partition, versionId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agents/${agentId}/config/${partition}/rollback`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ versionId })
+    }
+  );
+  return response.json();
+}
+
+// 整版本回滚
+async function rollbackAgent(agentId, versionId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agents/${agentId}/rollback/${versionId}`,
+    {
+      method: 'POST',
+      headers
+    }
+  );
+  return response.json();
+}
 ```
 
 ### 错误处理
@@ -668,7 +806,7 @@ Route --> Storage["MinIO 可选"]
 - **API 测试工具**: 使用 Postman 或 curl 独立测试端点
 
 ## 结论
-本 API 文档基于 Next.js App Router 架构，提供了完整的 RESTful 接口规范。系统已实现 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作和系统设置等核心功能。所有接口遵循统一的响应格式、错误处理规范和权限控制机制，为后续功能扩展奠定了坚实基础。
+本 API 文档基于 Next.js App Router 架构，提供了完整的 RESTful 接口规范。系统已实现 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作和系统设置等核心功能。**最新版本增加了完整的版本管理功能**，包括版本历史查询、版本详情获取、单分区回滚和整版本回滚等高级特性，为 Agent 配置管理提供了强大的版本控制和灾难恢复能力。
 
 ## 附录
 
@@ -688,6 +826,7 @@ SKILL ||--o{ SKILL_VERSION : "发布版本"
 WIKI_VAULT ||--o{ WIKI_PAGE : "包含页面"
 WIKI_VAULT ||--o{ WIKI_INGEST_JOB : "执行任务"
 AGENT ||--o| WIKI_VAULT : "关联知识库"
+AGENT_VERSION ||--o{ VERSION_SNAPSHOT : "包含快照"
 ```
 
 ### API 端点总览
@@ -700,6 +839,10 @@ AGENT ||--o| WIKI_VAULT : "关联知识库"
 | Agent | DELETE | /api/agents/:id | 归档 Agent |
 | Config | GET | /api/agents/:id/config/:partition | 获取分区配置 |
 | Config | PUT | /api/agents/:id/config/:partition | 更新分区配置 |
+| Config | POST | /api/agents/:id/config/:partition/rollback | 单分区回滚 |
+| Version | GET | /api/agents/:id/versions | 获取版本历史 |
+| Version | GET | /api/agents/:id/versions/:versionId | 获取版本详情 |
+| Rollback | POST | /api/agents/:id/rollback/:versionId | 整版本回滚 |
 | Release | POST | /api/agents/:id/release | 提交发布 |
 | Release | PUT | /api/agents/:id/release | 审批发布 |
 | Release | GET | /api/releases | 获取发布列表 |
@@ -722,3 +865,31 @@ AGENT ||--o| WIKI_VAULT : "关联知识库"
 | Settings | GET | /api/settings/roles | 获取角色列表 |
 | Settings | POST | /api/settings/roles | 创建角色 |
 | Dashboard | GET | /api/dashboard | 获取统计数据 |
+
+### 版本管理特性说明
+
+#### 版本快照机制
+每个版本都包含四个分区的完整快照：
+- `promptSnapshot`: 提示词配置快照
+- `knowledgeSnapshot`: 知识库配置快照  
+- `toolsSnapshot`: 工具配置快照
+- `routingSnapshot`: 路由配置快照
+
+#### 回滚操作对比
+| 操作类型 | 端点 | 影响范围 | 适用场景 |
+|----------|------|----------|----------|
+| 单分区回滚 | POST /api/agents/:id/config/:partition/rollback | 单个分区 | 某个分区配置出错，其他分区正常 |
+| 整版本回滚 | POST /api/agents/:id/rollback/:versionId | 全部四个分区 | 整个版本出现问题，需要完全回退 |
+
+#### 版本历史特性
+- 按发布时间倒序排列
+- 包含有效性报告（effectivenessReport）
+- 支持懒加载计算（超过7天自动计算）
+- 不可变的版本快照保证历史一致性
+
+**章节来源**
+- [apps/web/app/api/agents/[id]/versions/route.ts:1-44](file://apps/web/app/api/agents/[id]/versions/route.ts#L1-L44)
+- [apps/web/app/api/agents/[id]/versions/[versionId]/route.ts:1-36](file://apps/web/app/api/agents/[id]/versions/[versionId]/route.ts#L1-L36)
+- [apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts:1-118](file://apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts#L1-L118)
+- [apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts:1-37](file://apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts#L1-L37)
+- [apps/web/lib/services/release-service.ts:255-341](file://apps/web/lib/services/release-service.ts#L255-L341)

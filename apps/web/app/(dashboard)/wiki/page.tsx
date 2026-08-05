@@ -66,9 +66,12 @@ export default function WikiPage() {
     }
   }, []);
 
+  // 拉取前同步重置 loading/error 是有意的；setState 均在 await 前完成，无级联风险
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchVaults();
   }, [fetchVaults]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const fetchPages = useCallback(async (vaultId: string) => {
     setPagesLoading(true);
