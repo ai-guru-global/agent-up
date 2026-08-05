@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: apps_web/app_pages
-title: Web 应用前端与 API 路由层
-scope:
-    - apps/web/app/
-source_files: []
-depends_on: []
-related_to: []

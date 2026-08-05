@@ -1,16 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { submitRelease, reviewRelease } from "@/lib/services/release-service";
-import { store } from "@/lib/data/store";
+import { store, _getDataDir } from "@/lib/data/store";
 import { NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
 import { resetActor } from "@/lib/context";
 import { useTempDataDir, restoreDataDir } from "./helpers/mock-store";
+import { rmSync, mkdirSync } from "fs";
+import { join } from "path";
 
 const AGENT_ID = "ecs-assistant";
 
 beforeEach(() => {
   resetActor();
   useTempDataDir();
-  // 给种子 agent 写入非空配置（种子里已有 promptConfig/knowledgeConfig 等）
+  // 清空 versions 目录，让每个测试从「无已发布版本」的干净状态开始
+  // （种子现在含 ver-001/ver-002，会干扰 diff 逻辑）
+  const versionsDir = join(_getDataDir(), "versions");
+  rmSync(versionsDir, { recursive: true, force: true });
+  mkdirSync(versionsDir, { recursive: true });
 });
 afterEach(restoreDataDir);
 

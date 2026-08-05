@@ -59,7 +59,7 @@ export function recordAudit(
   } catch (err) {
     // 审计失败不抛——业务已成功，不能因审计把请求变 500
     if (process.env.NODE_ENV !== "test") {
-      // eslint-disable-next-line no-console
+       
       console.error("[audit] recordAudit failed:", err);
     }
   }

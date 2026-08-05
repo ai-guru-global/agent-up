@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: web_app
-title: Agent 持续改进平台 Web 管理后台
-scope:
-    - apps/web/
-source_files: []
-depends_on: []
-related_to: []

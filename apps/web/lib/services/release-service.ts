@@ -238,6 +238,107 @@ function compareSemVer(a: string, b: string): number {
   return 0;
 }
 
+/**
+ * 整版本回滚：把 Agent 当前的 4 分区 active config 覆盖为目标 Version 的 snapshot。
+ *
+ * 行为（与单分区 POST /config/[partition]/rollback 的区别）：
+ * - 一次性覆盖 4 个分区，无需先编辑草稿
+ * - 创建一个 APPROVED Release（不走 PENDING 审批流，因为回滚是紧急恢复而非新增变更）
+ * - 立即由 createVersionFromRelease 派生新 Version（版本号自增），确保历史快照不可变
+ * - 写入 audit，action = "agent.rollback"，details 包含 targetVersionId / 4 分区变化量
+ *
+ * 与分区级回滚的取舍：
+ * - 分区级回滚更精细（只回滚坏掉的分区），适合「其它分区配置是好的，只是某个分区坏了」场景
+ * - 整版本回滚更稳（保证 4 分区组合与历史完全一致），适合「整个版本出问题，全量回退」场景
+ *   例如：Version 0.2.0 整体表现不及预期，回到 0.1.0
+ */
+export async function createRollbackRelease(agentId: string, targetVersionId: string) {
+  const agent = store.read<AgentLike>("agents", `${agentId}.json`);
+  if (!agent) throw new NotFoundError("Agent 不存在");
+
+  const target = store.read<Record<string, unknown>>("versions", `${targetVersionId}.json`);
+  if (!target) throw new NotFoundError("Version 不存在");
+  if (target.agentId !== agentId) {
+    throw new ValidationError("该 Version 不属于此 Agent");
+  }
+
+  const partitions: Partition[] = ["PROMPT", "KNOWLEDGE", "TOOLS", "ROUTING"];
+  const snapshotKey: Record<Partition, string> = {
+    PROMPT: "promptSnapshot",
+    KNOWLEDGE: "knowledgeSnapshot",
+    TOOLS: "toolsSnapshot",
+    ROUTING: "routingSnapshot",
+  };
+  const activeKey: Record<Partition, keyof AgentLike> = {
+    PROMPT: "promptConfig",
+    KNOWLEDGE: "knowledgeConfig",
+    TOOLS: "toolsConfig",
+    ROUTING: "routingConfig",
+  };
+
+  // 1) 直接覆盖 agent 当前 4 分区为 target 的 snapshot
+  const ts = store.now();
+  const configSnapshot: Record<string, unknown> = {};
+  for (const p of partitions) {
+    const raw = (target[snapshotKey[p]] as Record<string, unknown> | null) ?? {};
+    const { version: _v, lastModifiedAt: _l, ...payload } = raw;
+    void _v; void _l;
+    configSnapshot[p.toLowerCase()] = payload;
+    (agent as Record<string, unknown>)[activeKey[p]] = payload;
+  }
+  (agent as Record<string, unknown>).updatedAt = ts;
+  store.write(agent as Record<string, unknown>, "agents", `${agentId}.json`);
+
+  // 2) 创建一个 status=APPROVED 的 release（不走审批）
+  const actor = getActor();
+  const releaseId = store.generateId();
+  const release: Record<string, unknown> = {
+    id: releaseId,
+    agentId,
+    changeNote: `回滚到 Version ${String(target.version)}`,
+    changedPartitions: partitions,
+    status: "APPROVED",
+    submittedBy: actor.id,
+    submittedAt: ts,
+    approvedBy: actor.id,
+    approvedAt: ts,
+    reviewComment: "回滚操作（紧急恢复，无需审批）",
+    configSnapshot: { ...configSnapshot, snapshotAt: ts },
+    isRollback: true,
+    rollbackFromVersion: String(target.version),
+    rollbackToVersionId: target.id,
+    version: null,
+  };
+
+  // 3) 立即派生新 Version（createVersionFromRelease 会按当前最高版本号自增）
+  const newVersion = createVersionFromRelease({
+    ...release,
+    changeNote: `回滚到 v${String(target.version)}`,
+  });
+  release.version = {
+    id: newVersion.id,
+    version: newVersion.version,
+    publishedAt: newVersion.publishedAt,
+  };
+
+  store.write(release, "releases", `${releaseId}.json`);
+
+  // 4) 审计
+  recordAudit("agent.rollback", "agent", agentId, {
+    rollbackFromVersion: String(target.version),
+    rollbackToVersionId: target.id,
+    newVersionId: newVersion.id,
+    newVersion: newVersion.version,
+    partitions: partitions,
+  });
+
+  return {
+    release: withAgentName(release),
+    version: newVersion,
+    restoredFrom: { id: target.id, version: target.version },
+  };
+}
+
 export async function listReleases(agentId: string, status?: string) {
   let items = store
     .list<Record<string, unknown>>("releases")

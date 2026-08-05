@@ -1,0 +1,138 @@
+{
+  "id": "ver-001",
+  "agentId": "ecs-assistant",
+  "version": "0.1.0",
+  "major": 0,
+  "minor": 1,
+  "patch": 0,
+  "promptSnapshot": {
+    "systemPrompt": "你是一个专业的 ECS 云服务器技术支持助手。你的职责是帮助 CRE（客户可靠性工程师）快速定位和解决 ECS 相关工单问题。\n\n## 核心能力\n- ECS 实例管理（创建、启停、释放、变配）\n- 网络配置（VPC、安全组、弹性公网 IP）\n- 存储管理（云盘、快照、NAS 挂载）\n- 故障排查（实例无法连接、性能问题、系统异常）\n\n## 回答原则\n1. 先确认问题现象和环境信息\n2. 给出排查步骤和可能的解决方案\n3. 涉及高危操作时明确提示风险\n4. 不确定的问题建议联系 ECS 内核团队",
+    "roleDefinition": "ECS 技术支持专家",
+    "constraints": [
+      "不回答非 ECS 产品的问题",
+      "不执行任何实际变更操作",
+      "涉及数据安全的问题提醒用户注意"
+    ],
+    "outputFormat": "Markdown"
+  },
+  "knowledgeSnapshot": {
+    "wikiVaultId": "ecs-wiki",
+    "searchStrategy": "WIKI_FIRST",
+    "fallbackToMcp": true,
+    "maxWikiResults": 3,
+    "confidenceThreshold": 0.5
+  },
+  "toolsSnapshot": {
+    "mcpTools": [
+      {
+        "name": "ecs_instance_query",
+        "displayName": "ECS 实例查询",
+        "description": "根据实例 ID 或条件查询 ECS 实例状态",
+        "endpoint": "https://ecs-api.internal/v1/instances",
+        "method": "GET",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "instanceId": {
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": {
+          "type": "object"
+        },
+        "authType": "bearer",
+        "permissionScope": "read_only",
+        "enabled": true
+      }
+    ],
+    "wikiQueryTools": [
+      {
+        "name": "wiki_search",
+        "displayName": "知识库搜索",
+        "description": "在 ECS 知识库中搜索相关知识",
+        "searchType": "hybrid",
+        "maxResults": 5,
+        "minConfidence": 0.6,
+        "enabled": true
+      }
+    ],
+    "maxConcurrentCalls": 3,
+    "timeoutMs": 30000,
+    "retryCount": 2
+  },
+  "routingSnapshot": {
+    "rules": [
+      {
+        "id": "rule-1",
+        "name": "实例无法连接",
+        "matchCondition": {
+          "keywords": [
+            "无法连接",
+            "SSH失败",
+            "远程桌面",
+            "网络不通"
+          ],
+          "category": "connectivity"
+        },
+        "action": {
+          "type": "route_to_agent",
+          "targetAgentId": "ecs-assistant",
+          "priority": 1
+        }
+      },
+      {
+        "id": "rule-2",
+        "name": "性能问题",
+        "matchCondition": {
+          "keywords": [
+            "CPU高",
+            "内存不足",
+            "磁盘满",
+            "IO瓶颈"
+          ],
+          "category": "performance"
+        },
+        "action": {
+          "type": "route_to_agent",
+          "targetAgentId": "ecs-assistant",
+          "priority": 2
+        }
+      }
+    ],
+    "defaultAction": {
+      "type": "route_to_human",
+      "reason": "未匹配到已知问题类型"
+    },
+    "humanThreshold": 0.3,
+    "maxConversationTurns": 10,
+    "idleTimeoutMinutes": 5
+  },
+  "releaseId": "rel-000",
+  "publishedBy": "admin-zhao",
+  "publishedAt": "2026-06-15T08:00:00.000Z",
+  "changeNote": "初始发布",
+  "effectivenessReport": {
+    "totalFeedbacks": 0,
+    "byRating": {
+      "POSITIVE": 0,
+      "NEGATIVE": 0,
+      "NEUTRAL": 0
+    },
+    "bySeverity": {
+      "CRITICAL": 0,
+      "MAJOR": 0,
+      "MINOR": 0,
+      "SUGGESTION": 0
+    },
+    "byPartition": {
+      "PROMPT": 0,
+      "KNOWLEDGE": 0,
+      "TOOLS": 0,
+      "ROUTING": 0
+    },
+    "computedAt": "2026-08-05T04:15:59.941Z",
+    "versionPublishedAt": "2026-06-15T08:00:00.000Z",
+    "windowDays": 7
+  }
+}

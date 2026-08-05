@@ -167,6 +167,198 @@ export default function AgentDetailPage() {
           </button>
         </div>
       </div>
+
+      <VersionHistory agentId={id} activePartition={activeTab} onRollbackDone={fetchConfig} />
+    </div>
+  );
+}
+
+const PARTITION_LABELS: Record<string, string> = {
+  prompt: "Prompt",
+  knowledge: "知识",
+  tools: "工具",
+  routing: "路由",
+};
+
+interface EffectivenessReport {
+  totalFeedbacks: number;
+  byRating: { POSITIVE: number; NEGATIVE: number; NEUTRAL: number };
+  bySeverity: { CRITICAL: number; MAJOR: number; MINOR: number; SUGGESTION: number };
+}
+
+/** 版本效果标签：只在 version.publishedAt 距今 ≥ 7 天后由 API 端 lazy fill。 */
+function EffectivenessChip({ report }: { report: EffectivenessReport }) {
+  const neg = report.byRating.NEGATIVE;
+  const critical = report.bySeverity.CRITICAL;
+  // 颜色按「问题密度」:critical > 0 → 红色,negative > positive → 琥珀,正常 → 灰色
+  const tone =
+    critical > 0
+      ? "bg-red-500/10 text-red-400"
+      : neg > report.byRating.POSITIVE
+        ? "bg-amber-500/10 text-amber-400"
+        : "bg-zinc-500/10 text-zinc-400";
+  return (
+    <span
+      className={`rounded px-1.5 py-0.5 text-[11px] tabular-nums ${tone}`}
+      title={`上线 7 天窗口内的反馈汇总:总 ${report.totalFeedbacks} 条,负向 ${neg} 条,严重 ${critical} 条`}
+    >
+      📊 {report.totalFeedbacks} 反馈 · 负 {neg}
+      {critical > 0 && ` · ⚠${critical}`}
+    </span>
+  );
+}
+
+/** 版本历史 + 分区级一键回滚 */
+function VersionHistory({
+  agentId,
+  activePartition,
+  onRollbackDone,
+}: {
+  agentId: string;
+  activePartition: string;
+  onRollbackDone: () => void;
+}) {
+  const [versions, setVersions] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [rolling, setRolling] = useState<string | null>(null);
+  const [rollingAll, setRollingAll] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+
+  const fetchVersions = useCallback(async () => {
+    const res = await fetch(`/api/agents/${agentId}/versions`);
+    const json = await res.json();
+    if (json.success) setVersions(json.data.items);
+    setLoading(false);
+  }, [agentId]);
+
+  useEffect(() => { fetchVersions(); /* eslint-disable-line react-hooks/set-state-in-effect */ }, [agentId]); // deps on agentId only; fetchVersions already memoized via useCallback
+
+  const handleRollback = async (versionId: string, versionLabel: string) => {
+    if (!confirm(`确认将「${PARTITION_LABELS[activePartition] || activePartition}」分区回滚到 Version ${versionLabel}？`)) return;
+    setRolling(versionId);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/agents/${agentId}/config/${activePartition}/rollback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ versionId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setMsg(`已回滚 ${PARTITION_LABELS[activePartition]} 到 v${versionLabel}`);
+        onRollbackDone();
+      } else {
+        setMsg(json.error || "回滚失败");
+      }
+    } catch {
+      setMsg("网络错误");
+    } finally {
+      setRolling(null);
+    }
+  };
+
+  const handleRollbackAll = async (versionId: string, versionLabel: string) => {
+    if (!confirm(
+      `确认将整个 Agent 回滚到 v${versionLabel}?\n\n` +
+      `这会一次性覆盖全部 4 个分区(Prompt/知识/工具/路由),并立即生成新版本(版本号自增)。\n` +
+      `此操作不可撤销,但回滚本身会写入审计日志。`,
+    )) return;
+    setRollingAll(versionId);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/agents/${agentId}/rollback/${versionId}`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (json.success) {
+        const newVer = json.data.version.version as string;
+        setMsg(`已回滚整个 Agent 到 v${versionLabel},新版本 v${newVer} 已生成`);
+        onRollbackDone();
+        await fetchVersions();
+      } else {
+        setMsg(json.error || "整版本回滚失败");
+      }
+    } catch {
+      setMsg("网络错误");
+    } finally {
+      setRollingAll(null);
+    }
+  };
+
+  if (loading) {
+    return <div className="mt-8 animate-pulse rounded-md bg-[var(--surface-elevated)] h-24" />;
+  }
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">
+          版本历史 <span className="text-zinc-400 font-normal">({versions.length})</span>
+        </h2>
+        <span className="text-[11px] text-zinc-400">
+          回滚作用于当前「{PARTITION_LABELS[activePartition] || activePartition}」分区
+        </span>
+      </div>
+
+      {msg && (
+        <p className={`mt-2 text-sm ${msg.includes("已回滚") ? "text-emerald-400" : "text-red-400"}`}>{msg}</p>
+      )}
+
+      {versions.length === 0 ? (
+        <p className="mt-3 py-6 text-center text-xs text-zinc-400">暂无已发布版本</p>
+      ) : (
+        <div className="mt-3 divide-y divide-[var(--border)] rounded-md bg-[var(--surface)] ring-1 ring-[var(--border)]">
+          {versions.map((v) => {
+            const ver = v.version as string;
+            const snap = v[`${activePartition}Snapshot`] as Record<string, unknown> | null;
+            const eff = v.effectivenessReport as
+              | {
+                  totalFeedbacks: number;
+                  byRating: { POSITIVE: number; NEGATIVE: number; NEUTRAL: number };
+                  bySeverity: { CRITICAL: number; MAJOR: number; MINOR: number; SUGGESTION: number };
+                }
+              | undefined;
+            return (
+              <div key={v.id as string} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-400 tabular-nums">
+                      v{ver}
+                    </span>
+                    <span className="text-[12px] text-zinc-400">
+                      {v.changeNote ? String(v.changeNote) : "（无说明）"}
+                    </span>
+                    {eff && <EffectivenessChip report={eff} />}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-zinc-500 tabular-nums">
+                    {v.publishedAt ? new Date(v.publishedAt as string).toLocaleString("zh-CN") : ""}
+                    {" · "}
+                    {v.publishedBy ? String(v.publishedBy) : ""}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => handleRollbackAll(v.id as string, ver)}
+                    disabled={rollingAll === v.id || rolling === v.id}
+                    className="rounded-md px-2.5 py-1.5 text-[11px] font-medium text-amber-400 ring-1 ring-amber-500/30 hover:bg-amber-500/10 active:scale-[0.98] disabled:opacity-40"
+                    title={`将整个 Agent 回滚到 v${ver}(覆盖 4 个分区,立即生成新版本)`}
+                  >
+                    {rollingAll === v.id ? "回滚中…" : "回滚整个版本"}
+                  </button>
+                  <button
+                    onClick={() => handleRollback(v.id as string, ver)}
+                    disabled={rolling === v.id || !snap}
+                    className="rounded-md px-3 py-1.5 text-[11px] font-medium text-[var(--accent)] ring-1 ring-[var(--accent)]/30 hover:bg-[var(--accent-muted)]/40 active:scale-[0.98] disabled:opacity-40"
+                    title={snap ? `回滚此分区的配置到 v${ver}` : "此版本无该分区快照"}
+                  >
+                    {rolling === v.id ? "回滚中…" : "回滚此分区"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

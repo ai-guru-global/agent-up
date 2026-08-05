@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: apps_web/app_pages/api_routes/wiki
-title: Wiki API 路由层
-scope:
-    - apps/web/app/api/wiki/
-source_files: []
-depends_on: []
-related_to: []

@@ -3,8 +3,11 @@ import { NextRequest } from "next/server";
 import { POST as submitRelease, PUT as reviewReleaseLegacy } from "@/app/api/agents/[id]/release/route";
 import { PUT as reviewRelease } from "@/app/api/releases/[id]/review/route";
 import { GET as listReleases } from "@/app/api/releases/route";
-import { store } from "@/lib/data/store";
+import { GET as getRelease } from "@/app/api/releases/[id]/route";
+import { store, _getDataDir } from "@/lib/data/store";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
+import { rmSync, mkdirSync } from "fs";
+import { join } from "path";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -20,7 +23,13 @@ function makeRequest(
   });
 }
 
-beforeEach(useTempDataDir);
+beforeEach(() => {
+  useTempDataDir();
+  // 清空 versions，让 release 流程从干净状态开始
+  const versionsDir = join(_getDataDir(), "versions");
+  rmSync(versionsDir, { recursive: true, force: true });
+  mkdirSync(versionsDir, { recursive: true });
+});
 afterEach(restoreDataDir);
 
 describe("POST /api/agents/[id]/release", () => {
@@ -177,5 +186,48 @@ describe("GET /api/releases", () => {
     const json = await res.json();
     expect(json.data.items).toBeInstanceOf(Array);
     expect(json.data.pagination).toBeDefined();
+  });
+});
+
+describe("GET /api/releases/[id] (single release + diff baseline)", () => {
+  it("returns 404 for missing release", async () => {
+    const res = await getRelease(
+      new NextRequest("http://localhost"),
+      { params: Promise.resolve({ id: "ghost" }) },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns release with configSnapshot + baseline for seed release", async () => {
+    const res = await getRelease(
+      new NextRequest("http://localhost"),
+      { params: Promise.resolve({ id: "rel-002" }) },
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.id).toBe("rel-002");
+    expect(json.data.agent).toBeTruthy();
+    expect(json.data.baseline).toBeDefined();
+    // baseline 应有四个分区字段
+    expect(json.data.baseline).toHaveProperty("prompt");
+    expect(json.data.baseline).toHaveProperty("knowledge");
+  });
+
+  it("returns configSnapshot for a newly submitted release", async () => {
+    // 提交一个新 release（versions 已清空，所以会有变更）
+    const submitReq = makeRequest("POST", { changeNote: "for snapshot test" });
+    const submitRes = await submitRelease(submitReq, {
+      params: Promise.resolve({ id: AGENT_ID }),
+    });
+    const releaseId = (await submitRes.json()).data.id;
+
+    const res = await getRelease(
+      new NextRequest("http://localhost"),
+      { params: Promise.resolve({ id: releaseId }) },
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.configSnapshot).toBeTruthy();
+    expect(json.data.configSnapshot).toHaveProperty("prompt");
   });
 });

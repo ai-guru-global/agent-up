@@ -141,7 +141,7 @@ export default function RoadmapPage() {
               "防止「模型停了≠目标达了」；让改进可验证",
             ],
             [
-              <span><strong>diff 查看器 + 分区级回滚</strong></span>,
+              <span><strong>diff 查看器 + 分区级回滚</strong> <Pill tone="good">已完成</Pill></span>,
               <Pill tone="neutral">OpenAI ① Repo 即真相源</Pill>,
               "复用已有的 lib/diff.ts，做 Release 详情页的 partition diff；Version 快照支持分区级一键回滚",
               "改了能看清、错了能回退；降低审批认知负担",

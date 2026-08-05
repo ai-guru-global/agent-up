@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: db_package
-title: Agent 平台数据库访问层与领域模型
-scope:
-    - packages/db/
-source_files: []
-depends_on: []
-related_to: []

@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: ui_package
-title: '@agent-up/ui 共享 UI 组件库'
-scope:
-    - packages/ui/
-source_files: []
-depends_on: []
-related_to: []

@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: apps_web/app_pages/api_routes/settings
-title: 设置管理 API 路由
-scope:
-    - apps/web/app/api/settings/
-source_files: []
-depends_on: []
-related_to: []

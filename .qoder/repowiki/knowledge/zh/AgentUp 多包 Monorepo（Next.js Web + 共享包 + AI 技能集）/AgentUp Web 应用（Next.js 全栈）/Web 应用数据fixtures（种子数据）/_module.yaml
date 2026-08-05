@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: apps_web/data_fixtures
-title: Web 应用数据fixtures（种子数据）
-scope:
-    - apps/web/data/
-source_files: []
-depends_on: []
-related_to: []

@@ -1,0 +1,46 @@
+{
+  "id": "ver-rds-001",
+  "agentId": "rds-assistant",
+  "version": "0.1.0",
+  "major": 0,
+  "minor": 1,
+  "patch": 0,
+  "promptSnapshot": {
+    "systemPrompt": "你是一个专业的 RDS 数据库技术支持助手。帮助 CRE 处理 MySQL、PostgreSQL、SQL Server 等数据库相关工单。\n\n## 核心能力\n- 数据库连接问题排查\n- 慢查询分析与优化建议\n- 备份恢复操作指导\n- 参数调优建议",
+    "roleDefinition": "RDS 数据库技术支持专家",
+    "constraints": [
+      "不执行 DDL/DML 操作",
+      "涉及数据迁移时提醒备份",
+      "不直接查看用户数据"
+    ],
+    "outputFormat": "Markdown"
+  },
+  "knowledgeSnapshot": {
+    "wikiVaultId": "rds-wiki",
+    "searchStrategy": "WIKI_FIRST",
+    "fallbackToMcp": true,
+    "maxWikiResults": 5,
+    "confidenceThreshold": 0.6
+  },
+  "toolsSnapshot": {
+    "mcpTools": [],
+    "wikiQueryTools": [],
+    "maxConcurrentCalls": 3,
+    "timeoutMs": 30000,
+    "retryCount": 2
+  },
+  "routingSnapshot": {
+    "rules": [],
+    "defaultAction": {
+      "type": "route_to_human",
+      "reason": "未匹配已知问题"
+    },
+    "humanThreshold": 0.3,
+    "maxConversationTurns": 10,
+    "idleTimeoutMinutes": 5
+  },
+  "releaseId": "rel-rds-000",
+  "publishedBy": "admin-zhao",
+  "publishedAt": "2026-06-20T10:00:00.000Z",
+  "changeNote": "初始发布"
+}

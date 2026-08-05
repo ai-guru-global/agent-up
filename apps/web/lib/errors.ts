@@ -84,7 +84,7 @@ export function toErrorBody(err: unknown): {
   const message =
     err instanceof Error ? err.message : "服务器内部错误";
   if (process.env.NODE_ENV !== "test") {
-    // eslint-disable-next-line no-console
+     
     console.error("[unhandled]", err);
   }
   return {

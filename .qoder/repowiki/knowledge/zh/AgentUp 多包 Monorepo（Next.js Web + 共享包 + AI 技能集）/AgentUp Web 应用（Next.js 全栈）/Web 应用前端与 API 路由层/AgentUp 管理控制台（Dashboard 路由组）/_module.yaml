@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: apps_web/app_pages/dashboard_routes
-title: AgentUp 管理控制台（Dashboard 路由组）
-scope:
-    - apps/web/app/(dashboard)/
-source_files: []
-depends_on: []
-related_to: []
