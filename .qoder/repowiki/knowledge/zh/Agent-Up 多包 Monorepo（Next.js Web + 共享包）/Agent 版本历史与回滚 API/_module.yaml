@@ -7,4 +7,6 @@ scope:
     - apps/web/app/api/agents/[id]/rollback/
 source_files: []
 depends_on: []
-related_to: []
+related_to:
+    - path: web_data_versions
+    - path: web_lib_services_effectiveness

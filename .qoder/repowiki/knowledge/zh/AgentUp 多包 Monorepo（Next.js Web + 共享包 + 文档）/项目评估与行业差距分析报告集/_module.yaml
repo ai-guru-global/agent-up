@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: docs_reports
-title: 项目评估与行业差距分析报告集
-scope:
-    - docs/reports/
-source_files: []
-depends_on: []
-related_to: []

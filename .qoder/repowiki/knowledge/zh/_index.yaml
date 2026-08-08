@@ -3,7 +3,7 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-08-05T15:16:08Z"
+exported_at: "2026-08-08T09:33:53Z"
 modules:
     "":
         dir_name: Agent-Up 多包 Monorepo（Next.js Web + 共享包）
@@ -16,15 +16,6 @@ modules:
             - web_lib_services_effectiveness
         depends_on: []
         related_to: []
-    docs_reports:
-        dir_name: 项目评估与行业差距分析报告集
-        title: 项目评估与行业差距分析报告集
-        scope:
-            - docs/reports/
-        source_files: []
-        children: []
-        depends_on: []
-        related_to: []
     web_app_api_agents_versions:
         dir_name: Agent 版本历史与回滚 API
         title: Agent 版本历史与回滚 API
@@ -35,7 +26,9 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: web_data_versions
+            - path: web_lib_services_effectiveness
     web_data_versions:
         dir_name: Agent 版本快照数据
         title: Agent 版本快照数据
@@ -44,7 +37,9 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: web_app_api_agents_versions
+            - path: web_lib_services_effectiveness
     web_lib_services_effectiveness:
         dir_name: 版本效果报告服务（Effectiveness Report Service）
         title: 版本效果报告服务（Effectiveness Report Service）
@@ -53,4 +48,6 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: web_app_api_agents_versions
+            - path: web_data_versions

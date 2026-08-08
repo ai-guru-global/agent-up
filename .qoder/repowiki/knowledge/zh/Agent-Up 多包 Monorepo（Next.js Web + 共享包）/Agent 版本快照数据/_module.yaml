@@ -5,4 +5,6 @@ scope:
     - apps/web/data/versions/
 source_files: []
 depends_on: []
-related_to: []
+related_to:
+    - path: web_app_api_agents_versions
+    - path: web_lib_services_effectiveness
