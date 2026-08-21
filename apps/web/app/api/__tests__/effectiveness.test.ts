@@ -170,13 +170,16 @@ describe("getOrComputeEffectivenessReport (lazy fill)", () => {
 });
 
 describe("API: GET /api/agents/[id]/versions (lazy fill integration)", () => {
-  it("auto-fills effectivenessReport for old versions, leaves new versions without", async () => {
-    // 老版本(7 月发布,现在 8 月 5 日 → 35 天 > 7 天)
-    writeVersion({ id: "old", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" });
-    writeFeedback({ agentId: AGENT_ID, rating: "NEGATIVE", severity: "MAJOR", targetPartition: "PROMPT", submittedAt: "2026-07-03T00:00:00.000Z" });
+  // 相对日期：避免硬编码"近期"日期随真实时间推移越过 7 天窗口（时间炸弹）
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
 
-    // 新版本(刚发布,1 天前)
-    writeVersion({ id: "new", agentId: AGENT_ID, publishedAt: "2026-08-04T00:00:00.000Z" });
+  it("auto-fills effectivenessReport for old versions, leaves new versions without", async () => {
+    // 老版本(35 天前发布 → 35 天 > 7 天窗口)
+    writeVersion({ id: "old", agentId: AGENT_ID, publishedAt: daysAgo(35) });
+    writeFeedback({ agentId: AGENT_ID, rating: "NEGATIVE", severity: "MAJOR", targetPartition: "PROMPT", submittedAt: daysAgo(33) });
+
+    // 新版本(刚发布,1 天前,仍在 7 天窗口内)
+    writeVersion({ id: "new", agentId: AGENT_ID, publishedAt: daysAgo(1) });
 
     const res = await listVersions(new NextRequest("http://localhost"), {
       params: Promise.resolve({ id: AGENT_ID }),

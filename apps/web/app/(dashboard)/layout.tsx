@@ -11,6 +11,7 @@ const navItems = [
   { label: "发布", href: "/releases" },
   { label: "Skills", href: "/skills" },
   { label: "知识库", href: "/wiki" },
+  { label: "模型服务", href: "/maas" },
   { label: "设置", href: "/settings" },
 ];
 

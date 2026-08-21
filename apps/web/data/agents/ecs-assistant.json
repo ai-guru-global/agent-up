@@ -8,14 +8,14 @@
   "updatedAt": "2026-07-10T14:30:00.000Z",
   "createdBy": "system",
   "promptConfig": {
-    "systemPrompt": "你是一个专业的 ECS 云服务器技术支持助手。你的职责是帮助 CRE（客户可靠性工程师）快速定位和解决 ECS 相关工单问题。\n\n## 核心能力\n- ECS 实例管理（创建、启停、释放、变配）\n- 网络配置（VPC、安全组、弹性公网 IP）\n- 存储管理（云盘、快照、NAS 挂载）\n- 故障排查（实例无法连接、性能问题、系统异常）\n\n## 回答原则\n1. 先确认问题现象和环境信息\n2. 给出排查步骤和可能的解决方案\n3. 涉及高危操作时明确提示风险\n4. 不确定的问题建议联系 ECS 内核团队",
+    "systemPrompt": "你是一个专业的 ECS 云服务器技术支持助手。你的职责是帮助 CRE（客户可靠性工程师）快速定位和解决 ECS 相关工单问题。\n\n## 核心能力\n- ECS 实例管理（创建、启停、释放、变配）\n- 网络配置（VPC、安全组、弹性公网 IP）\n- 存储管理（云盘、快照、NAS 挂载）\n- 故障排查（实例无法连接、性能问题、系统异常）\n\n## 回答原则\n1. 先确认问题现象和环境信息\n2. 给出排查步骤和可能的解决方案\n3. 涉及高危操作时明确提示风险\n4. 不确定的问题建议联系 ECS 内核团队\n\n## 运行环境（MOCK）\n- 主模型：Qwen-Max（公共云经百炼 DashScope；专有云经 Apsara Stack 私有化推理）\n- 降级模型：Qwen-Plus；分类模型：Qwen-Turbo",
     "roleDefinition": "ECS 技术支持专家",
     "constraints": ["不回答非 ECS 产品的问题", "不执行任何实际变更操作", "涉及数据安全的问题提醒用户注意"],
     "outputFormat": "Markdown"
   },
   "knowledgeConfig": {
     "wikiVaultId": "ecs-wiki",
-    "searchStrategy": "WIKI_FIRST",
+    "searchStrategy": "HYBRID",
     "fallbackToMcp": true,
     "maxWikiResults": 5,
     "confidenceThreshold": 0.6
@@ -33,6 +33,30 @@
         "authType": "bearer",
         "permissionScope": "read_only",
         "enabled": true
+      },
+      {
+        "name": "bailian_kb_retrieval",
+        "displayName": "百炼知识库检索（MOCK）",
+        "description": "从百炼 RAG 知识库（公共云）/ 私有向量检索（专有云）检索工单处理知识",
+        "endpoint": "https://dashscope.aliyuncs.com/api/v1/mock/bailian-kb-retrieval",
+        "method": "POST",
+        "inputSchema": { "type": "object", "properties": { "query": { "type": "string" }, "topK": { "type": "number" } } },
+        "outputSchema": { "type": "object" },
+        "authType": "bearer",
+        "permissionScope": "read_only",
+        "enabled": true
+      },
+      {
+        "name": "dashscope_text_embedding",
+        "displayName": "DashScope 文本向量化（MOCK）",
+        "description": "text-embedding-v3 生成查询向量，供专有云私有向量检索使用",
+        "endpoint": "https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding",
+        "method": "POST",
+        "inputSchema": { "type": "object", "properties": { "texts": { "type": "array" } } },
+        "outputSchema": { "type": "object" },
+        "authType": "bearer",
+        "permissionScope": "read_only",
+        "enabled": true
       }
     ],
     "wikiQueryTools": [
@@ -43,6 +67,15 @@
         "searchType": "hybrid",
         "maxResults": 5,
         "minConfidence": 0.6,
+        "enabled": true
+      },
+      {
+        "name": "bailian_rag_fallback",
+        "displayName": "百炼 RAG 兜底检索（MOCK）",
+        "description": "wiki 蒸馏知识未命中时回退百炼 RAG 原始检索",
+        "searchType": "vector",
+        "maxResults": 3,
+        "minConfidence": 0.5,
         "enabled": true
       }
     ],
