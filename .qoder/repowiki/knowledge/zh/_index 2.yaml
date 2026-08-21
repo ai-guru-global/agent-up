@@ -3,14 +3,17 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-08-21T08:37:25Z"
+exported_at: "2026-08-08T09:33:53Z"
 modules:
     "":
-        dir_name: Agent 改进平台（Next.js Monorepo）
-        title: Agent 改进平台（Next.js Monorepo）
+        dir_name: Agent-Up 多包 Monorepo（Next.js Web + 共享包）
+        title: Agent-Up 多包 Monorepo（Next.js Web + 共享包）
         scope: []
         source_files: []
-        children: []
+        children:
+            - web_app_api_agents_versions
+            - web_data_versions
+            - web_lib_services_effectiveness
         depends_on: []
         related_to: []
     web_app_api_agents_versions:
