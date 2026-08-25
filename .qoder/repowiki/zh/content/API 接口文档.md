@@ -4,6 +4,7 @@
 **本文引用的文件**
 - [apps/web/app/api/agents/route.ts](file://apps/web/app/api/agents/route.ts)
 - [apps/web/app/api/agents/[id]/route.ts](file://apps/web/app/api/agents/[id]/route.ts)
+- [apps/web/app/api/agents/[id]/chat/route.ts](file://apps/web/app/api/agents/[id]/chat/route.ts)
 - [apps/web/app/api/agents/[id]/config/[partition]/route.ts](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts)
 - [apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts](file://apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts)
 - [apps/web/app/api/agents/[id]/release/route.ts](file://apps/web/app/api/agents/[id]/release/route.ts)
@@ -12,8 +13,11 @@
 - [apps/web/app/api/agents/[id]/versions/[versionId]/route.ts](file://apps/web/app/api/agents/[id]/versions/[versionId]/route.ts)
 - [apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts](file://apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts)
 - [apps/web/app/api/feedback/route.ts](file://apps/web/app/api/feedback/route.ts)
+- [apps/web/app/api/feedback/[id]/insight/route.ts](file://apps/web/app/api/feedback/[id]/insight/route.ts)
+- [apps/web/app/api/maas/probe/route.ts](file://apps/web/app/api/maas/probe/route.ts)
 - [apps/web/app/api/releases/route.ts](file://apps/web/app/api/releases/route.ts)
 - [apps/web/app/api/releases/[id]/review/route.ts](file://apps/web/app/api/releases/[id]/review/route.ts)
+- [apps/web/app/api/releases/[id]/summary/route.ts](file://apps/web/app/api/releases/[id]/summary/route.ts)
 - [apps/web/app/api/skills/route.ts](file://apps/web/app/api/skills/route.ts)
 - [apps/web/app/api/skills/[id]/route.ts](file://apps/web/app/api/skills/[id]/route.ts)
 - [apps/web/app/api/wiki/vaults/route.ts](file://apps/web/app/api/wiki/vaults/route.ts)
@@ -21,16 +25,18 @@
 - [apps/web/app/api/wiki/pages/[id]/route.ts](file://apps/web/app/api/wiki/pages/[id]/route.ts)
 - [apps/web/app/api/settings/roles/route.ts](file://apps/web/app/api/settings/roles/route.ts)
 - [apps/web/app/api/dashboard/route.ts](file://apps/web/app/api/dashboard/route.ts)
+- [apps/web/lib/schemas.ts](file://apps/web/lib/schemas.ts)
+- [apps/web/lib/services/llm-service.ts](file://apps/web/lib/services/llm-service.ts)
+- [apps/web/lib/services/feedback-service.ts](file://apps/web/lib/services/feedback-service.ts)
 </cite>
 
 ## 更新摘要
 **变更内容**
-- 新增了完整的版本管理API端点，支持版本历史查询和回滚操作
-- 添加了GET /api/agents/[id]/versions用于列出所有已发布版本
-- 添加了GET /api/agents/[id]/versions/[versionId]用于获取版本详细信息
-- 添加了POST /api/agents/[id]/config/[partition]/rollback用于单分区回滚
-- 添加了POST /api/agents/[id]/rollback/[versionId]用于整版本回滚
-- 增强了版本控制功能和配置快照机制
+- 新增了 LLM 集成相关 API 端点，包括 Agent 试聊、反馈洞察分析、MaaS 连通性探测和发布变更摘要
+- 添加了 POST /api/agents/[id]/chat 用于 Agent 实时对话测试
+- 添加了 POST /api/feedback/[id]/insight 用于基于 LLM 的反馈归因分析
+- 添加了 GET/POST /api/maas/probe 用于 MaaS 服务连通性检测
+- 添加了 POST /api/releases/[id]/summary 用于发布变更的智能摘要生成
 
 ## 目录
 1. [简介](#简介)
@@ -50,9 +56,7 @@
 15. [附录](#附录)
 
 ## 简介
-本文件为 Agent 改进平台的完整 RESTful API 接口文档。系统采用 Next.js App Router 架构，提供了全面的 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作以及系统设置等功能。所有接口遵循统一的响应格式和错误处理规范，支持分页查询、参数验证和权限控制。
-
-**最新更新**：新增了完整的版本管理功能，包括版本历史查询、版本详情获取、单分区回滚和整版本回滚等高级特性。
+本文件为 Agent 改进平台的完整 RESTful API 接口文档。系统采用 Next.js App Router 架构，提供了全面的 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作以及系统设置等功能。**最新版本增强了 LLM 集成能力**，新增了 Agent 试聊、反馈洞察分析、MaaS 连通性检测和发布变更摘要等智能功能。所有接口遵循统一的响应格式和错误处理规范，支持分页查询、参数验证和权限控制。
 
 ## 项目结构
 - Web 应用基于 Next.js App Router，API 路由位于 apps/web/app/api 下
@@ -60,6 +64,7 @@
 - 统一的工具函数库提供请求解析、响应封装和分页处理
 - 服务层抽象了业务逻辑，便于测试和维护
 - 支持对象存储（MinIO）用于知识库快照和附件管理
+- **新增**：LLM 服务集成，支持小米 MiMo 模型调用
 
 ```mermaid
 graph TB
@@ -68,11 +73,13 @@ API --> Utils["统一工具函数<br/>parseBody, success, error"]
 API --> Services["服务层<br/>业务逻辑抽象"]
 Services --> DB["Prisma Client<br/>PostgreSQL"]
 API --> Storage["MinIO 对象存储<br/>可选"]
+API --> LLM["LLM 服务<br/>MiMo 模型调用"]
 ```
 
 **图表来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
+- [apps/web/lib/services/llm-service.ts:1-135](file://apps/web/lib/services/llm-service.ts#L1-L135)
 
 ## 核心组件
 - **统一响应格式**：所有接口返回标准化的成功/错误响应结构
@@ -81,24 +88,31 @@ API --> Storage["MinIO 对象存储<br/>可选"]
 - **错误处理**：统一的错误码和消息格式
 - **服务层抽象**：业务逻辑与路由层分离，便于维护和测试
 - **版本管理**：完整的版本历史追踪和回滚机制
+- **LLM 集成**：支持 Agent 试聊、反馈分析和发布摘要等智能功能
 
 **章节来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
 - [apps/web/app/api/skills/route.ts:1-41](file://apps/web/app/api/skills/route.ts#L1-L41)
+- [apps/web/lib/schemas.ts:241-252](file://apps/web/lib/schemas.ts#L241-L252)
 
 ## 架构总览
-系统采用分层架构设计，API 路由层负责 HTTP 请求处理，服务层实现业务逻辑，数据访问层通过 Prisma 操作数据库。所有接口遵循 RESTful 设计规范，支持标准的 CRUD 操作和资源关联。
+系统采用分层架构设计，API 路由层负责 HTTP 请求处理，服务层实现业务逻辑，数据访问层通过 Prisma 操作数据库。**新增的 LLM 集成层**通过统一的服务接口与外部 AI 模型交互，提供智能化的 Agent 测试和分析能力。所有接口遵循 RESTful 设计规范，支持标准的 CRUD 操作和资源关联。
 
 ```mermaid
 sequenceDiagram
 participant C as "客户端"
 participant R as "API 路由层"
 participant S as "服务层"
+participant L as "LLM 服务"
 participant D as "数据库"
 C->>R : "HTTP 请求"
 R->>R : "参数验证"
 R->>S : "调用业务逻辑"
+alt LLM 相关请求
+S->>L : "AI 模型调用"
+L-->>S : "AI 响应"
+end
 S->>D : "数据操作"
 D-->>S : "返回结果"
 S-->>R : "业务结果"
@@ -108,6 +122,7 @@ R-->>C : "标准化响应"
 **图表来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [apps/web/app/api/agents/[id]/route.ts:1-54](file://apps/web/app/api/agents/[id]/route.ts#L1-L54)
+- [apps/web/lib/services/llm-service.ts:67-135](file://apps/web/lib/services/llm-service.ts#L67-L135)
 
 ## 详细组件分析
 
@@ -177,6 +192,47 @@ R-->>C : "标准化响应"
 **章节来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [apps/web/app/api/agents/[id]/route.ts:1-54](file://apps/web/app/api/agents/[id]/route.ts#L1-L54)
+
+### Agent 试聊接口（新增）
+
+#### Agent 实时对话
+- **方法**: POST
+- **URL**: `/api/agents/:id/chat`
+- **认证**: 需要
+- **路径参数**: `id` (Agent 标识)
+- **请求体**:
+  ```json
+  {
+    "message": "string (必填，最大4000字符)",
+    "history": [
+      {
+        "role": "user|assistant (必填)",
+        "content": "string (必填，最大8000字符)"
+      }
+    ]
+  }
+  ```
+- **描述**: 加载 Agent 当前的 Prompt 分区配置作为 system prompt，携带前端会话历史调用 MiMo 模型进行真实对话。会话只存前端内存，不落库。
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "reply": "AI 回复内容",
+      "model": "使用的模型名称",
+      "usage": {
+        "promptTokens": 100,
+        "completionTokens": 50,
+        "totalTokens": 150
+      },
+      "latencyMs": 1234
+    }
+  }
+  ```
+
+**章节来源**
+- [apps/web/app/api/agents/[id]/chat/route.ts:1-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L1-L61)
+- [apps/web/lib/schemas.ts:241-252](file://apps/web/lib/schemas.ts#L241-L252)
 
 ### 配置分区管理接口
 
@@ -341,10 +397,30 @@ R-->>C : "标准化响应"
   - `agentId`: Agent ID 过滤
 - **响应**: 返回发布列表及分页信息
 
+#### 发布变更摘要（新增）
+- **方法**: POST
+- **URL**: `/api/releases/:id/summary`
+- **认证**: 需要
+- **路径参数**: `id` (Release 标识)
+- **描述**: 读取 Release 的 configSnapshot 与上一版本 baseline，让 MiMo 总结本次变更的影响面与风险点，辅助审批决策
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "releaseId": "rel-001",
+      "summary": "本次变更主要修改了提示词配置...",
+      "model": "mimo-v2.5-pro",
+      "latencyMs": 2345
+    }
+  }
+  ```
+
 **章节来源**
 - [apps/web/app/api/agents/[id]/release/route.ts:1-59](file://apps/web/app/api/agents/[id]/release/route.ts#L1-L59)
 - [apps/web/app/api/releases/route.ts:1-35](file://apps/web/app/api/releases/route.ts#L1-L35)
 - [apps/web/app/api/releases/[id]/review/route.ts:1-28](file://apps/web/app/api/releases/[id]/review/route.ts#L1-L28)
+- [apps/web/app/api/releases/[id]/summary/route.ts:1-91](file://apps/web/app/api/releases/[id]/summary/route.ts#L1-L91)
 
 ### 反馈管理接口
 
@@ -381,8 +457,29 @@ R-->>C : "标准化响应"
   ```
 - **响应**: 返回更新后的反馈对象
 
+#### 反馈洞察分析（新增）
+- **方法**: POST
+- **URL**: `/api/feedback/:id/insight`
+- **认证**: 需要
+- **路径参数**: `id` (Feedback 标识)
+- **描述**: 读取反馈详情，调用 MiMo 生成「归因分析 + 改进建议」，服务 L2 环的「反馈 → 归因 → 改配置」叙事
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "feedbackId": "fb-001",
+      "insight": "## 归因分析\n问题最可能出在 Prompt 分区...\n\n## 改进建议\n1. 优化系统提示词...",
+      "model": "mimo-v2.5-pro",
+      "latencyMs": 3456
+    }
+  }
+  ```
+
 **章节来源**
 - [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
+- [apps/web/app/api/feedback/[id]/insight/route.ts:1-59](file://apps/web/app/api/feedback/[id]/insight/route.ts#L1-L59)
+- [apps/web/lib/services/feedback-service.ts:1-163](file://apps/web/lib/services/feedback-service.ts#L1-L163)
 
 ### 技能管理接口
 
@@ -478,6 +575,52 @@ R-->>C : "标准化响应"
 - [apps/web/app/api/wiki/vaults/route.ts:1-25](file://apps/web/app/api/wiki/vaults/route.ts#L1-L25)
 - [apps/web/app/api/wiki/vaults/[id]/route.ts:1-33](file://apps/web/app/api/wiki/vaults/[id]/route.ts#L1-L33)
 - [apps/web/app/api/wiki/pages/[id]/route.ts:1-33](file://apps/web/app/api/wiki/pages/[id]/route.ts#L1-L33)
+
+### MaaS 连通性检测接口（新增）
+
+#### 获取 LLM 配置状态
+- **方法**: GET
+- **URL**: `/api/maas/probe`
+- **认证**: 不需要
+- **描述**: 返回 LLM 配置状态（不发真实请求）
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "configured": true,
+      "model": "mimo-v2.5-pro",
+      "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1"
+    }
+  }
+  ```
+
+#### 测试 LLM 连通性
+- **方法**: POST
+- **URL**: `/api/maas/probe`
+- **认证**: 不需要
+- **描述**: 真实调用 MiMo 验证连通性，返回模型/时延/tokens
+- **响应**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "connected": true,
+      "model": "mimo-v2.5-pro",
+      "reply": "连接正常，我是 mimo-v2.5-pro 模型",
+      "usage": {
+        "promptTokens": 50,
+        "completionTokens": 20,
+        "totalTokens": 70
+      },
+      "latencyMs": 1234
+    }
+  }
+  ```
+
+**章节来源**
+- [apps/web/app/api/maas/probe/route.ts:1-46](file://apps/web/app/api/maas/probe/route.ts#L1-L46)
+- [apps/web/lib/services/llm-service.ts:55-65](file://apps/web/lib/services/llm-service.ts#L55-L65)
 
 ### 系统设置接口
 
@@ -615,6 +758,7 @@ R-->>C : "标准化响应"
 **章节来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
+- [apps/web/lib/schemas.ts:1-276](file://apps/web/lib/schemas.ts#L1-L276)
 
 ## 性能与安全考虑
 
@@ -623,6 +767,7 @@ R-->>C : "标准化响应"
 - **分页查询**: 所有列表接口支持分页
 - **缓存策略**: 对只读配置使用短期缓存
 - **并发控制**: 外部依赖调用设置超时和重试上限
+- **LLM 优化**: 合理的 maxCompletionTokens 设置避免空响应
 
 ### 安全措施
 - **HTTPS 强制**: 生产环境强制 HTTPS
@@ -630,6 +775,7 @@ R-->>C : "标准化响应"
 - **输入输出验证**: 严格的参数验证和转义
 - **敏感信息脱敏**: 审计日志中的敏感信息脱敏
 - **防重放攻击**: 必要时引入时间戳和签名
+- **LLM 安全**: 环境变量管理 API Key，防止硬编码
 
 ### 速率限制
 - **默认限制**: 100 次/分钟（可配置）
@@ -716,6 +862,52 @@ async function rollbackAgent(agentId, versionId) {
   );
   return response.json();
 }
+
+// Agent 试聊（新增）
+async function chatWithAgent(agentId, message, history = []) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agents/${agentId}/chat`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message, history })
+    }
+  );
+  return response.json();
+}
+
+// 反馈洞察分析（新增）
+async function getFeedbackInsight(feedbackId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/feedback/${feedbackId}/insight`,
+    {
+      method: 'POST',
+      headers
+    }
+  );
+  return response.json();
+}
+
+// MaaS 连通性检测（新增）
+async function probeMaaS() {
+  const response = await fetch(
+    `${API_BASE_URL}/api/maas/probe`,
+    { method: 'POST' }
+  );
+  return response.json();
+}
+
+// 发布变更摘要（新增）
+async function getReleaseSummary(releaseId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/releases/${releaseId}/summary`,
+    {
+      method: 'POST',
+      headers
+    }
+  );
+  return response.json();
+}
 ```
 
 ### 错误处理
@@ -747,6 +939,7 @@ pnpm dev
 - **Prisma 日志**: 开发环境启用 query/error/warn
 - **审计日志**: 通过 AuditLog 表记录关键操作
 - **健康检查**: PostgreSQL 和 MinIO 均提供 healthcheck
+- **LLM 日志**: 监控模型调用状态和性能指标
 
 ### 调试工具
 - **浏览器网络面板**: 查看请求和响应详情
@@ -771,6 +964,7 @@ pnpm dev
 - **PostgreSQL**: 关系型数据库
 - **MinIO**: S3 兼容对象存储（可选）
 - **Prisma**: ORM 和数据迁移工具
+- **小米 MiMo**: LLM 推理模型服务
 
 ### 内部依赖
 - **Next.js**: React 全栈框架
@@ -785,11 +979,13 @@ Services --> Prisma["Prisma Client"]
 Prisma --> PG["PostgreSQL"]
 Route --> SharedTypes["共享类型"]
 Route --> Storage["MinIO 可选"]
+Route --> LLM["LLM 服务<br/>MiMo 模型"]
 ```
 
 **图表来源**
 - [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
+- [apps/web/lib/services/llm-service.ts:1-135](file://apps/web/lib/services/llm-service.ts#L1-L135)
 
 ## 故障排查指南
 
@@ -798,15 +994,17 @@ Route --> Storage["MinIO 可选"]
 - **对象存储不可用**: 确认 MinIO 端口和凭据
 - **权限不足**: 核对用户角色和作用域
 - **验证失败**: 检查请求体结构和数据类型
+- **LLM 连接失败**: 检查 MIMO_API_KEY 环境变量和网络连通性
 
 ### 定位手段
 - **查看 Prisma 日志**: 开发模式启用详细日志
 - **检索审计日志**: 通过 AuditLog 表追踪关键操作
 - **网络面板调试**: 使用浏览器开发者工具复现问题
 - **API 测试工具**: 使用 Postman 或 curl 独立测试端点
+- **LLM 诊断**: 使用 /api/maas/probe 端点检测连通性
 
 ## 结论
-本 API 文档基于 Next.js App Router 架构，提供了完整的 RESTful 接口规范。系统已实现 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作和系统设置等核心功能。**最新版本增加了完整的版本管理功能**，包括版本历史查询、版本详情获取、单分区回滚和整版本回滚等高级特性，为 Agent 配置管理提供了强大的版本控制和灾难恢复能力。
+本 API 文档基于 Next.js App Router 架构，提供了完整的 RESTful 接口规范。系统已实现 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作和系统设置等核心功能。**最新版本显著增强了 LLM 集成能力**，新增了 Agent 试聊、反馈洞察分析、MaaS 连通性检测和发布变更摘要等智能功能，为 Agent 配置管理和优化提供了强大的 AI 驱动工具链。这些新功能使得平台能够更好地支持 Agent 的开发、测试、监控和优化全流程。
 
 ## 附录
 
@@ -837,6 +1035,7 @@ AGENT_VERSION ||--o{ VERSION_SNAPSHOT : "包含快照"
 | Agent | GET | /api/agents/:id | 获取 Agent 详情 |
 | Agent | PUT | /api/agents/:id | 更新 Agent |
 | Agent | DELETE | /api/agents/:id | 归档 Agent |
+| Agent Chat | POST | /api/agents/:id/chat | Agent 试聊（新增） |
 | Config | GET | /api/agents/:id/config/:partition | 获取分区配置 |
 | Config | PUT | /api/agents/:id/config/:partition | 更新分区配置 |
 | Config | POST | /api/agents/:id/config/:partition/rollback | 单分区回滚 |
@@ -845,10 +1044,12 @@ AGENT_VERSION ||--o{ VERSION_SNAPSHOT : "包含快照"
 | Rollback | POST | /api/agents/:id/rollback/:versionId | 整版本回滚 |
 | Release | POST | /api/agents/:id/release | 提交发布 |
 | Release | PUT | /api/agents/:id/release | 审批发布 |
+| Release Summary | POST | /api/releases/:id/summary | 发布变更摘要（新增） |
 | Release | GET | /api/releases | 获取发布列表 |
 | Feedback | GET | /api/feedback | 获取反馈列表 |
 | Feedback | POST | /api/feedback | 创建反馈 |
 | Feedback | PUT | /api/feedback | 更新反馈 |
+| Feedback Insight | POST | /api/feedback/:id/insight | 反馈洞察分析（新增） |
 | Skill | GET | /api/skills | 获取技能列表 |
 | Skill | POST | /api/skills | 创建技能 |
 | Skill | GET | /api/skills/:id | 获取技能详情 |
@@ -865,31 +1066,38 @@ AGENT_VERSION ||--o{ VERSION_SNAPSHOT : "包含快照"
 | Settings | GET | /api/settings/roles | 获取角色列表 |
 | Settings | POST | /api/settings/roles | 创建角色 |
 | Dashboard | GET | /api/dashboard | 获取统计数据 |
+| MaaS Probe | GET | /api/maas/probe | 获取 LLM 配置状态（新增） |
+| MaaS Probe | POST | /api/maas/probe | 测试 LLM 连通性（新增） |
 
-### 版本管理特性说明
+### LLM 集成特性说明
 
-#### 版本快照机制
-每个版本都包含四个分区的完整快照：
-- `promptSnapshot`: 提示词配置快照
-- `knowledgeSnapshot`: 知识库配置快照  
-- `toolsSnapshot`: 工具配置快照
-- `routingSnapshot`: 路由配置快照
+#### Agent 试聊功能
+- **实时对话**: 基于 Agent 当前配置的 Prompt 分区进行真实对话
+- **会话历史**: 支持多轮对话，历史消息仅存储在客户端内存
+- **配置组装**: 自动组合 systemPrompt、角色定义、约束条件和输出格式
+- **性能监控**: 返回模型使用情况和响应延迟
 
-#### 回滚操作对比
-| 操作类型 | 端点 | 影响范围 | 适用场景 |
-|----------|------|----------|----------|
-| 单分区回滚 | POST /api/agents/:id/config/:partition/rollback | 单个分区 | 某个分区配置出错，其他分区正常 |
-| 整版本回滚 | POST /api/agents/:id/rollback/:versionId | 全部四个分区 | 整个版本出现问题，需要完全回退 |
+#### 反馈洞察分析
+- **智能归因**: 基于 LLM 分析反馈问题的根本原因
+- **分区定位**: 识别问题最可能出现在哪个配置分区
+- **改进建议**: 生成具体的配置优化建议
+- **无状态处理**: 分析过程不持久化，保护用户隐私
 
-#### 版本历史特性
-- 按发布时间倒序排列
-- 包含有效性报告（effectivenessReport）
-- 支持懒加载计算（超过7天自动计算）
-- 不可变的版本快照保证历史一致性
+#### MaaS 连通性检测
+- **配置检查**: 验证 LLM 服务配置是否正确
+- **连通性测试**: 实际调用模型验证网络连接
+- **性能指标**: 返回模型信息和响应延迟
+- **错误诊断**: 提供详细的错误信息帮助排查问题
+
+#### 发布变更摘要
+- **智能对比**: 自动对比变更前后配置差异
+- **影响分析**: 评估变更对 Agent 行为的潜在影响
+- **风险评估**: 识别可能的风险和注意事项
+- **审批辅助**: 为发布审批提供智能化决策支持
 
 **章节来源**
-- [apps/web/app/api/agents/[id]/versions/route.ts:1-44](file://apps/web/app/api/agents/[id]/versions/route.ts#L1-L44)
-- [apps/web/app/api/agents/[id]/versions/[versionId]/route.ts:1-36](file://apps/web/app/api/agents/[id]/versions/[versionId]/route.ts#L1-L36)
-- [apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts:1-118](file://apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts#L1-L118)
-- [apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts:1-37](file://apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts#L1-L37)
-- [apps/web/lib/services/release-service.ts:255-341](file://apps/web/lib/services/release-service.ts#L255-L341)
+- [apps/web/app/api/agents/[id]/chat/route.ts:1-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L1-L61)
+- [apps/web/app/api/feedback/[id]/insight/route.ts:1-59](file://apps/web/app/api/feedback/[id]/insight/route.ts#L1-L59)
+- [apps/web/app/api/maas/probe/route.ts:1-46](file://apps/web/app/api/maas/probe/route.ts#L1-L46)
+- [apps/web/app/api/releases/[id]/summary/route.ts:1-91](file://apps/web/app/api/releases/[id]/summary/route.ts#L1-L91)
+- [apps/web/lib/services/llm-service.ts:1-135](file://apps/web/lib/services/llm-service.ts#L1-L135)

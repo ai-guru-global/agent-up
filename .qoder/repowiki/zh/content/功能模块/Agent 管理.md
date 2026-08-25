@@ -9,7 +9,9 @@
 - [API 路由 - 详情与更新](file://apps/web/app/api/agents/[id]/route.ts)
 - [API 路由 - 分区配置](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts)
 - [API 路由 - Skills 绑定](file://apps/web/app/api/agents/[id]/skills/route.ts)
+- [API 路由 - 聊天游乐场](file://apps/web/app/api/agents/[id]/chat/route.ts)
 - [Agent 服务层](file://apps/web/lib/services/agent-service.ts)
+- [LLM 服务](file://apps/web/lib/services/llm-service.ts)
 - [数据校验 Schema](file://apps/web/lib/schemas.ts)
 - [通用工具函数](file://apps/web/lib/utils.ts)
 - [ECS 助手配置](file://apps/web/data/agents/ecs-assistant.json)
@@ -24,6 +26,7 @@
 - 实现了详细的 Agent 视图，支持四分区配置的完整编辑界面
 - 添加了分区配置版本控制和变更审计机制
 - 完善了权限控制和数据验证体系
+- **新增**：交互式聊天游乐场功能，支持实时测试 Agent 配置，包含真实 LLM 响应、对话历史支持和用量指标追踪
 - **新增**：ECS 助手和 RDS 助手的运行环境（MOCK）配置，包含模型栈信息和新的工具配置
 
 ## 目录
@@ -41,17 +44,19 @@
 ## 简介
 本模块提供 Agent 的完整生命周期管理与四分区配置系统（Prompt、Knowledge、Tools、Routing）。面向最终用户，提供创建、编辑、保存草稿与发布版本的操作；面向开发者，给出数据模型、权限控制、变更审计与版本快照等实现细节。
 
-**更新** 本次更新增强了 ECS 助手和 RDS 助手的配置，新增了运行环境（MOCK）部分，包含模型栈信息（Qwen-Max、Qwen-Plus、Qwen-Turbo）以及新的工具配置（bailian_kb_retrieval、dashscope_text_embedding、bailian_rag_fallback），为公共云和专有云部署提供了统一的 Agent 管理能力。
+**更新** 本次更新显著增强了系统的交互测试能力，新增了交互式聊天游乐场功能，允许用户在 Agent 详情页直接进行实时测试，体验真实的 LLM 响应效果。同时增强了 ECS 助手和 RDS 助手的配置，新增了运行环境（MOCK）部分，包含模型栈信息（Qwen-Max、Qwen-Plus、Qwen-Turbo）以及新的工具配置（bailian_kb_retrieval、dashscope_text_embedding、bailian_rag_fallback），为公共云和专有云部署提供了统一的 Agent 管理能力。
 
 ## 项目结构
 - 前端页面
   - 列表页：展示 Agent 列表、搜索框与新建入口，支持状态过滤和分页
   - 详情页：按分区 Tab 展示 Prompt、知识库、工具/MCP、路由的配置编辑区，并提供提交发布、查看版本历史、查看反馈等操作按钮
+  - **新增**：聊天游乐场组件，支持实时测试 Agent 配置，显示对话历史和用量指标
   - MaaS 集成页：展示模型服务集成方案，包含公共云和专有云的对比
 - API 层
-  - RESTful 接口：完整的 CRUD 操作、分区配置管理、Skills 绑定等功能
+  - RESTful 接口：完整的 CRUD 操作、分区配置管理、Skills 绑定、聊天游乐场等功能
 - 服务层
   - 业务逻辑封装：Agent 管理、配置操作、变更审计等服务方法
+  - **新增**：LLM 服务封装，统一接入小米 MiMo 推理模型
 - 数据层
   - Prisma Schema：定义 Agent、四分区配置、草稿环境、版本快照、发布审批、权限与审计等实体与关系
   - 种子数据：预配置的 ECS 助手和 RDS 助手示例
@@ -61,50 +66,62 @@ graph TB
 subgraph "前端"
 A["列表页<br/>agents/page.tsx"]
 B["详情页<br/>agents/[id]/page.tsx"]
-C["MaaS 集成页<br/>maas/page.tsx"]
+C["聊天游乐场<br/>ChatPlayground 组件"]
+D["MaaS 集成页<br/>maas/page.tsx"]
 end
 subgraph "API 层"
-D["列表与创建<br/>api/agents/route.ts"]
-E["详情与更新<br/>api/agents/[id]/route.ts"]
-F["分区配置<br/>api/agents/[id]/config/[partition]/route.ts"]
-G["Skills 绑定<br/>api/agents/[id]/skills/route.ts"]
+E["列表与创建<br/>api/agents/route.ts"]
+F["详情与更新<br/>api/agents/[id]/route.ts"]
+G["分区配置<br/>api/agents/[id]/config/[partition]/route.ts"]
+H["Skills 绑定<br/>api/agents/[id]/skills/route.ts"]
+I["聊天游乐场<br/>api/agents/[id]/chat/route.ts"]
 end
 subgraph "服务层"
-H["Agent 服务<br/>agent-service.ts"]
-I["Schema 验证<br/>schemas.ts"]
-J["工具函数<br/>utils.ts"]
+J["Agent 服务<br/>agent-service.ts"]
+K["LLM 服务<br/>llm-service.ts"]
+L["Schema 验证<br/>schemas.ts"]
+M["工具函数<br/>utils.ts"]
 end
 subgraph "数据层"
-K["Prisma Schema<br/>schema.prisma"]
-L["种子数据<br/>agents/*.json"]
+N["Prisma Schema<br/>schema.prisma"]
+O["种子数据<br/>agents/*.json"]
+P["外部 LLM 服务<br/>MiMo API"]
 end
-A --> D
-B --> E
+A --> E
 B --> F
-C --> G
+B --> G
+B --> C
+C --> I
 D --> H
-E --> H
-F --> H
-H --> K
-H --> L
-D --> I
-E --> I
-F --> I
-D --> J
 E --> J
 F --> J
+G --> J
+I --> K
+J --> N
+J --> O
+E --> L
+F --> L
+G --> L
+I --> L
+E --> M
+F --> M
+G --> M
+K --> P
 ```
 
 **图表来源**
 - [agents 列表页:1-218](file://apps/web/app/(dashboard)/agents/page.tsx#L1-L218)
-- [Agent 详情页:1-506](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L506)
+- [Agent 详情页:1-607](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L1-L607)
+- [聊天游乐场组件:516-607](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L516-L607)
 - [MaaS 集成页面:1-36](file://apps/web/app/(dashboard)/maas/page.tsx#L1-L36)
 - [API 路由 - 列表与创建:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
 - [API 路由 - 详情与更新:1-54](file://apps/web/app/api/agents/[id]/route.ts#L1-L54)
 - [API 路由 - 分区配置:1-86](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L1-L86)
 - [API 路由 - Skills 绑定:1-51](file://apps/web/app/api/agents/[id]/skills/route.ts#L1-L51)
+- [API 路由 - 聊天游乐场:1-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L1-L61)
 - [Agent 服务层:1-209](file://apps/web/lib/services/agent-service.ts#L1-L209)
-- [数据校验 Schema:1-258](file://apps/web/lib/schemas.ts#L1-L258)
+- [LLM 服务:1-135](file://apps/web/lib/services/llm-service.ts#L1-L135)
+- [数据校验 Schema:1-275](file://apps/web/lib/schemas.ts#L1-L275)
 - [通用工具函数:1-42](file://apps/web/lib/utils.ts#L1-L42)
 
 ## 核心组件
@@ -127,18 +144,24 @@ F --> J
 - 权限与审计
   - Role/Permission/UserRole/AuditLog：角色-权限-用户映射与操作审计日志
   - ProductGroup/ProductGroupMember：产品组与成员角色（LEAD/MEMBER）
+- **新增**：聊天游乐场组件
+  - 实时对话：支持多轮对话历史，前端内存存储不持久化
+  - 用量追踪：显示模型调用量、延迟时间和 token 使用情况
+  - 配置验证：基于当前 Prompt 分区配置进行真实 LLM 调用
 
 **章节来源**
 - [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
 - [schema.prisma:103-173](file://packages/db/prisma/schema.prisma#L103-L173)
 - [schema.prisma:175-186](file://packages/db/prisma/schema.prisma#L175-L186)
 - [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-354)
-- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-625)
+- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-L625)
+- [聊天游乐场组件:516-607](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L516-L607)
+- [LLM 服务:11-27](file://apps/web/lib/services/llm-service.ts#L11-L27)
 
 ## 架构总览
 整体采用"前端页面 + Next.js API 路由 + 服务层 + Prisma 数据模型"的分层架构。前端通过 API 路由访问数据库，完成 Agent 的 CRUD、分区配置读写、草稿保存、发布审批与版本回滚等流程。
 
-**更新** 架构中新增了 MaaS 集成展示层，用于演示公共云（百炼 Model Studio / DashScope API）和专有云（Apsara Stack 私有化推理）两种部署形态的统一管理。
+**更新** 架构中新增了聊天游乐场功能，通过专门的 API 路由处理实时 LLM 调用，使用 LLM 服务统一接入小米 MiMo 推理模型。同时新增了 MaaS 集成展示层，用于演示公共云（百炼 Model Studio / DashScope API）和专有云（Apsara Stack 私有化推理）两种部署形态的统一管理。
 
 ```mermaid
 sequenceDiagram
@@ -146,6 +169,7 @@ participant U as "用户"
 participant FE as "前端页面"
 participant API as "API 路由"
 participant SVC as "服务层"
+participant LLM as "LLM 服务"
 participant DB as "数据库(Prisma)"
 U->>FE : 打开 Agent 列表/详情
 FE->>API : GET /api/agents?search=&status=
@@ -163,14 +187,21 @@ SVC->>DB : recordConfigChange()
 DB-->>SVC : 成功
 SVC-->>API : 返回结果
 API-->>FE : 保存成功
+U->>FE : 在聊天游乐场发送消息
+FE->>API : POST /api/agents/ : id/chat
+API->>LLM : chatCompletion(messages)
+LLM-->>API : {reply, usage, latencyMs}
+API-->>FE : 实时响应
 ```
 
 **图表来源**
 - [API 路由 - 列表与创建:6-26](file://apps/web/app/api/agents/route.ts#L6-L26)
 - [API 路由 - 分区配置:36-53](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L36-L53)
+- [API 路由 - 聊天游乐场:14-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L14-L61)
 - [Agent 服务层:15-48](file://apps/web/lib/services/agent-service.ts#L15-L48)
 - [Agent 服务层:156-163](file://apps/web/lib/services/agent-service.ts#L156-L163)
 - [Agent 服务层:176-208](file://apps/web/lib/services/agent-service.ts#L176-L208)
+- [LLM 服务:67-135](file://apps/web/lib/services/llm-service.ts#L67-L135)
 
 ## 详细组件分析
 
@@ -300,6 +331,49 @@ Agent "1" -- "1" RoutingConfig : "一对一"
 - [schema.prisma:103-173](file://packages/db/prisma/schema.prisma#L103-L173)
 - [Agent 服务层:129-169](file://apps/web/lib/services/agent-service.ts#L129-L169)
 
+### 交互式聊天游乐场功能
+**新增** 本次更新新增了交互式聊天游乐场功能，允许用户在 Agent 详情页直接测试配置效果。
+
+- 核心特性
+  - 实时对话：支持多轮对话历史，前端内存存储不持久化
+  - 真实 LLM 调用：基于当前 Prompt 分区配置进行真实模型调用
+  - 用量追踪：显示模型名称、延迟时间和 token 使用情况
+  - 错误处理：完善的网络错误和 API 错误处理机制
+- 技术实现
+  - 前端 ChatPlayground 组件：管理对话状态和用户输入
+  - 后端聊天 API：组装 system prompt 并调用 LLM 服务
+  - LLM 服务：统一接入小米 MiMo 推理模型，提供标准化接口
+- 用户体验
+  - 直观的聊天界面，支持 Enter 键快速发送
+  - 实时显示模型思考状态和响应延迟
+  - 清晰的错误提示和重试机制
+
+```mermaid
+sequenceDiagram
+participant U as "用户"
+participant CP as "ChatPlayground 组件"
+participant API as "聊天 API"
+participant LLM as "LLM 服务"
+U->>CP : 输入消息并发送
+CP->>CP : 添加到本地消息历史
+CP->>API : POST /api/agents/ : id/chat
+API->>API : 加载 Agent Prompt 配置
+API->>LLM : chatCompletion(messages)
+LLM-->>API : {reply, usage, latencyMs}
+API-->>CP : 返回响应数据
+CP->>CP : 显示回复和用量信息
+```
+
+**图表来源**
+- [聊天游乐场组件:516-607](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L516-L607)
+- [API 路由 - 聊天游乐场:14-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L14-L61)
+- [LLM 服务:67-135](file://apps/web/lib/services/llm-service.ts#L67-L135)
+
+**章节来源**
+- [聊天游乐场组件:516-607](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L516-L607)
+- [API 路由 - 聊天游乐场:1-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L1-L61)
+- [LLM 服务:1-135](file://apps/web/lib/services/llm-service.ts#L1-L135)
+
 ### 运行环境（MOCK）配置
 **新增** 本次更新为 ECS 助手和 RDS 助手添加了完整的运行环境配置，支持公共云和专有云两种部署形态。
 
@@ -351,11 +425,11 @@ USER ||--o{ ProductGroupMember : "加入"
 ```
 
 **图表来源**
-- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-625)
+- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-L625)
 - [schema.prisma:14-41](file://packages/db/prisma/schema.prisma#L14-L41)
 
 **章节来源**
-- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-625)
+- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-L625)
 - [schema.prisma:14-41](file://packages/db/prisma/schema.prisma#L14-L41)
 
 ### 操作指南（面向最终用户）
@@ -366,6 +440,11 @@ USER ||--o{ ProductGroupMember : "加入"
   - 进入 Agent 详情页，依次配置 Prompt、知识库、工具/MCP、路由
   - 支持实时保存，无需手动提交
   - 可在 Prompt 配置中添加运行环境（MOCK）说明，明确模型栈和工具配置
+- **新增**：使用聊天游乐场测试配置
+  - 在 Agent 详情页底部找到"试聊 Playground"区域
+  - 输入测试消息，体验当前配置的实际效果
+  - 查看模型响应、延迟时间和 token 使用情况
+  - 根据测试结果调整 Prompt 配置
 - 搜索与过滤
   - 使用搜索框快速查找 Agent
   - 通过状态下拉菜单筛选不同状态的 Agent
@@ -380,11 +459,13 @@ USER ||--o{ ProductGroupMember : "加入"
 - [agents 列表页:55-82](file://apps/web/app/(dashboard)/agents/page.tsx#L55-L82)
 - [Agent 详情页:71-175](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L71-L175)
 - [Agent 详情页:214-366](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L214-L366)
+- [聊天游乐场组件:516-607](file://apps/web/app/(dashboard)/agents/[id]/page.tsx#L516-L607)
 
 ### 开发者实现要点
 - API 路由
   - 完整的 RESTful 接口实现，支持标准 HTTP 方法
   - 统一的响应格式：success/error 包装
+  - **新增**：聊天 API 路由，支持实时 LLM 调用和用量追踪
 - 数据一致性
   - 分区配置更新自动记录变更历史
   - 使用事务确保数据一致性
@@ -397,19 +478,27 @@ USER ||--o{ ProductGroupMember : "加入"
 - 运行环境支持
   - 支持公共云和专有云两种部署形态的统一配置
   - 提供 Mock 接口用于开发和测试
+- **新增**：LLM 服务集成
+  - 统一接入小米 MiMo 推理模型
+  - 提供标准化的聊天完成接口
+  - 支持超时控制和错误处理
 
 **章节来源**
 - [API 路由 - 列表与创建:28-45](file://apps/web/app/api/agents/route.ts#L28-L45)
 - [API 路由 - 分区配置:56-85](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L56-L85)
+- [API 路由 - 聊天游乐场:14-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L14-L61)
 - [Agent 服务层:176-208](file://apps/web/lib/services/agent-service.ts#L176-L208)
+- [LLM 服务:67-135](file://apps/web/lib/services/llm-service.ts#L67-L135)
 
 ## 依赖关系分析
 - 前端依赖
   - 列表页与详情页依赖 API 路由提供的数据与操作能力
   - 使用 React Hooks 管理状态和副作用
+  - **新增**：聊天游乐场组件依赖 LLM 服务和聊天 API
 - 后端依赖
   - API 路由依赖服务层处理业务逻辑
   - 服务层依赖 Prisma Client 访问 PostgreSQL
+  - **新增**：聊天 API 依赖 LLM 服务进行模型调用
 - 数据依赖
   - Agent 与四分区配置为一对一关系
   - Agent 与 Draft/Release/Version 为一对多关系
@@ -419,8 +508,10 @@ USER ||--o{ ProductGroupMember : "加入"
 graph LR
 FE["前端页面"] --> API["API 路由"]
 API --> SVC["服务层"]
+API --> LLM["LLM 服务"]
 SVC --> PRISMA["Prisma Client"]
 PRISMA --> PG["PostgreSQL"]
+LLM --> MIMO["MiMo API"]
 subgraph "数据模型"
 AG["Agent"]
 PC["PromptConfig"]
@@ -447,6 +538,7 @@ AG --- CC
 - [schema.prisma:175-186](file://packages/db/prisma/schema.prisma#L175-L186)
 - [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-354)
 - [schema.prisma:192-207](file://packages/db/prisma/schema.prisma#L192-L207)
+- [LLM 服务:50-61](file://apps/web/lib/services/llm-service.ts#L50-L61)
 
 **章节来源**
 - [schema.prisma:61-97](file://packages/db/prisma/schema.prisma#L61-L97)
@@ -460,6 +552,7 @@ AG --- CC
 - 并发与超时
   - ToolsConfig 提供并发调用、超时与重试参数，合理设置以避免阻塞
   - 建议根据实际负载调整 maxConcurrentCalls、timeoutMs、retryCount 参数
+  - **新增**：LLM 调用超时控制，默认 120 秒超时，避免长时间等待
 - 缓存策略
   - 对只读配置（如 Prompt、Routing）可引入缓存层，减少数据库压力
 - 分页与懒加载
@@ -469,6 +562,7 @@ AG --- CC
 - 模型调用优化
   - 合理使用 Qwen-Turbo 进行分类和简单问答，Qwen-Plus/Qwen-Max 用于复杂任务
   - 利用百炼 RAG 的知识蒸馏能力，减少重复计算
+  - **新增**：聊天游乐场使用前端内存存储对话历史，避免不必要的数据库写入
 
 **章节来源**
 - [schema.prisma:89-91](file://packages/db/prisma/schema.prisma#L89-L91)
@@ -476,6 +570,7 @@ AG --- CC
 - [schema.prisma:205-207](file://packages/db/prisma/schema.prisma#L205-L207)
 - [schema.prisma:246-249](file://packages/db/prisma/schema.prisma#L246-L249)
 - [Agent 服务层:26-45](file://apps/web/lib/services/agent-service.ts#L26-L45)
+- [LLM 服务:50-53](file://apps/web/lib/services/llm-service.ts#L50-L53)
 
 ## 故障排除指南
 - 无法保存草稿
@@ -498,17 +593,24 @@ AG --- CC
   - 检查运行环境（MOCK）配置是否正确
   - 验证 Bailian 和 DashScope 接口可用性
   - 确认模型栈配置与实际部署环境匹配
+- **新增**：聊天游乐场问题排查
+  - 检查 LLM 服务配置（MIMO_API_KEY、MIMO_BASE_URL、MIMO_MODEL）
+  - 验证网络连接和 API 密钥有效性
+  - 查看浏览器控制台的网络请求和错误信息
+  - 确认 Agent 的 Prompt 配置格式正确
+  - 检查模型调用是否超时或返回空内容
 
 **章节来源**
 - [schema.prisma:175-186](file://packages/db/prisma/schema.prisma#L175-L186)
 - [schema.prisma:298-354](file://packages/db/prisma/schema.prisma#L298-354)
-- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-625)
+- [schema.prisma:563-625](file://packages/db/prisma/schema.prisma#L563-L625)
 - [Agent 服务层:17-39](file://apps/web/lib/services/agent-service.ts#L17-L39)
+- [LLM 服务:29-48](file://apps/web/lib/services/llm-service.ts#L29-L48)
 
 ## 结论
 本模块通过清晰的数据模型与分层架构，实现了 Agent 的完整生命周期管理与四分区配置系统。结合草稿、发布审批与版本快照，既满足最终用户的易用性需求，也为开发者提供了完善的扩展与审计能力。
 
-**更新** 本次更新显著增强了系统的运行环境支持能力，通过统一的配置接口同时支持公共云和专有云两种部署形态。ECS 助手和 RDS 助手的配置增强展示了如何利用 Qwen 系列模型和百炼 RAG 能力构建智能工单处理系统。建议在后续迭代中进一步完善权限校验、性能优化和错误处理机制，并持续优化模型路由策略和工具配置。
+**更新** 本次更新显著增强了系统的交互测试能力，通过新增的交互式聊天游乐场功能，用户可以在 Agent 详情页直接进行实时测试，体验真实的 LLM 响应效果。同时增强了系统的运行环境支持能力，通过统一的配置接口同时支持公共云和专有云两种部署形态。ECS 助手和 RDS 助手的配置增强展示了如何利用 Qwen 系列模型和百炼 RAG 能力构建智能工单处理系统。建议在后续迭代中进一步完善权限校验、性能优化和错误处理机制，并持续优化模型路由策略和工具配置。
 
 ## 附录
 - 术语
@@ -517,6 +619,8 @@ AG --- CC
   - 发布：经审批后将分区配置快照固化到 AgentVersion 并激活 Agent
   - 运行环境（MOCK）：支持公共云和专有云两种部署形态的配置模式
   - 模型栈：包含主模型、降级模型和分类模型的组合配置
+  - **新增**：聊天游乐场：用于实时测试 Agent 配置的交互式界面
+  - **新增**：用量指标：显示模型调用的 token 使用量和延迟时间
 - 相关端点
   - GET /api/agents - 获取 Agent 列表（支持搜索和过滤）
   - POST /api/agents - 创建新 Agent
@@ -528,15 +632,22 @@ AG --- CC
   - GET /api/agents/:id/skills - 获取绑定的 Skills
   - POST /api/agents/:id/skills - 绑定 Skill
   - DELETE /api/agents/:id/skills - 解绑 Skill
+  - **新增**：POST /api/agents/:id/chat - 聊天游乐场接口
 - 模型路由策略
   - 意图分类：使用 Qwen-Turbo 进行快速分类
   - 模型选择：根据问题复杂度选择 Qwen-Plus 或 Qwen-Max
   - 知识检索：优先使用百炼 RAG 蒸馏知识，未命中时回退到原始检索
   - 兜底处理：通过 MCP 工具获取实时数据进行兜底回答
+- **新增**：聊天游乐场接口规范
+  - 请求体：{ message: string, history: Array<{role: string, content: string}> }
+  - 响应体：{ reply: string, model: string, usage: {promptTokens, completionTokens, totalTokens}, latencyMs: number }
+  - 错误处理：网络错误、API 错误、LLM 服务异常等
 
 **章节来源**
 - [API 路由 - 列表与创建:6-45](file://apps/web/app/api/agents/route.ts#L6-L45)
 - [API 路由 - 详情与更新:6-53](file://apps/web/app/api/agents/[id]/route.ts#L6-L53)
 - [API 路由 - 分区配置:28-85](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L28-L85)
 - [API 路由 - Skills 绑定:6-50](file://apps/web/app/api/agents/[id]/skills/route.ts#L6-L50)
+- [API 路由 - 聊天游乐场:14-61](file://apps/web/app/api/agents/[id]/chat/route.ts#L14-L61)
 - [MaaS 集成页面:18-27](file://apps/web/app/(dashboard)/maas/page.tsx#L18-L27)
+- [LLM 服务:16-27](file://apps/web/lib/services/llm-service.ts#L16-L27)
