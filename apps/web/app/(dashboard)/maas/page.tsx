@@ -14,6 +14,7 @@ import {
   Section,
   Table,
 } from "../architecture/_components/ui";
+import { ConnectivityProbe } from "./connectivity-probe";
 
 const modelRoutingChart = `flowchart LR
   A["工单进入"] --> B{"qwen-turbo\\n意图分类"}
@@ -32,8 +33,12 @@ export default function MaasPage() {
       <PageHeader
         title="模型服务（MaaS 集成）"
         badge="MOCK"
-        subtitle="展示 agent-up 与阿里云大模型产品的结合方式：MaaS 提供模型引擎，agent-up 管 Agent 的配置·评估·发布·回滚生命周期。公共云走百炼 / DashScope，专有云走 Apsara Stack 私有化推理——同一套改进闭环，两种部署形态。本页数据均为 mock。"
+        subtitle="展示 agent-up 与阿里云大模型产品的结合方式：MaaS 提供模型引擎，agent-up 管 Agent 的配置·评估·发布·回滚生命周期。公共云走百炼 / DashScope，专有云走 Apsara Stack 私有化推理——同一套改进闭环，两种部署形态。产品矩阵与用量为 mock；顶部连通性测试为真实调用（MiMo）。"
       />
+
+      <div className="mt-8">
+        <ConnectivityProbe />
+      </div>
 
       <Section
         title="① 产品矩阵 · 公共云 + 专有云双形态"

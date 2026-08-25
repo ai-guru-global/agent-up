@@ -11,8 +11,9 @@
 - **框架**: Next.js 16 (App Router, Turbopack)
 - **语言**: TypeScript (strict mode)
 - **样式**: Tailwind CSS 4
-- **校验**: Zod（22 个 schema 覆盖所有 API 入参）
-- **测试**: Vitest 3 + v8 coverage（214 个测试，约 96% 语句覆盖）
+- **校验**: Zod（23 个 schema 覆盖所有 API 入参）
+- **测试**: Vitest 3 + v8 coverage（232 个测试）
+- **LLM**: 小米 MiMo（mimo-v2.5-pro，OpenAI 兼容协议 Token Plan）——已真实接入 4 个集成点
 - **数据库**: PostgreSQL 16 + Prisma ORM（schema 已就绪，运行时暂用 JSON 文件）
 - **对象存储**: MinIO (S3 兼容)
 - **构建**: Turborepo monorepo + pnpm workspaces
@@ -40,7 +41,7 @@ agent-up/
 │       │   ├── errors.ts           # 结构化错误体系（AppError 层级）
 │       │   ├── context.ts          # Actor 请求上下文（为 NextAuth 留接口）
 │       │   ├── versioning.ts       # 语义化版本（SemVer）计算
-│       │   ├── schemas.ts          # Zod 校验 schema（22 个）
+│       │   ├── schemas.ts          # Zod 校验 schema（23 个）
 │       │   ├── diff.ts             # JSON diff 工具
 │       │   ├── utils.ts            # API 响应 / 分页 / validateBody
 │       │   ├── data/store.ts       # JSON 文件存储（可注入临时目录）
@@ -51,6 +52,7 @@ agent-up/
 │       │       ├── skill-service          # Skills + 绑定
 │       │       ├── wiki-service           # Wiki Vault + Page
 │       │       ├── effectiveness-service  # 版本效果报告（懒计算）
+│       │       ├── llm-service            # LLM 网关（MiMo，env 凭据，零硬编码）
 │       │       └── audit-service          # 审计日志（append-only）
 │       └── data/                   # 种子数据（JSON 文件，mock）
 ├── packages/
@@ -103,10 +105,10 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 ### 测试
 
-**214 个测试，约 96% 语句覆盖，18 个测试文件：**
+**232 个测试，20 个测试文件：**
 
-- **单元测试**（`lib/__tests__/`，12 个文件）：versioning、errors、schemas、diff、store、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、utils
-- **API 集成测试**（`app/api/__tests__/`，6 个文件）：agents、releases（含审批流 + diff）、feedback、skills、wiki、versions/rollback、effectiveness 全链路，验证 status / body / 审计副作用
+- **单元测试**（`lib/__tests__/`，13 个文件）：versioning、errors、schemas、diff、store、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、utils、llm-service（mock fetch）
+- **API 集成测试**（`app/api/__tests__/`，7 个文件）：agents、releases（含审批流 + diff）、feedback、skills、wiki、versions/rollback、effectiveness 全链路 + LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
 - **隔离**：每个测试用临时数据目录（`_setDataDir`），绝不污染仓库种子数据
 
 ## MOCK 声明与演示用途
@@ -120,7 +122,7 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 - **登录**：MOCK 登录，未接入真实认证；演示账号 `allengaller` / `123`（登录后即为管理员角色）。
 - **数据源**：`apps/web/data/` 本地 JSON 种子数据，未接入真实数据库。
-- **MaaS 集成**：`/maas` 页面与种子数据中的百炼 / DashScope / Apsara Stack 相关内容均为演示口径，未接入真实模型 API（见 [MaaS 集成展示](#maas-集成展示maas-页)）。
+- **MaaS 集成**：`/maas` 页面产品矩阵与用量为演示口径；但**连通性测试 / AI 归因 / AI 变更摘要 / 试聊 Playground 均为真实 LLM 调用（小米 MiMo）**，页面带 LIVE 徽标区分（见 [LLM 真实接入](#llm-真实接入小米-mimo)）。
 
 ## 核心概念
 
@@ -166,6 +168,21 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 设计文档：`docs/superpowers/specs/2026-08-21-maas-integration-mock-design.md`
 
+## LLM 真实接入（小米 MiMo）
+
+项目已接入真实 LLM（非 mock）：小米 MiMo Token Plan（OpenAI 兼容协议，`mimo-v2.5-pro`），
+凭据走 env（`apps/web/.env`），代码零硬编码；原生 fetch 直连不引 SDK，统一超时与结构化错误。
+
+| 集成点 | 端点 | 前端入口 |
+|--------|------|---------|
+| LLM 网关 | `lib/services/llm-service.ts` | —（503 未配置 / 502 上游 / 504 超时） |
+| 连通性测试 | `GET/POST /api/maas/probe` | `/maas` 页顶部 LIVE 区块 |
+| 反馈 AI 归因 | `POST /api/feedback/[id]/insight` | 反馈页 NEGATIVE 条目「AI 归因」按钮 |
+| 发布 AI 摘要 | `POST /api/releases/[id]/summary` | 发布审批「查看变更」内「AI 变更摘要」 |
+| Agent 试聊 | `POST /api/agents/[id]/chat` | Agent 详情页「试聊 Playground」（加载当前 Prompt 配置） |
+
+设计文档：`docs/superpowers/specs/2026-08-25-mimo-llm-integration-design.md`
+
 ## API 端点
 
 | 分类 | 端点 | 功能 |
@@ -187,19 +204,24 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 | Wiki | `GET/POST /api/wiki/vaults` · vault/page CRUD | 知识库管理 |
 | Settings | `GET/POST /api/settings/{roles,permissions,product-groups,audit-logs}` | RBAC + 审计 |
 | Dashboard | `GET /api/dashboard` | 聚合统计 |
+| LLM | `GET/POST /api/maas/probe` | 连通性测试（POST 真实调用） |
+| | `POST /api/feedback/[id]/insight` | 反馈 AI 归因（真实调用） |
+| | `POST /api/releases/[id]/summary` | 发布变更 AI 摘要（真实调用） |
+| | `POST /api/agents/[id]/chat` | Agent 试聊（真实调用） |
 
 ## 工程纪律（已落地）
 
 | 纪律 | 实现 | 文件 |
 |------|------|------|
 | **结构化错误** | AppError 层级 → 精确 HTTP status；消除字符串匹配 | `lib/errors.ts` |
-| **Zod 全量校验** | 22 个 schema 覆盖所有 API 入参 | `lib/schemas.ts` |
+| **Zod 全量校验** | 23 个 schema 覆盖所有 API 入参 | `lib/schemas.ts` |
 | **Actor 上下文** | 请求头解析 actor（为 NextAuth 留接口）；消除硬编码 | `lib/context.ts` |
 | **审计日志** | 所有写操作 append-only 审计 | `lib/services/audit-service.ts` |
 | **真 SemVer** | 按分区变更范围计算版本号（patch/minor） | `lib/versioning.ts` |
 | **反馈状态机** | 非法状态转移被拒（如 NEW→RESOLVED） | `feedback-service.ts` |
 | **Store 加固** | crypto.randomUUID；损坏文件抛结构化错误 | `lib/data/store.ts` |
-| **MOCK 标注规范** | 所有 mock 数据/页面显式标注（徽标 + 代码注释），诚实边界清晰 | 侧边栏 / 登录页 / `/maas` |
+| **MOCK 标注规范** | 所有 mock 数据/页面显式标注（徽标 + 代码注释），真实调用标 LIVE，诚实边界清晰 | 侧边栏 / 登录页 / `/maas` |
+| **LLM 网关** | env 凭据零硬编码；超时/上游错误结构化；测试全 mock fetch 不发真实请求 | `lib/services/llm-service.ts` |
 
 ## 架构参考（Web 页面）
 
@@ -219,12 +241,21 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 | `docs/superpowers/specs/2026-07-06-agent-improvement-platform-mvp-design.md` | MVP 设计（三层 Loop 理念源头） |
 | `docs/superpowers/specs/2026-07-06-agent-improvement-platform-extended-design.md` | 扩展设计 |
 | `docs/superpowers/specs/2026-08-21-maas-integration-mock-design.md` | MaaS 集成 mock 层设计（双形态） |
+| `docs/superpowers/specs/2026-08-25-mimo-llm-integration-design.md` | MiMo 真实 LLM 接入设计（5 项） |
 | `docs/evaluation/2026-07-21-project-evaluation-and-harness-loop-reference.md` | 项目评估 + Harness/Loop 参考 |
 | `docs/reports/2026-07-31-project-evaluation-and-industry-gap-analysis.md` | 行业差距分析报告 |
+| `docs/reports/2026-08-25-mimo-llm-integration-delivery.md` | MiMo 真实 LLM 接入交付报告（实测证据 + 踩坑记录） |
 
 ## 环境变量
 
 参考 `.env.example`。**当前 dev 不强依赖任何外部服务**（数据走文件 JSON），
+但真实 LLM 功能需在 `apps/web/.env`（Next.js 只读应用目录下的 .env）配置：
+
+- `MIMO_API_KEY` — 小米 MiMo Token Plan 凭据（`tp-` 前缀）；缺失时 4 个 LLM 集成点返回 503
+- `MIMO_BASE_URL` — Token Plan 套餐专属 Base URL（默认中国集群 `https://token-plan-cn.xiaomimimo.com/v1`）
+- `MIMO_MODEL` — 模型 ID（默认 `mimo-v2.5-pro`）
+
+其他（暂未使用）：
 
 - `DATABASE_URL` — PostgreSQL 连接串（暂未使用）
 - `NEXTAUTH_URL` / `NEXTAUTH_SECRET` — NextAuth 接入位（暂未使用）
@@ -233,7 +264,7 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 ## 下一步（真实化里程碑）
 
-1. 接入真实 DashScope / 百炼 API，替换 `/maas` 与种子数据中的 mock 口径
+1. ~~接入真实 LLM~~ ✅ 已接入小米 MiMo（4 个集成点）；接入真实 DashScope / 百炼 API（多 Provider 可切换）为下一里程碑
 2. L1 trace（检索命中、工具调用、模型回答）回流为反馈证据，闭合「复盘有据 → 归因有理 → 加强有验」
 3. Prisma 持久化落地（schema 已就绪）+ NextAuth 真实认证
 4. CI 流水线（lint + test + build）

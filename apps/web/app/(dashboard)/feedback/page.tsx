@@ -60,6 +60,23 @@ export default function FeedbackPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [showCreate, setShowCreate] = useState(false);
+  // AI 归因：feedbackId -> { loading, text, error }
+  const [insights, setInsights] = useState<Record<string, { loading: boolean; text: string; error: string }>>({});
+
+  const handleInsight = async (id: string) => {
+    setInsights((m) => ({ ...m, [id]: { loading: true, text: "", error: "" } }));
+    try {
+      const res = await fetch(`/api/feedback/${id}/insight`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        setInsights((m) => ({ ...m, [id]: { loading: false, text: json.data.insight, error: "" } }));
+      } else {
+        setInsights((m) => ({ ...m, [id]: { loading: false, text: "", error: json.error || "归因失败" } }));
+      }
+    } catch {
+      setInsights((m) => ({ ...m, [id]: { loading: false, text: "", error: "网络错误" } }));
+    }
+  };
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -177,6 +194,15 @@ export default function FeedbackPage() {
                   )}
                 </div>
                 <div className="flex flex-col gap-1">
+                  {fb.rating === "NEGATIVE" && (
+                    <button
+                      onClick={() => handleInsight(fb.id)}
+                      disabled={insights[fb.id]?.loading}
+                      className="whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-500/10 active:scale-[0.98] disabled:opacity-40"
+                    >
+                      {insights[fb.id]?.loading ? "分析中…" : "AI 归因"}
+                    </button>
+                  )}
                   {(NEXT_STATUS[fb.status] || []).map((ns) => (
                     <button
                       key={ns}
@@ -188,6 +214,15 @@ export default function FeedbackPage() {
                   ))}
                 </div>
               </div>
+              {insights[fb.id]?.text && (
+                <div className="mt-3 whitespace-pre-wrap rounded-md bg-[var(--background)] p-3 text-[13px] leading-relaxed text-zinc-300 ring-1 ring-[var(--border)]">
+                  <span className="mr-2 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-400">AI 归因</span>
+                  {insights[fb.id].text}
+                </div>
+              )}
+              {insights[fb.id]?.error && (
+                <div className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">{insights[fb.id].error}</div>
+              )}
             </div>
           ))}
         </div>

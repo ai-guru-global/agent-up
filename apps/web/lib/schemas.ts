@@ -235,6 +235,23 @@ export const createProductGroupSchema = z.object({
 export const idParamSchema = z.string().min(1);
 
 // ============================================================
+// LLM 试聊（Agent Playground）
+// ============================================================
+
+export const agentChatSchema = z.object({
+  message: z.string().min(1).max(4000),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(8000),
+      }),
+    )
+    .max(20)
+    .optional(),
+});
+
+// ============================================================
 // Inferred types
 // ============================================================
 
@@ -255,3 +272,4 @@ export type CreateRoleInput = z.infer<typeof createRoleSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type CreatePermissionInput = z.infer<typeof createPermissionSchema>;
 export type CreateProductGroupInput = z.infer<typeof createProductGroupSchema>;
+export type AgentChatInput = z.infer<typeof agentChatSchema>;

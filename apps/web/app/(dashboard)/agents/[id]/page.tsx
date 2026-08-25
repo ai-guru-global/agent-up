@@ -170,6 +170,8 @@ export default function AgentDetailPage() {
         </div>
       </div>
 
+      <ChatPlayground agentId={id} />
+
       <VersionHistory agentId={id} activePartition={activeTab} onRollbackDone={fetchConfig} />
     </div>
   );
@@ -500,6 +502,105 @@ function JsonEditor({ config, onChange, label }: {
         rows={16}
       />
       {parseError && <p className="mt-1 text-sm text-red-600">{parseError}</p>}
+    </div>
+  );
+}
+
+interface ChatMsg {
+  role: "user" | "assistant";
+  content: string;
+  meta?: string;
+}
+
+/** 试聊 Playground：加载该 Agent 当前 Prompt 配置真实调用 MiMo，会话仅存前端内存 */
+function ChatPlayground({ agentId }: { agentId: string }) {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [err, setErr] = useState("");
+
+  const send = async () => {
+    const message = input.trim();
+    if (!message || sending) return;
+    setSending(true);
+    setErr("");
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    setMessages((prev) => [...prev, { role: "user", content: message }]);
+    setInput("");
+    try {
+      const res = await fetch(`/api/agents/${agentId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, history }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        const d = json.data;
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: d.reply,
+            meta: `${d.model} · ${d.latencyMs}ms · ${d.usage?.totalTokens ?? 0} tokens`,
+          },
+        ]);
+      } else {
+        setErr(json.error || "调用失败");
+      }
+    } catch {
+      setErr("网络错误");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">试聊 Playground</h2>
+        <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-400">LIVE</span>
+        <span className="text-[11px] text-zinc-500">加载当前 Prompt 分区配置真实调用模型；改完配置立即可验</span>
+      </div>
+      <div className="mt-3 rounded-md bg-[var(--surface)] p-4 ring-1 ring-[var(--border)]">
+        {messages.length === 0 ? (
+          <p className="py-4 text-center text-xs text-zinc-500">输入一条工单消息，用当前配置试聊（真实调用）</p>
+        ) : (
+          <div className="max-h-80 space-y-3 overflow-y-auto">
+            {messages.map((m, i) => (
+              <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
+                <div
+                  className={`max-w-[80%] rounded-md px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                    m.role === "user"
+                      ? "bg-[var(--accent)]/15 text-[var(--foreground)]"
+                      : "bg-[var(--background)] text-zinc-300 ring-1 ring-[var(--border)]"
+                  }`}
+                >
+                  {m.content}
+                  {m.meta && <p className="mt-1 text-[10px] text-zinc-500 tabular-nums">{m.meta}</p>}
+                </div>
+              </div>
+            ))}
+            {sending && <p className="text-xs text-zinc-500">模型思考中…</p>}
+          </div>
+        )}
+        {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
+        <div className="mt-3 flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+            className="flex-1 rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            placeholder="e.g. ECS 实例无法 SSH 连接，怎么排查？"
+          />
+          <button
+            onClick={send}
+            disabled={sending || !input.trim()}
+            className="rounded-md bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+          >
+            {sending ? "调用中…" : "发送"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

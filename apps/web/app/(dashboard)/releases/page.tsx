@@ -185,6 +185,25 @@ function DiffViewer({
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  // AI 变更摘要（真实调用 MiMo）
+  const [summary, setSummary] = useState("");
+  const [summarizing, setSummarizing] = useState(false);
+  const [sumErr, setSumErr] = useState("");
+
+  const handleSummary = async () => {
+    setSummarizing(true);
+    setSumErr("");
+    try {
+      const res = await fetch(`/api/releases/${releaseId}/summary`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) setSummary(json.data.summary);
+      else setSumErr(json.error || "摘要生成失败");
+    } catch {
+      setSumErr("网络错误");
+    } finally {
+      setSummarizing(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -218,9 +237,27 @@ function DiffViewer({
 
   return (
     <div className="mt-4 border-t border-[var(--border)] pt-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 mb-3">
-        变更详情（对比 Version {String(baseline.version || "初始")} → 本次）
-      </p>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+          变更详情（对比 Version {String(baseline.version || "初始")} → 本次）
+        </p>
+        <button
+          onClick={handleSummary}
+          disabled={summarizing}
+          className="rounded-md px-2.5 py-1 text-[11px] font-medium text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-500/10 active:scale-[0.98] disabled:opacity-40"
+        >
+          {summarizing ? "生成中…" : "AI 变更摘要"}
+        </button>
+      </div>
+      {summary && (
+        <div className="mb-3 whitespace-pre-wrap rounded-md bg-[var(--background)] p-3 text-[13px] leading-relaxed text-zinc-300 ring-1 ring-emerald-500/20">
+          <span className="mr-2 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-400">AI 摘要</span>
+          {summary}
+        </div>
+      )}
+      {sumErr && (
+        <div className="mb-3 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">{sumErr}</div>
+      )}
       <div className="space-y-3">
         {partitions.map((p) => {
           const before = baseline[p] as Record<string, unknown> | null;
