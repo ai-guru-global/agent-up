@@ -23,7 +23,7 @@ MOCK 登录演示账号：`allengaller` / `123`。数据源为 `data/` 目录本
 | 目录 | 职责 |
 |------|------|
 | `app/(dashboard)/` | 工作台页面：agents / releases / maas / feedback / skills / wiki / settings / architecture |
-| `app/api/` | 26 个 route 文件，Zod 全量校验 |
+| `app/api/` | 30 个 route 文件（含 4 个真实 LLM 端点），Zod 全量校验；完整说明见 `docs/api/api-reference.md` |
 | `lib/services/` | 业务逻辑层（agent / release / feedback / skill / wiki / effectiveness / llm / audit） |
 | `lib/data/store.ts` | JSON 文件存储（可用 `_setDataDir` 注入临时目录，测试隔离） |
 | `data/` | 种子数据（mock） |

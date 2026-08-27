@@ -6,6 +6,7 @@
 
 | 日期 | 文档 | 类型 | 摘要 |
 |------|------|------|------|
+| 2026-08-26 | [Agent 自进化与持续改进行业调研](./2026-08-26-agent-self-evolution-and-continuous-improvement-industry-research.md) | 行业调研 / 理论综述 | 核心 Loop 范式（终止条件/成本控制/防死循环）；Harness 产品化四支柱；L1/L2/L3 分层改进对比（Reflexion/GEPA/Voyager/自进化综述）；LangSmith/Braintrust/Langfuse/Manus/Cursor 能力矩阵与行业共同短板；AgentUp P0-P4 落地路径 |
 | 2026-08-25 | [MiMo 真实 LLM 接入交付报告](./2026-08-25-mimo-llm-integration-delivery.md) | 交付沉淀 / 实施记录 | LLM 网关 + 4 个真实集成点（连通性 / AI 归因 / AI 摘要 / 试聊）；实测证据；踩坑记录（Next.js .env 位置 / 推理模型空 content）；测试矩阵 232/232 |
 | 2026-07-31 | [项目整体评估与行业差距分析](./2026-07-31-project-evaluation-and-industry-gap-analysis.md) | 评估 / 差距分析 | 设计成熟度 vs 实现成熟度评估；与业界（trace/error analysis/golden set/蒸馏闭环）五大差距；工单复盘场景能力盘点；面向复盘场景重排的 P0-P3 路线图 |
 

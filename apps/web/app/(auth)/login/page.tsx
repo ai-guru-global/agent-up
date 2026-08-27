@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Alert, Button, Field, Input } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,7 +29,7 @@ export default function LoginPage() {
       });
       const json = await res.json();
       if (json.success) {
-        router.push("/agents");
+        router.push("/dashboard");
       } else {
         setError(json.error || "登录失败");
       }
@@ -39,61 +41,92 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[var(--background)]">
+    <main className="flex min-h-[100dvh] items-center justify-center bg-[var(--background)] px-4 py-12">
       <div className="w-full max-w-sm rounded-lg bg-[var(--surface)] p-8 ring-1 ring-[var(--border)]">
         <h1 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">
           登录
         </h1>
-        <p className="mt-1 text-sm text-zinc-400">Agent 改进平台</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">Agent 改进平台</p>
 
         {/* MOCK 标注：认证未接入真实系统（NextAuth 预留位），此页为 mock 登录 */}
-        <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+        <div className="mt-4 rounded-md border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2">
+          <p className="text-xs font-semibold text-[var(--warn)]">
             MOCK 登录 · 未接入真实认证
           </p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--muted)]">
             演示账号：allengaller / 123（硬编码于 api/auth/login，仅本地演示用）
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-[var(--subtle)]">
+            登录成功后不会写入任何会话凭证，页面只是跳转到工作台；直接访问 /dashboard
+            也能进入，本页仅用于走通认证流程的形态。
           </p>
         </div>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
           {error && (
-            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-500">
+            <Alert tone="danger" title="登录未通过">
               {error}
-            </div>
+            </Alert>
           )}
-          <div>
-            <label className="block text-xs font-medium text-zinc-400">
-              用户名
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400 focus:outline-none focus:ring-[var(--accent)]"
-              placeholder="allengaller"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-zinc-400">
-              密码
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400 focus:outline-none focus:ring-[var(--accent)]"
-              placeholder="•••"
-            />
-          </div>
-          <button
+
+          <Field label="用户名" required hint="演示环境请填 allengaller">
+            {({ id, describedBy }) => (
+              <Input
+                id={id}
+                aria-describedby={describedBy}
+                name="username"
+                type="text"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="allengaller"
+              />
+            )}
+          </Field>
+
+          <Field label="密码" required hint="演示环境请填 123">
+            {({ id, describedBy }) => (
+              <Input
+                id={id}
+                aria-describedby={describedBy}
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="•••"
+              />
+            )}
+          </Field>
+
+          <Button
             type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+            variant="primary"
+            className="w-full"
+            loading={submitting}
+            loadingText="登录中..."
           >
-            {submitting ? "登录中..." : "登录"}
-          </button>
+            登录
+          </Button>
         </form>
+
+        <p className="mt-4 text-[11px] leading-relaxed text-[var(--subtle)]">
+          不想登录也可以{" "}
+          <Link
+            href="/dashboard"
+            className="rounded text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
+          >
+            直接进入工作台
+          </Link>
+          ，或返回{" "}
+          <Link
+            href="/"
+            className="rounded text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
+          >
+            平台介绍页
+          </Link>
+          。
+        </p>
       </div>
     </main>
   );

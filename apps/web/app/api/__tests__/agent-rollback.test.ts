@@ -65,9 +65,11 @@ describe("POST /api/agents/[id]/rollback/[versionId]", () => {
     const rb = releases.find((r) => r.isRollback === true);
     expect(rb).toBeTruthy();
     expect(rb!.status).toBe("APPROVED");
+    // configSnapshot 在 Record<string, unknown> 下是 unknown，先显式收窄再取字段
+    const snapshot = rb!.configSnapshot as Record<string, unknown>;
     expect(rb!.configSnapshot).toBeTruthy();
-    expect(rb!.configSnapshot.prompt).toBeTruthy();
-    expect(rb!.configSnapshot.knowledge).toBeTruthy();
+    expect(snapshot.prompt).toBeTruthy();
+    expect(snapshot.knowledge).toBeTruthy();
   });
 
   it("writes audit log with action=agent.rollback", async () => {
@@ -81,8 +83,10 @@ describe("POST /api/agents/[id]/rollback/[versionId]", () => {
     const rollbackLog = logs.find((l) => l.action === "agent.rollback");
     expect(rollbackLog).toBeTruthy();
     expect(rollbackLog!.resourceId).toBe(AGENT_ID);
-    expect(rollbackLog!.details.rollbackFromVersion).toBe("0.1.0");
-    expect(rollbackLog!.details.partitions).toEqual([
+    // details 同理：unknown 不能直接访问属性，先收窄成 Record 再断言内容
+    const details = rollbackLog!.details as Record<string, unknown>;
+    expect(details.rollbackFromVersion).toBe("0.1.0");
+    expect(details.partitions).toEqual([
       "PROMPT",
       "KNOWLEDGE",
       "TOOLS",

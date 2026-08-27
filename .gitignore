@@ -43,3 +43,6 @@ apps/web/prisma/migrations/
 .vscode/
 *.swp
 *.swo
+
+# UI 巡检临时产物（本地 Chrome/CDP 截图与脚本，不进版本库）
+.inspect/

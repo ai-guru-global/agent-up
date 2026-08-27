@@ -8,6 +8,13 @@
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-accent-muted: var(--accent-muted);
+  /* 语义文字层级：muted = 次要说明，subtle = 三级元信息 */
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  /* 语义状态色：文字色与底色成对提供，保证两套主题下都达标 */
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warn: var(--warn);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -20,6 +27,26 @@
   --border: #e4e4e7;
   --accent: #2563eb;
   --accent-muted: #dbeafe;
+
+  /* 次要/三级文字。亮色模式下 zinc-400 对白底仅 2.4:1，此处取
+     可通过 WCAG AA 的色阶：muted 7.7:1，subtle 5.9:1 */
+  --muted: #52525b;
+  --subtle: #63636c;
+
+  /* 状态色 —— 亮色模式用深色阶，保证落在浅色底上仍达标 */
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --success: #15803d;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --warn: #b45309;
+  --warn-bg: #fffbeb;
+  --warn-border: #fde68a;
+
+  --ring: var(--accent);
+  --scrollbar-thumb: #d4d4d8;
+  --scrollbar-thumb-hover: #a1a1aa;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,6 +58,23 @@
     --border: #3f3f46;
     --accent: #3b82f6;
     --accent-muted: #1e3a5f;
+
+    --muted: #a1a1aa;
+    --subtle: #8b8b94;
+
+    /* 暗色模式用浅色阶，落在深色底上达标 */
+    --danger: #f87171;
+    --danger-bg: #2a1213;
+    --danger-border: #7f1d1d;
+    --success: #34d399;
+    --success-bg: #0c1f18;
+    --success-border: #166534;
+    --warn: #fbbf24;
+    --warn-bg: #241a06;
+    --warn-border: #78350f;
+
+    --scrollbar-thumb: #3f3f46;
+    --scrollbar-thumb-hover: #52525b;
   }
 }
 
@@ -49,7 +93,59 @@ body {
   color: var(--foreground);
 }
 
-input:focus, select:focus, textarea:focus {
-  outline: 2px solid var(--accent);
+/* 键盘焦点可见，指针点击不显示焦点环；输入类元素保留 :focus 以覆盖旧浏览器 */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--ring);
   outline-offset: -1px;
+}
+
+/* 文本光标与滚动条同样属于设计的一部分 */
+input, select, textarea {
+  caret-color: var(--accent);
+}
+
+* {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+/* 数字对齐：时间、计数、版本号等表格化数据不应跳动 */
+time, [data-numeric] {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

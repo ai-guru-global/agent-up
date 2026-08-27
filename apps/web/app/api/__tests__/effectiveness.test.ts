@@ -4,6 +4,7 @@ import {
   computeEffectivenessReport,
   getOrComputeEffectivenessReport,
   DEFAULT_WINDOW_DAYS,
+  type EffectivenessReport,
 } from "@/lib/services/effectiveness-service";
 import { GET as listVersions } from "@/app/api/agents/[id]/versions/route";
 import { GET as getVersion } from "@/app/api/agents/[id]/versions/[versionId]/route";
@@ -20,7 +21,12 @@ interface VersionFixture {
   id: string;
   agentId: string;
   publishedAt: string;
-  effectivenessReport?: unknown;
+  /**
+   * 与服务层 VersionLike 保持同一类型。原先写成 unknown 会让本夹具无法作为
+   * VersionLike 传入被测函数（unknown 不兼容 EffectivenessReport | null），
+   * 只能靠调用点强转绕过，等于把类型检查关掉了。
+   */
+  effectivenessReport?: EffectivenessReport | null;
 }
 
 interface FeedbackFixture {
@@ -33,8 +39,9 @@ interface FeedbackFixture {
   status?: string;
 }
 
+/** store.write 是全泛型的，夹具对象可直接写入，不需要断言成 Record */
 function writeVersion(v: VersionFixture) {
-  store.write(v as Record<string, unknown>, "versions", `${v.id}.json`);
+  store.write(v, "versions", `${v.id}.json`);
 }
 
 function writeFeedback(f: FeedbackFixture) {

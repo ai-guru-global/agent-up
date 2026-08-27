@@ -1,5 +1,6 @@
 # AgentUp 项目评估 + Harness / Loop 工程参考
 
+> 状态：**历史快照**（2026-07-21 时点评估，文中统计数字与缺口结论可能已过时）；最新状态见 [2026-07-31 差距分析](../reports/2026-07-31-project-evaluation-and-industry-gap-analysis.md) 与 [2026-08-25 LLM 交付报告](../reports/2026-08-25-mimo-llm-integration-delivery.md)
 > 日期：2026-07-21
 > 范围：对 `agent-up`（Agent 改进平台）的整体评估（功能完整性 + 创意性），并以 web 页面（`/architecture`、`/architecture/loop`、`/architecture/harness`、`/architecture/roadmap`）全面参考业界 **Harness 工程** 与 **Loop 工程**，用 mermaid 图 + 表格清晰呈现。
 > 本文档是上述 web 页面内容的 markdown 版（单一真相源），便于 PR review。

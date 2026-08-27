@@ -40,11 +40,20 @@ export default function MaasPage() {
         <ConnectivityProbe />
       </div>
 
+      <p className="mt-6 max-w-3xl rounded-lg border border-dashed border-[var(--border)] px-4 py-3 text-xs leading-relaxed text-[var(--subtle)]">
+        怎么读这一页：<strong className="font-semibold text-[var(--muted)]">①</strong> 先看产品矩阵，确认这套改进闭环在公共云与专有云两种形态下分别对接哪些产品；
+        <strong className="font-semibold text-[var(--muted)]">②</strong> 再看每个 Agent 的模型消费，判断改进值不值；
+        <strong className="font-semibold text-[var(--muted)]">③</strong> 路由图说明「质量 / 成本 / 时延」怎么通过配置而非代码来平衡；
+        <strong className="font-semibold text-[var(--muted)]">④</strong> 最后对齐四分区各自的 MaaS 接入点与当前进度。
+        除顶部连通性测试外，本页数据均为 mock，可安全用于客户现场讲解。
+      </p>
+
       <Section
         title="① 产品矩阵 · 公共云 + 专有云双形态"
         description="同一改进平台对接两种部署形态：公共云客户用百炼 / DashScope 托管服务，专有云客户用 Apsara Stack 集群内私有化推理。模型可换，改进闭环不变。"
       >
         <Table
+          caption="公共云与专有云两种部署形态下，各自对接的模型产品、承担的角色，以及对应 agent-up 的哪个配置分区"
           head={["形态", "产品 / 模型", "角色", "对应 agent-up 分区"]}
           rows={[
             [<Pill tone="accent">公共云</Pill>, <span><strong>百炼 Model Studio</strong></span>, "模型服务 + 知识库 RAG + 应用编排入口", "全局（模型选型 / 知识库绑定）"],
@@ -67,14 +76,17 @@ export default function MaasPage() {
         description="把模型消费挂到每个 Agent 上：成本、时延、解决率是跟客户对齐「这次改进值不值」的三个抓手。"
       >
         <Table
+          caption="每个 Agent 近 30 天的模型消费与效果指标，含主模型、兜底模型、调用量、token 量、预估成本、平均时延与解决率"
           head={["Agent", "主模型", "兜底", "调用次数", "Tokens", "预估成本", "平均时延", "解决率"]}
           rows={[
             ["ECS 工单助手", <span><strong>qwen-max</strong>（百炼）</span>, "qwen-plus", "12,480", "186M", "¥3,720", "2.8s", <Pill tone="good">78%</Pill>],
             ["RDS 工单助手", <span><strong>qwen-plus</strong>（百炼）</span>, "qwen-turbo", "5,214", "64M", "¥860", "1.9s", <Pill tone="warn">71%</Pill>],
           ]}
         />
-        <p className="mt-2 text-[11px] text-zinc-500">
+        <p className="mt-2 text-[11px] leading-relaxed text-[var(--subtle)]">
           注：专有云口径下同一配置切换为 Apsara Stack 私有化推理端点，指标口径一致；成本按公共云 DashScope 刊例价估算。均为 mock。
+          表中「解决率」指工单在不转人工的情况下被 Agent 闭环解决的比例，是判断配置改动是否奏效的核心指标；
+          「平均时延」为端到端往返耗时，含检索与工具调用；「兜底」是主模型不可用或成本降级时实际接手的模型。
         </p>
       </Section>
 
@@ -93,12 +105,13 @@ export default function MaasPage() {
         description="agent-up 的四分区配置，每一分区都有明确的 MaaS 接入点。当前为 mock 口径，真实接入为下一里程碑。"
       >
         <Table
+          caption="Prompt、Knowledge、Tools、Routing 四个分区各自的 MaaS 接入点与当前实现状态"
           head={["分区", "MaaS 接入点（mock）", "当前状态"]}
           rows={[
-            ["Prompt", "模型人设 / 约束写入 systemPrompt，由 Qwen 系列执行", <Pill tone="warn">Mock 口径已写入</Pill>],
-            ["Knowledge", "百炼 RAG 知识库（公共云）/ 私有向量检索（专有云）", <Pill tone="warn">Mock 条目已登记</Pill>],
-            ["Tools", "DashScope MCP 工具：知识库检索 / text-embedding", <Pill tone="warn">Mock 条目已登记</Pill>],
-            ["Routing", "模型路由规则：turbo 分类 → max / plus 分流", <Pill tone="accent">策略演示</Pill>],
+            ["Prompt", "模型人设 / 约束写入 systemPrompt，由 Qwen 系列执行", <Pill tone="warn" title="配置结构与字段口径已按真实接入设计写好，但数据仍是本地 mock">Mock 口径已写入</Pill>],
+            ["Knowledge", "百炼 RAG 知识库（公共云）/ 私有向量检索（专有云）", <Pill tone="warn" title="知识条目已按真实结构登记，检索仍走本地实现">Mock 条目已登记</Pill>],
+            ["Tools", "DashScope MCP 工具：知识库检索 / text-embedding", <Pill tone="warn" title="工具清单已登记，尚未连接真实 MCP 服务端">Mock 条目已登记</Pill>],
+            ["Routing", "模型路由规则：turbo 分类 → max / plus 分流", <Pill tone="accent" title="路由策略可在 Agent 详情页的 Routing 分区实际编辑与演示">策略演示</Pill>],
           ]}
         />
         <Insight label="下一里程碑">

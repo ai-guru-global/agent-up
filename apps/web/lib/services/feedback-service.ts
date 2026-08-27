@@ -48,7 +48,7 @@ export async function listFeedback(params: {
   rating?: string;
   tag?: string;
 }) {
-  return store.queryList<Record<string, unknown>>(
+  const result = store.queryList<Record<string, unknown>>(
     ["feedback"],
     {
       ...(params.agentId && { agentId: (f) => f.agentId === params.agentId }),
@@ -69,6 +69,9 @@ export async function listFeedback(params: {
     params.skip,
     params.take,
   );
+  // getFeedback / createFeedback / updateFeedback 都会填充 agent 字段，但列表接口漏了，
+  // 导致反馈中心页读 fb.agent.name 时直接崩溃。这里补上，保证四个出口契约一致
+  return { ...result, items: result.items.map(withAgentName) };
 }
 
 export async function getFeedback(id: string) {

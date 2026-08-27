@@ -1,5 +1,7 @@
 # MiMo 真实 LLM 接入设计（替换 mock 口径）
 
+> **状态**：Approved → Implemented（实施结果见本文第六节与交付报告）
+> **版本**：v1.1（2026-08-25 定稿并交付；2026-08-25 补充实施结果）
 > 日期：2026-08-25
 > 背景：用户提供小米 MiMo Token Plan 凭据（`tp-` 前缀，OpenAI 兼容协议，
 > 中国集群 `https://token-plan-cn.xiaomimimo.com/v1`，模型 `mimo-v2.5-pro`）。

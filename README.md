@@ -35,7 +35,7 @@ agent-up/
 │       │   │   ├── skills/         # Skills 管理
 │       │   │   ├── wiki/           # 知识库管理
 │       │   │   └── settings/       # 设置（角色/权限/审计日志）
-│       │   ├── api/                # API 路由（26 个 route 文件）
+│       │   ├── api/                # API 路由（30 个 route 文件，含 4 个真实 LLM 端点）
 │       │   └── components/         # 共享组件（含 mermaid 渲染器）
 │       ├── lib/
 │       │   ├── errors.ts           # 结构化错误体系（AppError 层级）
@@ -59,10 +59,13 @@ agent-up/
 │   ├── db/                         # Prisma 数据库层（schema 就绪）
 │   ├── shared/                     # 共享类型定义
 │   └── ui/                         # UI 组件库（预留）
-├── docs/                           # 设计文档 + 评估文档
-│   ├── superpowers/specs/          # MVP + 扩展设计 + MaaS 集成 mock 设计
+├── docs/                           # 文档体系（总索引见 docs/README.md）
+│   ├── superpowers/specs/          # 设计规格书（带状态/版本标记）
 │   ├── evaluation/                 # 项目评估 + Harness/Loop 参考
-│   └── reports/                    # 行业差距分析报告
+│   ├── reports/                    # 阶段性交付报告（命名规范见目录 README）
+│   ├── api/                        # API 接口完整说明（30 route）
+│   └── guides/                     # 部署指南 + 故障排查手册
+├── GTM/                            # Go-To-Market 物料（客户 One-Pager / 面试话术 / 海报）
 ├── docker-compose.yml              # PostgreSQL + MinIO
 └── turbo.json                      # Turborepo 配置
 ```
@@ -236,10 +239,17 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 ## 文档索引
 
+> 完整文档体系入口：`docs/README.md`（设计 → 评估 → 交付 → 使用四层组织）
+
 | 文档 | 内容 |
 |------|------|
-| `docs/superpowers/specs/2026-07-06-agent-improvement-platform-mvp-design.md` | MVP 设计（三层 Loop 理念源头） |
-| `docs/superpowers/specs/2026-07-06-agent-improvement-platform-extended-design.md` | 扩展设计 |
+| `docs/README.md` | 文档体系总索引 |
+| `GTM/README.md` | Go-To-Market 物料库（客户 One-Pager / 面试话术 / 海报 + 事实口径表） |
+| `docs/api/api-reference.md` | API 接口完整说明（30 route + 错误码 + LLM 端点细节） |
+| `docs/guides/deployment.md` | 部署指南（含演示前检查清单） |
+| `docs/guides/troubleshooting.md` | 故障排查手册（15 个已知问题） |
+| `docs/superpowers/specs/2026-07-06-agent-improvement-platform-mvp-design.md` | MVP 设计（三层 Loop 理念源头，已落地） |
+| `docs/superpowers/specs/2026-07-06-agent-improvement-platform-extended-design.md` | 扩展设计（部分落地） |
 | `docs/superpowers/specs/2026-08-21-maas-integration-mock-design.md` | MaaS 集成 mock 层设计（双形态） |
 | `docs/superpowers/specs/2026-08-25-mimo-llm-integration-design.md` | MiMo 真实 LLM 接入设计（5 项） |
 | `docs/evaluation/2026-07-21-project-evaluation-and-harness-loop-reference.md` | 项目评估 + Harness/Loop 参考 |

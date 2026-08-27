@@ -1,9 +1,11 @@
 # Agent 持续改进平台 — 扩展设计文档
 
-- **状态**: Draft
+- **状态**: Approved → Partially Implemented（Skills/Wiki/发布流已落地；Prisma 持久化仍为规划）
+- **版本**: v1.0（2026-07-06 定稿；2026-08-26 状态标记更新）
 - **日期**: 2026-07-06
 - **基于**: [MVP 设计文档](./2026-07-06-agent-improvement-platform-mvp-design.md)
 - **技术栈**: Next.js 15 + Prisma + PostgreSQL + Turborepo
+  ⚠️ 时效提示：实际实现已升级至 **Next.js 16**；运行时存储当前为 JSON 文件（`apps/web/data/`），Prisma 仅作 schema 储备
 - **范围**: 在 MVP 基础上扩展为完整的 Agent / Skills / Wiki 持续改进管理平台
 
 ---

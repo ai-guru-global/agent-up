@@ -14,8 +14,28 @@ interface ListAgentsParams {
   search?: string;
 }
 
+/**
+ * 把 productGroupId 解析成完整的产品组对象。
+ * createAgent / updateAgent 都会写入 productGroup，但种子数据与 listAgents / getAgent
+ * 都只有 productGroupId，导致列表页的「所属产品组」一栏只能渲染成一个孤零零的占位符。
+ * 这里统一补齐，保证四个出口的数据形状一致。
+ */
+function withProductGroup<T extends Record<string, unknown>>(item: T): T {
+  const groups = store.readArray<{ id: string; name: string; displayName: string }>(
+    "settings",
+    "product-groups.json",
+  );
+  const group = groups.find((g) => g.id === item.productGroupId);
+  return {
+    ...item,
+    productGroup: group
+      ? { id: group.id, name: group.name, displayName: group.displayName }
+      : null,
+  };
+}
+
 export async function listAgents(params: ListAgentsParams) {
-  return store.queryList<Record<string, unknown>>(
+  const result = store.queryList<Record<string, unknown>>(
     ["agents"],
     {
       ...(params.status && params.status !== "ALL" && {
@@ -36,6 +56,7 @@ export async function listAgents(params: ListAgentsParams) {
     params.skip,
     params.take,
   );
+  return { ...result, items: result.items.map(withProductGroup) };
 }
 
 export async function getAgent(id: string) {
@@ -51,7 +72,7 @@ export async function getAgent(id: string) {
     .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))
     .slice(0, 5);
 
-  return { ...agent, releases, versions };
+  return { ...withProductGroup(agent), releases, versions };
 }
 
 export async function createAgent(input: {

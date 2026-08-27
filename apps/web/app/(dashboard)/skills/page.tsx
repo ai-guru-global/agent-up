@@ -1,6 +1,27 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CountLine,
+  EmptyState,
+  Field,
+  Hint,
+  InlineField,
+  Input,
+  Modal,
+  PageHeader,
+  SKILL_STATUS,
+  Select,
+  Skeleton,
+  StatusBadge,
+  Textarea,
+  metaOf,
+} from "@/components/ui";
+import type { Tone } from "@/components/ui";
 
 interface Skill {
   id: string;
@@ -20,18 +41,20 @@ const CATS = ["ALL","KNOWLEDGE_QUERY","DATA_FETCH","ACTION","TRANSFORM","GENERAL
 const CAT_LABEL: Record<string,string> = {
   KNOWLEDGE_QUERY: "知识检索", DATA_FETCH: "数据查询", ACTION: "动作执行", TRANSFORM: "数据转换", GENERAL: "通用",
 };
-const CAT_COLOR: Record<string,string> = {
-  KNOWLEDGE_QUERY: "bg-blue-500/10 text-blue-400",
-  DATA_FETCH: "bg-cyan-500/10 text-cyan-400",
-  ACTION: "bg-orange-500/10 text-orange-400",
-  TRANSFORM: "bg-violet-500/10 text-violet-400",
-  GENERAL: "bg-zinc-500/10 text-zinc-400",
+/** 分类的 tone 与「它能做什么」的解释。此前只有色块没有释义，用户只能靠猜 */
+const CAT_META: Record<string, { tone: Tone; desc: string }> = {
+  KNOWLEDGE_QUERY: { tone: "info", desc: "在知识库或文档里查资料，只读不改，用来补足回答依据" },
+  DATA_FETCH: { tone: "accent", desc: "调接口取实时数据，例如实例状态、账单、监控指标，只读不改" },
+  ACTION: { tone: "warn", desc: "会真正改变外部状态，例如重启实例、开工单、发通知，需谨慎授权" },
+  TRANSFORM: { tone: "success", desc: "对已有数据做格式转换或摘要，不外呼，纯计算" },
+  GENERAL: { tone: "neutral", desc: "未归入以上任何一类的通用能力" },
 };
-const STATUS_BADGE: Record<string,string> = {
-  DRAFT: "bg-amber-500/10 text-amber-400",
-  PUBLISHED: "bg-emerald-500/10 text-emerald-400",
-  DEPRECATED: "bg-zinc-500/10 text-zinc-400",
-  ARCHIVED: "bg-zinc-500/10 text-zinc-400",
+/** 运行时决定 Skill 以什么方式被调用 */
+const RUNTIME_HELP: Record<string, string> = {
+  HTTP: "通过 HTTP 请求调用外部服务，需要填写 Endpoint",
+  FUNCTION: "以函数形式在平台内执行，不需要外部端点",
+  MCP: "以 MCP 协议暴露给模型，由模型自主决定何时调用",
+  WORKFLOW: "由多个步骤编排成的流程，适合有前后依赖的复合任务",
 };
 
 export default function SkillsPage() {
@@ -53,9 +76,15 @@ export default function SkillsPage() {
       if (search) p.set("search", search);
       const res = await fetch(`/api/skills?${p}`);
       const json = await res.json();
+      // 失败时一并清空列表（与 wiki 的 fetchPages 一致）：本接口按筛选条件重新请求，
+      // 留着上一批数据继续显示，等于把旧结果当成当前筛选条件的结果
       if (json.success) setSkills(json.data.items);
-      else setError(json.error || "加载失败");
+      else {
+        setSkills([]);
+        setError(json.error || "加载失败");
+      }
     } catch {
+      setSkills([]);
       setError("网络错误");
     } finally { setLoading(false); }
   }, [catFilter, statusFilter, search]);
@@ -64,91 +93,198 @@ export default function SkillsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchList(); }, [fetchList]);
 
+  const filtered = !!search || catFilter !== "ALL" || statusFilter !== "ALL";
+
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Skills 市场</h1>
-          <p className="mt-1 text-sm text-zinc-400">管理和发现可复用的 Agent 技能组件</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="rounded-md bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98]"
-        >
-          + 发布 Skill
-        </button>
-      </div>
+      <PageHeader
+        title="Skills 市场"
+        description="管理和发现可复用的 Agent 技能组件"
+        hint={
+          <>
+            Skill 是一段可复用的能力，属于四分区里的「工具」分区 —— 决定 Agent 能做什么动作。
+            一个 Skill 可以被任意多个 Agent 绑定，改一次所有绑定方都受益，因此比在单个 Agent 里写死更值得。
+            只有状态为「已发布」的 Skill 才会出现在 Agent 的可绑定列表中。
+          </>
+        }
+        actions={
+          <Button variant="primary" onClick={() => setShowCreate(true)}>
+            + 发布 Skill
+          </Button>
+        }
+      />
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <input
-          type="text"
-          placeholder="搜索 Skill..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
-        />
-        <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
-          className="rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
-          {CATS.map((c) => <option key={c} value={c}>{c === "ALL" ? "全部分类" : CAT_LABEL[c] || c}</option>)}
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
-          <option value="ALL">全部状态</option>
-          <option value="DRAFT">草稿</option>
-          <option value="PUBLISHED">已发布</option>
-          <option value="DEPRECATED">已弃用</option>
-        </select>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <Field
+          label="搜索 Skill"
+          hideLabel
+          className="sm:w-64"
+          hint="按标识名、显示名或描述模糊匹配"
+        >
+          {({ id, describedBy }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              type="search"
+              placeholder="搜索 Skill..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          )}
+        </Field>
+        <InlineField label="分类" hint="按 Skill 的能力类型筛选">
+          {({ id }) => (
+            <Select
+              id={id}
+              value={catFilter}
+              onChange={(e) => setCatFilter(e.target.value)}
+              className="w-32"
+            >
+              {CATS.map((c) => (
+                <option key={c} value={c}>{c === "ALL" ? "全部分类" : CAT_LABEL[c] || c}</option>
+              ))}
+            </Select>
+          )}
+        </InlineField>
+        <InlineField label="状态" hint="按 Skill 的生命周期状态筛选">
+          {({ id }) => (
+            <Select
+              id={id}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-32"
+            >
+              <option value="ALL">全部状态</option>
+              <option value="DRAFT">草稿</option>
+              <option value="PUBLISHED">已发布</option>
+              <option value="DEPRECATED">已弃用</option>
+              <option value="ARCHIVED">已归档</option>
+            </Select>
+          )}
+        </InlineField>
       </div>
 
       {error && (
-        <div className="mt-4 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+        <Alert
+          tone="danger"
+          title="Skill 列表加载失败"
+          className="mt-4"
+          onRetry={fetchList}
+          retryHint="点这里会重新请求一次 /api/skills，不用刷新整个页面。"
+        >
+          {error}
+          <span className="mt-1 block text-xs">
+            列表数据来自 /api/skills，它读取 apps/web/data/skills/ 下的 JSON 文件。
+            请确认这些文件存在且格式合法，然后重试。
+          </span>
+        </Alert>
       )}
 
       {loading ? (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="sr-only">正在加载 Skill 列表</span>
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-md bg-[var(--surface-elevated)] p-5 h-40" />
+            <Skeleton key={i} className="h-40 rounded-lg" />
           ))}
         </div>
-      ) : skills.length === 0 ? (
-        <div className="mt-8 rounded-md border border-dashed border-[var(--border)] p-12 text-center">
-          <p className="text-zinc-400">暂无 Skill</p>
-          <button onClick={() => setShowCreate(true)} className="mt-3 text-sm font-medium text-[var(--accent)] hover:opacity-80">
-            创建第一个 Skill
-          </button>
-        </div>
+      ) : skills.length === 0 && !error ? (
+        <EmptyState
+          className="mt-8"
+          title="暂无 Skill"
+          description={
+            filtered
+              ? "当前筛选条件下没有匹配的 Skill。可以清空搜索词，或把分类与状态都改回「全部」再看一次。"
+              : "还没有发布任何 Skill。Skill 是给 Agent 用的可复用能力，先发布一个，之后就能在 Agent 的工具分区里绑定它。"
+          }
+          action={
+            <Button variant="primary" onClick={() => setShowCreate(true)}>
+              创建第一个 Skill
+            </Button>
+          }
+          hint="新建后默认是「草稿」状态，需要改为「已发布」才会出现在 Agent 的可绑定列表中。"
+        />
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {skills.map((sk) => (
-            <div key={sk.id} className="rounded-md bg-[var(--surface)] p-5 ring-1 ring-[var(--border)] transition hover:ring-[var(--accent-muted)]">
-              <div className="flex items-start justify-between">
-                <h3 className="font-semibold text-[var(--foreground)]">{sk.displayName}</h3>
-                <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${STATUS_BADGE[sk.status] || ""}`}>{sk.status}</span>
-              </div>
-              <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{sk.description}</p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${CAT_COLOR[sk.category] || ""}`}>
-                  {CAT_LABEL[sk.category] || sk.category}
-                </span>
-                <span className="text-xs text-zinc-500">{sk.runtime}</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
-                <span className="tabular-nums">v{sk.version}</span>
-                <span className="tabular-nums">{sk._count.bindings} 个 Agent 使用</span>
-              </div>
-            </div>
-          ))}
-        </div>
+        <>
+          <CountLine
+            className="mt-6"
+            error={!!error}
+            unknown="Skill 数量这次没能取到 —— 上面是加载失败，不代表一个 Skill 都没有。"
+          >
+            共 {skills.length} 个 Skill{filtered ? "（已按当前筛选条件过滤）" : ""}。
+            每张卡片右上角是发布状态，中间彩色标签是能力分类，其后是运行时；
+            底部左侧为当前版本号，右侧为已绑定它的 Agent 数量 —— 数字越大，改动的影响面越广。
+          </CountLine>
+          <ul className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {skills.map((sk) => {
+              const cat = CAT_META[sk.category] ?? CAT_META.GENERAL;
+              return (
+                <li key={sk.id}>
+                  <Card pad="md" className="h-full">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="min-w-0 font-semibold text-[var(--foreground)]">
+                        {sk.displayName}
+                      </h2>
+                      <StatusBadge dict={SKILL_STATUS} code={sk.status} className="shrink-0" />
+                    </div>
+                    <p className="mt-0.5 font-mono text-[11px] text-[var(--subtle)]" title="标识名：代码与 API 里引用这个 Skill 时使用的唯一名称">
+                      {sk.name}
+                    </p>
+                    <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-[var(--muted)]" title={sk.description}>
+                      {sk.description}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge tone={cat.tone} title={cat.desc}>
+                        {CAT_LABEL[sk.category] || sk.category}
+                      </Badge>
+                      <span
+                        className="cursor-help text-xs text-[var(--subtle)]"
+                        title={RUNTIME_HELP[sk.runtime] ?? "该 Skill 的调用方式"}
+                      >
+                        {sk.runtime}
+                      </span>
+                    </div>
+                    <div
+                      className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-2.5 text-xs text-[var(--subtle)]"
+                      data-numeric
+                    >
+                      <span title={`当前版本号，共有 ${sk._count.versions} 个历史版本`}>v{sk.version}</span>
+                      <span title="已绑定该 Skill 的 Agent 数量，改动会同时影响这些 Agent">
+                        {sk._count.bindings} 个 Agent 使用
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-[var(--subtle)]">
+                      {metaOf(SKILL_STATUS, sk.status).desc}
+                    </p>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
-      {showCreate && (
-        <CreateSkillModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); fetchList(); }} />
-      )}
+      <CreateSkillModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={() => { setShowCreate(false); fetchList(); }}
+      />
     </div>
   );
 }
 
-function CreateSkillModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateSkillModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
   const [name, setName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
@@ -161,6 +297,7 @@ function CreateSkillModal({ onClose, onCreated }: { onClose: () => void; onCreat
   const handleSubmit = async () => {
     if (!name || !displayName || !description) { setErr("请填写必要字段"); return; }
     setSubmitting(true);
+    setErr("");
     try {
       const res = await fetch("/api/skills", {
         method: "POST",
@@ -175,65 +312,154 @@ function CreateSkillModal({ onClose, onCreated }: { onClose: () => void; onCreat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-lg bg-[var(--surface)] p-6 ring-1 ring-[var(--border)]">
-        <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">发布 Skill</h2>
-        {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
-        <div className="mt-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-[var(--foreground)]">标识名 *</label>
-              <input value={name} onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
-                placeholder="wiki-search" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-[var(--foreground)]">显示名 *</label>
-              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
-                placeholder="Wiki 搜索" />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-[var(--foreground)]">描述 *</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
-              rows={3} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-[var(--foreground)]">分类</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)}
-                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="发布 Skill"
+      description="登记一个可复用的能力组件。创建后默认为草稿状态，确认可用再改为已发布，Agent 才能绑定它。"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>
+            取消
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            loading={submitting}
+            loadingText="创建中..."
+          >
+            创建
+          </Button>
+        </>
+      }
+    >
+      {err && (
+        <Alert tone="danger" title="创建未成功" className="mb-4">
+          {err}
+          <span className="mt-1 block text-xs">
+            表单内容仍保留在下方，修正后可直接重新提交。标识名在全平台唯一，重复时会被拒绝。
+          </span>
+        </Alert>
+      )}
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="标识名 *"
+            hint="全平台唯一，建议小写加连字符。代码与 API 里引用这个 Skill 时用它，创建后不建议再改。"
+          >
+            {({ id, describedBy }) => (
+              <Input
+                id={id}
+                aria-describedby={describedBy}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="wiki-search"
+              />
+            )}
+          </Field>
+          <Field
+            label="显示名 *"
+            hint="界面上给人看的名字，可用中文。列表卡片与 Agent 绑定处显示的都是它。"
+          >
+            {({ id, describedBy }) => (
+              <Input
+                id={id}
+                aria-describedby={describedBy}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Wiki 搜索"
+              />
+            )}
+          </Field>
+        </div>
+
+        <Field
+          label="描述 *"
+          hint="说清它做什么、什么时候该用、有什么限制。这段文字会随 Skill 一起提供给模型作为选择依据，写得越准，模型误用的概率越低。"
+        >
+          {({ id, describedBy }) => (
+            <Textarea
+              id={id}
+              aria-describedby={describedBy}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="在内部知识库中按关键词检索文档片段，用于补充回答依据；不返回实时业务数据。"
+            />
+          )}
+        </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="分类"
+            hint={
+              <>
+                按能力类型归类，影响筛选与模型的选择偏好。
+                <span className="mt-0.5 block">{CAT_META[category]?.desc}</span>
+              </>
+            }
+          >
+            {({ id, describedBy }) => (
+              <Select
+                id={id}
+                aria-describedby={describedBy}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
                 {CATS.filter(c => c !== "ALL").map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-[var(--foreground)]">运行时</label>
-              <select value={runtime} onChange={(e) => setRuntime(e.target.value)}
-                className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400">
+              </Select>
+            )}
+          </Field>
+          <Field
+            label="运行时"
+            hint={
+              <>
+                决定这个 Skill 以什么方式被调用。
+                <span className="mt-0.5 block">{RUNTIME_HELP[runtime]}</span>
+              </>
+            }
+          >
+            {({ id, describedBy }) => (
+              <Select
+                id={id}
+                aria-describedby={describedBy}
+                value={runtime}
+                onChange={(e) => setRuntime(e.target.value)}
+              >
                 <option value="HTTP">HTTP</option>
                 <option value="FUNCTION">Function</option>
                 <option value="MCP">MCP</option>
                 <option value="WORKFLOW">Workflow</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-[var(--foreground)]">Endpoint</label>
-            <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)}
-              className="mt-1 w-full rounded-md bg-[var(--background)] px-3 py-1.5 text-sm ring-1 ring-[var(--border)] placeholder:text-zinc-400"
-              placeholder="https://api.example.com/skill" />
-          </div>
+              </Select>
+            )}
+          </Field>
         </div>
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-md px-4 py-1.5 text-sm font-medium text-[var(--foreground)] ring-1 ring-[var(--border)] hover:bg-[var(--surface-elevated)] active:scale-[0.98]">取消</button>
-          <button onClick={handleSubmit} disabled={submitting}
-            className="rounded-md bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 active:scale-[0.98] disabled:opacity-50">
-            {submitting ? "创建中..." : "创建"}
-          </button>
-        </div>
+
+        <Field
+          label="Endpoint"
+          hint={
+            runtime === "HTTP"
+              ? "HTTP 运行时需要填写可访问的完整地址，平台会向它转发调用请求。"
+              : "当前运行时不强制要求，可留空；若该实现仍需外部地址，填在这里。"
+          }
+        >
+          {({ id, describedBy }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              placeholder="https://api.example.com/skill"
+            />
+          )}
+        </Field>
+
+        <Hint className="border-t border-[var(--border)] pt-3">
+          带 * 的三个字段必填。创建只是登记元信息，不会立即对任何 Agent 生效；
+          之后到 Agent 详情页的工具分区绑定它，再走一次发布审批才会上线。
+        </Hint>
       </div>
-    </div>
+    </Modal>
   );
 }
