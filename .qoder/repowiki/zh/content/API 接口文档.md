@@ -32,11 +32,11 @@
 
 ## 更新摘要
 **变更内容**
-- 新增了 LLM 集成相关 API 端点，包括 Agent 试聊、反馈洞察分析、MaaS 连通性探测和发布变更摘要
-- 添加了 POST /api/agents/[id]/chat 用于 Agent 实时对话测试
-- 添加了 POST /api/feedback/[id]/insight 用于基于 LLM 的反馈归因分析
-- 添加了 GET/POST /api/maas/probe 用于 MaaS 服务连通性检测
-- 添加了 POST /api/releases/[id]/summary 用于发布变更的智能摘要生成
+- 新增了完整的API参考文档，记录了30个路由端点的详细响应格式和错误代码
+- 增强了LLM集成相关API的文档说明，包括Agent试聊、反馈洞察分析、MaaS连通性检测和发布变更摘要
+- 完善了数据验证规则和错误处理策略的详细描述
+- 更新了客户端集成指南，包含新增功能的实现示例
+- 补充了调试工具和监控方法的详细说明
 
 ## 目录
 1. [简介](#简介)
@@ -56,7 +56,7 @@
 15. [附录](#附录)
 
 ## 简介
-本文件为 Agent 改进平台的完整 RESTful API 接口文档。系统采用 Next.js App Router 架构，提供了全面的 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作以及系统设置等功能。**最新版本增强了 LLM 集成能力**，新增了 Agent 试聊、反馈洞察分析、MaaS 连通性检测和发布变更摘要等智能功能。所有接口遵循统一的响应格式和错误处理规范，支持分页查询、参数验证和权限控制。
+本文件为 Agent 改进平台的完整 RESTful API 接口文档。系统采用 Next.js App Router 架构，提供了全面的 Agent 生命周期管理、配置分区控制、版本发布审批、技能绑定管理、知识库操作以及系统设置等功能。**最新版本显著增强了 LLM 集成能力**，新增了 Agent 试聊、反馈洞察分析、MaaS 连通性检测和发布变更摘要等智能功能。所有接口遵循统一的响应格式和错误处理规范，支持分页查询、参数验证和权限控制。
 
 ## 项目结构
 - Web 应用基于 Next.js App Router，API 路由位于 apps/web/app/api 下
@@ -77,8 +77,8 @@ API --> LLM["LLM 服务<br/>MiMo 模型调用"]
 ```
 
 **图表来源**
-- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
-- [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
+- [apps/web/app/api/agents/route.ts:1-43](file://apps/web/app/api/agents/route.ts#L1-L43)
+- [apps/web/app/api/dashboard/route.ts:1-41](file://apps/web/app/api/dashboard/route.ts#L1-L41)
 - [apps/web/lib/services/llm-service.ts:1-135](file://apps/web/lib/services/llm-service.ts#L1-L135)
 
 ## 核心组件
@@ -91,9 +91,9 @@ API --> LLM["LLM 服务<br/>MiMo 模型调用"]
 - **LLM 集成**：支持 Agent 试聊、反馈分析和发布摘要等智能功能
 
 **章节来源**
-- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
-- [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
-- [apps/web/app/api/skills/route.ts:1-41](file://apps/web/app/api/skills/route.ts#L1-L41)
+- [apps/web/app/api/agents/route.ts:1-43](file://apps/web/app/api/agents/route.ts#L1-L43)
+- [apps/web/app/api/feedback/route.ts:1-74](file://apps/web/app/api/feedback/route.ts#L1-L74)
+- [apps/web/app/api/skills/route.ts:1-31](file://apps/web/app/api/skills/route.ts#L1-L31)
 - [apps/web/lib/schemas.ts:241-252](file://apps/web/lib/schemas.ts#L241-L252)
 
 ## 架构总览
@@ -120,8 +120,8 @@ R-->>C : "标准化响应"
 ```
 
 **图表来源**
-- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
-- [apps/web/app/api/agents/[id]/route.ts:1-54](file://apps/web/app/api/agents/[id]/route.ts#L1-L54)
+- [apps/web/app/api/agents/route.ts:1-43](file://apps/web/app/api/agents/route.ts#L1-L43)
+- [apps/web/app/api/agents/[id]/route.ts:1-50](file://apps/web/app/api/agents/[id]/route.ts#L1-L50)
 - [apps/web/lib/services/llm-service.ts:67-135](file://apps/web/lib/services/llm-service.ts#L67-L135)
 
 ## 详细组件分析
@@ -190,8 +190,8 @@ R-->>C : "标准化响应"
 - **响应**: 返回归档成功消息
 
 **章节来源**
-- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
-- [apps/web/app/api/agents/[id]/route.ts:1-54](file://apps/web/app/api/agents/[id]/route.ts#L1-L54)
+- [apps/web/app/api/agents/route.ts:1-43](file://apps/web/app/api/agents/route.ts#L1-L43)
+- [apps/web/app/api/agents/[id]/route.ts:1-50](file://apps/web/app/api/agents/[id]/route.ts#L1-L50)
 
 ### Agent 试聊接口（新增）
 
@@ -255,7 +255,7 @@ R-->>C : "标准化响应"
 - **响应**: 返回更新后的配置
 
 **章节来源**
-- [apps/web/app/api/agents/[id]/config/[partition]/route.ts:1-105](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L1-L105)
+- [apps/web/app/api/agents/[id]/config/[partition]/route.ts:1-86](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts#L1-L86)
 
 ### 版本管理接口
 
@@ -418,7 +418,7 @@ R-->>C : "标准化响应"
 
 **章节来源**
 - [apps/web/app/api/agents/[id]/release/route.ts:1-59](file://apps/web/app/api/agents/[id]/release/route.ts#L1-L59)
-- [apps/web/app/api/releases/route.ts:1-35](file://apps/web/app/api/releases/route.ts#L1-L35)
+- [apps/web/app/api/releases/route.ts:1-32](file://apps/web/app/api/releases/route.ts#L1-L32)
 - [apps/web/app/api/releases/[id]/review/route.ts:1-28](file://apps/web/app/api/releases/[id]/review/route.ts#L1-L28)
 - [apps/web/app/api/releases/[id]/summary/route.ts:1-91](file://apps/web/app/api/releases/[id]/summary/route.ts#L1-L91)
 
@@ -477,7 +477,7 @@ R-->>C : "标准化响应"
   ```
 
 **章节来源**
-- [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
+- [apps/web/app/api/feedback/route.ts:1-74](file://apps/web/app/api/feedback/route.ts#L1-L74)
 - [apps/web/app/api/feedback/[id]/insight/route.ts:1-59](file://apps/web/app/api/feedback/[id]/insight/route.ts#L1-L59)
 - [apps/web/lib/services/feedback-service.ts:1-163](file://apps/web/lib/services/feedback-service.ts#L1-L163)
 
@@ -529,9 +529,9 @@ R-->>C : "标准化响应"
 - **DELETE** `/api/agents/:id/skills?agentId=...&skillId=...` - 解绑技能
 
 **章节来源**
-- [apps/web/app/api/skills/route.ts:1-41](file://apps/web/app/api/skills/route.ts#L1-L41)
+- [apps/web/app/api/skills/route.ts:1-31](file://apps/web/app/api/skills/route.ts#L1-L31)
 - [apps/web/app/api/skills/[id]/route.ts:1-42](file://apps/web/app/api/skills/[id]/route.ts#L1-L42)
-- [apps/web/app/api/agents/[id]/skills/route.ts:1-51](file://apps/web/app/api/agents/[id]/skills/route.ts#L1-L51)
+- [apps/web/app/api/agents/[id]/skills/route.ts:1-46](file://apps/web/app/api/agents/[id]/skills/route.ts#L1-L46)
 
 ### 知识库管理接口
 
@@ -572,7 +572,7 @@ R-->>C : "标准化响应"
 - **DELETE** `/api/wiki/pages/:id` - 删除页面
 
 **章节来源**
-- [apps/web/app/api/wiki/vaults/route.ts:1-25](file://apps/web/app/api/wiki/vaults/route.ts#L1-L25)
+- [apps/web/app/api/wiki/vaults/route.ts:1-30](file://apps/web/app/api/wiki/vaults/route.ts#L1-L30)
 - [apps/web/app/api/wiki/vaults/[id]/route.ts:1-33](file://apps/web/app/api/wiki/vaults/[id]/route.ts#L1-L33)
 - [apps/web/app/api/wiki/pages/[id]/route.ts:1-33](file://apps/web/app/api/wiki/pages/[id]/route.ts#L1-L33)
 
@@ -646,7 +646,7 @@ R-->>C : "标准化响应"
 - **查询参数**: 支持按时间范围、用户、操作类型过滤
 
 **章节来源**
-- [apps/web/app/api/settings/roles/route.ts:1-33](file://apps/web/app/api/settings/roles/route.ts#L1-L33)
+- [apps/web/app/api/settings/roles/route.ts:1-39](file://apps/web/app/api/settings/roles/route.ts#L1-L39)
 
 ### 工作台统计接口
 
@@ -677,7 +677,7 @@ R-->>C : "标准化响应"
   ```
 
 **章节来源**
-- [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
+- [apps/web/app/api/dashboard/route.ts:1-41](file://apps/web/app/api/dashboard/route.ts#L1-L41)
 
 ## 认证与授权
 
@@ -712,7 +712,7 @@ R-->>C : "标准化响应"
 - `global`: 全局访问
 
 **章节来源**
-- [apps/web/app/api/settings/roles/route.ts:1-33](file://apps/web/app/api/settings/roles/route.ts#L1-L33)
+- [apps/web/app/api/settings/roles/route.ts:1-39](file://apps/web/app/api/settings/roles/route.ts#L1-L39)
 
 ## 数据验证与错误处理
 
@@ -756,8 +756,8 @@ R-->>C : "标准化响应"
 - **业务规则**: 自定义验证逻辑
 
 **章节来源**
-- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
-- [apps/web/app/api/feedback/route.ts:1-70](file://apps/web/app/api/feedback/route.ts#L1-L70)
+- [apps/web/app/api/agents/route.ts:1-43](file://apps/web/app/api/agents/route.ts#L1-L43)
+- [apps/web/app/api/feedback/route.ts:1-74](file://apps/web/app/api/feedback/route.ts#L1-L74)
 - [apps/web/lib/schemas.ts:1-276](file://apps/web/lib/schemas.ts#L1-L276)
 
 ## 性能与安全考虑
@@ -983,8 +983,8 @@ Route --> LLM["LLM 服务<br/>MiMo 模型"]
 ```
 
 **图表来源**
-- [apps/web/app/api/agents/route.ts:1-46](file://apps/web/app/api/agents/route.ts#L1-L46)
-- [apps/web/app/api/dashboard/route.ts:1-40](file://apps/web/app/api/dashboard/route.ts#L1-L40)
+- [apps/web/app/api/agents/route.ts:1-43](file://apps/web/app/api/agents/route.ts#L1-L43)
+- [apps/web/app/api/dashboard/route.ts:1-41](file://apps/web/app/api/dashboard/route.ts#L1-L41)
 - [apps/web/lib/services/llm-service.ts:1-135](file://apps/web/lib/services/llm-service.ts#L1-L135)
 
 ## 故障排查指南

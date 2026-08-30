@@ -10,7 +10,11 @@
 |---|------|------|------|------|
 | 01 | [企业客户 One-Pager](./01-customer-one-pager.md) | 企业客户 | 文字 | v1.0（2026-08-26） |
 | 02 | [面试话术转换指南](./02-interview-playbook.md) | 面试官（全栈 SA / MaaS SA） | 文字 | v1.0（2026-08-26） |
+| W1 | [产品首页](./website/index.html) | 通用（客户/面试统一入口） | 独立静态页（单文件，零构建） | v1（2026-08-26） |
 | P1 | [GTM 海报](./assets/poster-v1.png) | 通用 | 图片（阿里橙商务风） | v1 |
+
+**W1 使用方式**：单文件 HTML，双击即开；或任意静态托管，如
+`cd GTM/website && python3 -m http.server 4173` → http://localhost:4173
 
 ## 核心叙事（所有物料共用，改口径只改这里）
 

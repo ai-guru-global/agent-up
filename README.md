@@ -65,7 +65,7 @@ agent-up/
 │   ├── reports/                    # 阶段性交付报告（命名规范见目录 README）
 │   ├── api/                        # API 接口完整说明（30 route）
 │   └── guides/                     # 部署指南 + 故障排查手册
-├── GTM/                            # Go-To-Market 物料（客户 One-Pager / 面试话术 / 海报）
+├── GTM/                            # Go-To-Market 物料（One-Pager / 面试话术 / 产品首页 / 海报）
 ├── docker-compose.yml              # PostgreSQL + MinIO
 └── turbo.json                      # Turborepo 配置
 ```
@@ -244,7 +244,7 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 | 文档 | 内容 |
 |------|------|
 | `docs/README.md` | 文档体系总索引 |
-| `GTM/README.md` | Go-To-Market 物料库（客户 One-Pager / 面试话术 / 海报 + 事实口径表） |
+| `GTM/README.md` | Go-To-Market 物料库（One-Pager / 面试话术 / 产品首页 / 海报 + 事实口径表） |
 | `docs/api/api-reference.md` | API 接口完整说明（30 route + 错误码 + LLM 端点细节） |
 | `docs/guides/deployment.md` | 部署指南（含演示前检查清单） |
 | `docs/guides/troubleshooting.md` | 故障排查手册（15 个已知问题） |
