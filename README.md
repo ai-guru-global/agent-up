@@ -2,9 +2,63 @@
 
 > better agent, better life
 
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-232_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
+
 基于三层 Loop 设计理念的 Agent 持续改进管理平台。面向专有云工单场景，支持各产品组维护改进各自的 Agent 配置（Prompt / 知识库 / 工具 / 路由），通过审批流程发布新版本。
 
 同时可作为**客户现场演示 / 面试展示工具**：展示「与客户一起持续迭代 Agent」的完整闭环，并通过 `/maas` 页面演示与阿里云大模型产品（MaaS）的结合方式（mock 口径，见下文 [MOCK 声明](#mock-声明与演示用途)）。
+
+## 产品预览
+
+**工作台** —— 全局概况与「反馈 → 归因 → 配置 → 发布」动线入口：
+
+![工作台](docs/assets/dashboard.png)
+
+**Agent 详情** —— 四分区编辑器（Prompt / Knowledge / Tools / Routing）、试聊 Playground（真实 LLM）与版本历史 / 一键回滚：
+
+![Agent 详情](docs/assets/agent-detail.png)
+
+**模型服务（MaaS 集成）** —— 公共云 + 专有云双形态产品矩阵与模型路由策略（顶部 LIVE 区块为真实调用）：
+
+![MaaS 集成](docs/assets/maas.png)
+
+> 更多物料（客户 One-Pager、面试话术、产品首页、海报）见 [GTM/README.md](GTM/README.md)。
+
+## 目录
+
+- [产品预览](#产品预览)
+- [核心特性](#核心特性)
+- [技术栈](#技术栈)
+- [项目结构](#项目结构)
+- [系统架构](#系统架构)
+- [快速开始](#快速开始)（[前置条件](#前置条件) / [安装](#安装) / [开发](#开发) / [常用命令](#常用命令) / [测试](#测试)）
+- [MOCK 声明与演示用途](#mock-声明与演示用途)
+- [核心概念](#核心概念)
+- [页面导航](#页面导航)
+- [MaaS 集成展示](#maas-集成展示maas-页)
+- [LLM 真实接入（小米 MiMo）](#llm-真实接入小米-mimo)
+- [API 端点](#api-端点)
+- [工程纪律（已落地）](#工程纪律已落地)
+- [架构参考（Web 页面）](#架构参考web-页面)
+- [文档索引](#文档索引)
+- [环境变量](#环境变量)
+- [常见问题（FAQ）](#常见问题faq)
+- [下一步（真实化里程碑）](#下一步真实化里程碑)
+- [参与贡献](#参与贡献)
+- [许可证](#许可证)
+
+## 核心特性
+
+- **Agent 四分区编辑器** —— Prompt / Knowledge / Tools / Routing 分区编辑、分区保存入草稿；改完任一分区不影响正在服务的线上配置，审批通过后才生成版本快照对外生效
+- **发布审批流** —— 提交发布时自动计算与上一版本的真 diff 与语义化版本号（SemVer），工单团队审批通过后生成不可变版本快照
+- **双粒度回滚** —— 分区级一键回滚（只还原正在编辑的那一个分区，其余三个保持现状）+ 整版本回滚（四个分区一起还原）；两种回滚都会生成新版本，不删除任何历史记录
+- **反馈闭环** —— 反馈按严重程度分诊 → AI 归因（真实 LLM）→ 定位到分区改进 → 发布验证；状态机拒绝非法流转（如 NEW→RESOLVED）
+- **效果报告** —— 发布 7 天后自动生成效果报告（懒计算），衡量「这次改进值不值」
+- **Skills / Wiki 管理** —— 可复用技能组件与 Agent 绑定；Wiki Vault + Page 两级知识层管理
+- **RBAC + 审计** —— 三角色模型与权限配置，所有写操作 append-only 审计日志
+- **MaaS 集成展示** —— 公共云 + 专有云双形态产品矩阵、模型路由策略，一页讲清与阿里云大模型产品的结合方式
+- **真实 LLM 接入** —— 连通性测试 / 反馈 AI 归因 / 发布 AI 变更摘要 / Agent 试聊 Playground 四个集成点真实调用小米 MiMo，页面以 LIVE 徽标与 MOCK 区分
+- **架构参考** —— Loop 工程 / Harness 工程 / 改进路线图参考页面，附行业实践对照与失败模式诊断
 
 ## 技术栈
 
@@ -69,6 +123,25 @@ agent-up/
 ├── docker-compose.yml              # PostgreSQL + MinIO
 └── turbo.json                      # Turborepo 配置
 ```
+
+## 系统架构
+
+当前运行形态是「文件即数据库」：页面 → API 路由 → 服务层 → JSON 文件；LLM 调用统一走网关出站。
+Prisma（schema 就绪）与 MinIO 为下一阶段持久化预留，业务代码尚未接入。
+
+```mermaid
+flowchart LR
+    P["浏览器 · App Router 页面<br/>（见页面导航）"] --> A["API 路由层 · 30 个 route<br/>Zod 校验 · 结构化错误 · Actor 上下文"]
+    A --> S["服务层 lib/services<br/>agent / release / feedback / skill<br/>wiki / effectiveness / audit"]
+    S --> D["JSON 文件存储<br/>apps/web/data/"]
+    S --> L["LLM 网关 llm-service<br/>env 凭据 · 统一超时"]
+    L --> M["小米 MiMo<br/>OpenAI 兼容协议"]
+    S -. 下一阶段 .-> DB[("PostgreSQL + Prisma")]
+    S -. 下一阶段 .-> O[("MinIO / S3")]
+```
+
+分层规则：route 只做协议适配（校验、错误映射、响应包装），业务逻辑全部在服务层，存储读写统一走
+`lib/data/store.ts`（支持注入临时目录，是测试隔离的基础）。
 
 ## 快速开始
 
@@ -155,6 +228,28 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 - **工单团队**（管理员）：审批发布、全局管理
 - **产品组**：编辑本产品组的 Agent 配置
 - **CRE**：查看反馈、录入改进建议
+
+## 页面导航
+
+全站 15 条页面路由（架构参考三张子页计入）：
+
+| 路由 | 说明 |
+|------|------|
+| `/` | 产品落地页 |
+| `/login` | 登录页（MOCK 登录，演示账号见 [MOCK 声明与演示用途](#mock-声明与演示用途)） |
+| `/dashboard` | 工作台：Agent / 待处理反馈 / 待审批 / 活跃 Agent 四项概况 + 最新反馈与最新发布 |
+| `/agents` | Agent 列表：按名称 / 描述模糊搜索，按生命周期状态筛选 |
+| `/agents/[id]` | Agent 详情：四分区编辑器 + 试聊 Playground（真实 LLM）+ 版本历史与双粒度回滚 |
+| `/feedback` | 反馈管理：严重程度徽章、状态流转、AI 归因 |
+| `/releases` | 发布审批：diff 查看器、AI 变更摘要、通过 / 拒绝 / 需修改 |
+| `/skills` | Skills 管理：可复用技能组件与 Agent 绑定 |
+| `/wiki` | 知识库：Vault / Page 两级管理 |
+| `/settings` | 设置：产品组、角色与权限、审计日志 |
+| `/maas` | 模型服务（MaaS 集成展示，MOCK + LIVE 区块，详见 [MaaS 集成展示](#maas-集成展示maas-页)） |
+| `/architecture` | 架构参考总览（功能完整性八维评分 + 关键缺口） |
+| `/architecture/loop` | Loop 工程：行业框架对照 + 三层 Loop 对齐 + 失败模式诊断 |
+| `/architecture/harness` | Harness 工程：五子系统 + 主流框架决策对照 + 反模式 |
+| `/architecture/roadmap` | 改进路线图：优先级矩阵 + P0~P3 + 进度标记 |
 
 ## MaaS 集成展示（`/maas` 页）
 
@@ -272,9 +367,48 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 - `S3_ENDPOINT` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET` — MinIO/S3 配置（暂未使用）
 - `WIKI_GIT_BASE_PATH` — Wiki Vault 仓库本地路径（暂未使用）
 
+## 常见问题（FAQ）
+
+**Q：没改任何代码，`git status` 里 `apps/web/data/` 却变脏了？**
+
+A：正常现象。运行时数据就是种子数据——浏览 Agent 详情等页面会触发效果报告的懒计算写回。
+用 `git restore apps/web/data` 还原即可，不影响任何功能。
+
+**Q：需要先 `docker compose up` 启动 PostgreSQL / MinIO 吗？**
+
+A：不需要。当前持久化走 JSON 文件；`docker-compose.yml` 与 Prisma schema 为下一阶段准备（原因见 [快速开始](#快速开始) 的「关于基础设施」说明）。
+
+**Q：没配 `MIMO_API_KEY` 会怎样？**
+
+A：4 个真实 LLM 集成点返回 503 并在页面给出明确提示，其余功能完全不受影响；配置方式见 [环境变量](#环境变量)。
+
+**Q：测试会污染仓库里的种子数据吗？**
+
+A：不会。每个测试通过 `_setDataDir` 注入临时数据目录，与 `apps/web/data/` 完全隔离。
+
+**Q：如何把演示数据重置回初始状态？**
+
+A：`git restore apps/web/data`（种子数据由 git 管理，还原即重置）。
+
+**Q：演示账号是什么？**
+
+A：`allengaller` / `123`（MOCK 登录，登录后即管理员角色，详见 [MOCK 声明与演示用途](#mock-声明与演示用途)）。
+
 ## 下一步（真实化里程碑）
 
 1. ~~接入真实 LLM~~ ✅ 已接入小米 MiMo（4 个集成点）；接入真实 DashScope / 百炼 API（多 Provider 可切换）为下一里程碑
 2. L1 trace（检索命中、工具调用、模型回答）回流为反馈证据，闭合「复盘有据 → 归因有理 → 加强有验」
 3. Prisma 持久化落地（schema 已就绪）+ NextAuth 真实认证
 4. CI 流水线（lint + test + build）
+
+## 参与贡献
+
+本仓库当前为演示 / 面试形态项目；欢迎讨论与复用。提交或评审改动时遵循以下约定：
+
+1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（232 个测试）
+2. 新增 mock 能力时遵循全站统一的 MOCK 标注规范（徽标 + 代码注释，见 [MOCK 声明](#mock-声明与演示用途)）
+3. 新增文档按 `YYYY-MM-DD-主题.md` 命名放入 `docs/` 对应目录（规范见 [文档索引](#文档索引)）
+
+## 许可证
+
+仓库当前未附带开源许可证（默认保留所有权利）。如需以开源许可证（如 MIT / Apache-2.0）发布或复用其中内容，请先与作者确认。

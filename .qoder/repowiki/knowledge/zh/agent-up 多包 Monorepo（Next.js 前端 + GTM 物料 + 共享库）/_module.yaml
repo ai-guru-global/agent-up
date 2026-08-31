@@ -1,0 +1,7 @@
+schema_version: 1
+module_path: ""
+title: agent-up 多包 Monorepo（Next.js 前端 + GTM 物料 + 共享库）
+scope: []
+source_files: []
+depends_on: []
+related_to: []

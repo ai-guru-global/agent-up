@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: gtm
+title: GTM 对外物料与产品落地页
+scope:
+    - GTM/
+    - .impeccable/critique/
+source_files: []
+depends_on: []
+related_to: []

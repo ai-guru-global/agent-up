@@ -3,12 +3,23 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-08-27T12:35:23Z"
+exported_at: "2026-08-30T02:12:38Z"
 modules:
     "":
-        dir_name: Agent 改进平台（Next.js Monorepo）
-        title: Agent 改进平台（Next.js Monorepo）
+        dir_name: agent-up 多包 Monorepo（Next.js 前端 + GTM 物料 + 共享库）
+        title: agent-up 多包 Monorepo（Next.js 前端 + GTM 物料 + 共享库）
         scope: []
+        source_files: []
+        children:
+            - gtm
+        depends_on: []
+        related_to: []
+    gtm:
+        dir_name: GTM 对外物料与产品落地页
+        title: GTM 对外物料与产品落地页
+        scope:
+            - GTM/
+            - .impeccable/critique/
         source_files: []
         children: []
         depends_on: []
