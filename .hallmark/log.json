@@ -1,0 +1,18 @@
+[
+  {
+    "date": "2026-08-31",
+    "macrostructure": "Narrative Workflow",
+    "theme": "Newsprint",
+    "enrichment": "Tier-A pure CSS (loop ring)",
+    "nav": "N6",
+    "footer": "Ft1",
+    "font_families": 3,
+    "accent_hue": "warm orange #FF6A00",
+    "axes": {
+      "paper-band": "light",
+      "display-style": "high-contrast-serif",
+      "accent-hue": "warm"
+    },
+    "brief": "agent-up GTM 官网首页 — 把标准 SaaS landing 的 AI 模板感降到最低，保留全部实测数字与 8 章节论叙事"
+  }
+]

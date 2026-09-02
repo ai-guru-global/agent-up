@@ -10,11 +10,15 @@
 |---|------|------|------|------|
 | 01 | [企业客户 One-Pager](./01-customer-one-pager.md) | 企业客户 | 文字 | v1.0（2026-08-26） |
 | 02 | [面试话术转换指南](./02-interview-playbook.md) | 面试官（全栈 SA / MaaS SA） | 文字 | v1.0（2026-08-26） |
-| W1 | [产品首页](./website/index.html) | 通用（客户/面试统一入口） | 独立静态页（单文件，零构建） | v1.2（2026-08-31 实测证据区块：探针/归因/摘要/试聊实录 + 7 天效果报表样式 + 演示动线逐步实测预期；v1.1 impeccable 打磨） |
+| 03 | [3 分钟演示视频脚本](./03-demo-video-script.md) | 客户 / 面试官（录制统一脚本） | 文字（逐屏台词 + 操作动作 + 预期证据） | v1.0（2026-08-31） |
+| 04 | [客户 FAQ](./04-customer-faq.md) | 企业客户（会后答疑） | 文字（10 Q + 速答卡） | v1.0（2026-08-31） |
+| W1 | [产品首页](./website/index.html) | 通用（客户/面试统一入口） | 独立静态页（单文件，零构建）· [线上版](https://n5x2fzeq9fne.meoo.fun) | v1.3（2026-09-01 第 05 节新增「六层参考模型」嵌套图：Model→Graph 层与四分区/闭环的映射；v1.2 2026-08-31 实测证据区块：探针/归因/摘要/试聊实录 + 7 天效果报表样式 + 演示动线逐步实测预期；v1.1 impeccable 打磨） |
 | P1 | [GTM 海报](./assets/poster-v1.png) | 通用 | 图片（阿里橙商务风） | v1 |
+| P2 | [深色科技风海报](./assets/poster-v2-dark.png) | 技术社区 | 图片（1080×1620，[HTML 源](./assets/poster-v2-dark.html) 可维护；另有 [AI 生成备选版](./assets/poster-v2-dark-ai-alt.png)，中文文案有失真仅作氛围参考） | v2（2026-08-31） |
 
 **W1 使用方式**：单文件 HTML，双击即开；或任意静态托管，如
-`cd GTM/website && python3 -m http.server 4173` → http://localhost:4173
+`cd GTM/website && python3 -m http.server 4173` → http://localhost:4173。
+线上版已发布 Meoo CDN：https://n5x2fzeq9fne.meoo.fun （Meoo 会把页面 `<title>` 改写为项目名 "AgentUp GTM"，属平台标准行为）
 
 ## 核心叙事（所有物料共用，改口径只改这里）
 
@@ -37,10 +41,8 @@
 | 页面案例引用 | fb-001 / rel-001 / ver-002(0.2.0) / 试聊 ecs-assistant | `apps/web/data/` 种子（MOCK 徽标） |
 | 效果报告口径 | 7 天窗口 · 懒计算幂等写回；页面报表数值为演示示例，非实测 | `apps/web/lib/services/effectiveness-service.ts` |
 
-> 项目数字变化后（新增测试/schema/route），先更新本表，再检查 01/02 两份物料中的引用。
+> 项目数字变化后（新增测试/schema/route），先更新本表，再检查 01/02/03/04 四份物料中的引用。
 
 ## 待产出（backlog）
 
-- [ ] 03 — 3 分钟演示视频脚本（逐屏台词 + 操作动作）
-- [ ] 04 — 客户 FAQ（数据安全 / 私有化 / 与百炼关系 / 报价形态）
-- [ ] P2 — 深色科技风海报（技术社区传播版）
+（暂无——物料库 01–04 / W1 / P1–P2 已齐；新需求先在此登记再产出）

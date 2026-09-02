@@ -1,0 +1,15 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-08-27T12:35:23Z"
+modules:
+    "":
+        dir_name: Agent 改进平台（Next.js Monorepo）
+        title: Agent 改进平台（Next.js Monorepo）
+        scope: []
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

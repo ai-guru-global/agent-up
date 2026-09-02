@@ -202,6 +202,41 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 ## 核心概念
 
+### 行业分层参考模型：Model 之外，都是改进空间
+
+业界把 Agent 技术栈画成六层嵌套（常见心智模型，本图重绘）——每一层包住下面一层：模型在最内层，外面依次包着 Prompt、Context、Harness、Loop、Graph。**agent-up 不造模型，治理的是 Model 外面的各层**：
+
+```mermaid
+flowchart TB
+  subgraph GRAPH["Graph · 跨 Agent 协调"]
+    direction TB
+    subgraph LOOP["Loop · 驱动单个 Agent 的循环"]
+      direction TB
+      subgraph HARNESS["Harness · 工具 · 记忆 · 错误处理"]
+        direction TB
+        subgraph CONTEXT["Context · 模型看到的一切"]
+          direction TB
+          subgraph PROMPT["Prompt · 你发送的话"]
+            MODEL["Model · 模型本身"]
+          end
+        end
+      end
+    end
+  end
+  style LOOP fill:#FFF1E6,stroke:#C24E00,stroke-width:1.5px
+```
+
+| 技术栈层 | agent-up 对应能力 |
+|---------|------------------|
+| Model | MaaS 模型服务（小米 MiMo 已真实接入；百炼 / 专有云是下一份网关配置） |
+| Prompt | Prompt 分区（角色 · 约束 · 输出格式） |
+| Context | Knowledge 分区（两层知识架构：蒸馏态优先，MCP 活数据兜底） |
+| Harness | Tools 分区 + 全站结构化错误体系 |
+| Loop | 反馈 → AI 归因 → 审批发布 → 效果报告 → 一键回滚（L2 产品改进环，本平台核心） |
+| Graph | 跨 Agent 洞察（L3 智能进化环，预留） |
+
+> 「模型可换，闭环不变」的结构性原因就在这张图里：换的是最内层，外层的治理资产（分区配置 / 版本快照 / 审批流 / 效果报告）原样保留。
+
 ### 三层 Loop
 
 | Loop | 时间尺度 | 说明 |

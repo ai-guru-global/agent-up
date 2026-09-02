@@ -43,27 +43,6 @@ flowchart LR
   style L3 opacity:0.85
 `;
 
-const stackModelChart = `
-flowchart TB
-  subgraph GRAPH["Graph · 跨 Agent 协调"]
-    direction TB
-    subgraph LOOP["Loop · 驱动单个 Agent 的循环"]
-      direction TB
-      subgraph HARNESS["Harness · 工具 · 记忆 · 错误处理"]
-        direction TB
-        subgraph CONTEXT["Context · 模型看到的一切"]
-          direction TB
-          subgraph PROMPT["Prompt · 你发送的话"]
-            MODEL["Model · 模型本身（可插拔）"]
-          end
-        end
-      end
-    end
-  end
-
-  style LOOP fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a5f
-`;
-
 const fourPartitionChart = `
 flowchart TB
   A(("Agent<br/>一张配置卡"))
@@ -155,31 +134,6 @@ export default function ArchitectureOverviewPage() {
           <a href="/architecture/loop" className="text-[var(--accent)] hover:underline"> Loop 工程</a>）。L2/L3
           是产品层的 <strong>改进 loop</strong>，本质是给 Agent 这个「运行时」提供一套受控的持续迭代 harness（见{" "}
           <a href="/architecture/harness" className="text-[var(--accent)] hover:underline">Harness 工程</a>）。
-        </Insight>
-      </Section>
-
-      <Section
-        title="六层参考模型 · Model 之外，都是改进空间"
-        description="业界把 Agent 技术栈画成六层嵌套（常见心智模型，本图重绘）——每一层包住下面一层：模型在最内层，外面依次包着 Prompt、Context、Harness、Loop、Graph。AgentUp 不造模型，治理的是 Model 外面的各层。"
-      >
-        <Mermaid chart={stackModelChart} />
-        <Table
-          head={["技术栈层", "对应 agent-up 能力", "现状"]}
-          rows={[
-            ["Model", "MaaS 模型服务（LLM 网关）", "小米 MiMo 已真实接入（4×LIVE）；百炼 / 专有云是下一份网关配置"],
-            ["Prompt", "Prompt 分区", "角色 · 约束 · 输出格式，分区编辑 + 独立回滚"],
-            ["Context", "Knowledge 分区", "两层知识架构：蒸馏态（Wiki）优先，MCP 活数据兜底"],
-            ["Harness", "Tools 分区 + 结构化错误体系", "MCP 工具配置 + 全站统一错误分类"],
-            [
-              <strong>Loop</strong>,
-              "反馈 → AI 归因 → 审批发布 → 效果报告 → 一键回滚",
-              "L2 产品改进环，本平台核心（对应上图高亮层）",
-            ],
-            ["Graph", "跨 Agent 洞察", "L3 智能进化环，预留"],
-          ]}
-        />
-        <Insight label="「模型可换，闭环不变」的结构性原因">
-          模型只是最内层节点，AgentUp 治理的是包住它的各层。换 Provider 只动最内层——外面的治理资产（四分区配置、版本快照、审批流、效果报告）原样保留。
         </Insight>
       </Section>
 

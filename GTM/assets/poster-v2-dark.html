@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>agent-up · 深色科技风海报</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0A0C10;
+    --ink: #F4F6F8;
+    --sub: #9AA3AE;
+    --faint: #5B6470;
+    --orange: #FF6A00;
+    --orange-soft: rgba(255, 106, 0, 0.14);
+    --teal: #2DD4BF;
+    --line: rgba(255, 255, 255, 0.08);
+    --card: rgba(255, 255, 255, 0.035);
+    --mono: "SF Mono", "JetBrains Mono", Menlo, ui-monospace, monospace;
+    --sans: -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  body { width: 1080px; height: 1620px; background: var(--bg); font-family: var(--sans); color: var(--ink); overflow: hidden; }
+
+  /* 背景层：网格 + 顶部辉光 + 闭环节点弧线 */
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 28%, #000 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 28%, #000 30%, transparent 100%);
+  }
+  .bg-glow {
+    position: absolute; top: -320px; left: 50%; transform: translateX(-50%);
+    width: 1100px; height: 800px;
+    background: radial-gradient(ellipse at center, rgba(255,106,0,0.16) 0%, rgba(255,106,0,0.05) 40%, transparent 70%);
+  }
+  .bg-arc {
+    position: absolute; top: 120px; right: -180px; width: 640px; height: 640px; border-radius: 50%;
+    border: 1px solid rgba(45, 212, 191, 0.14);
+  }
+  .bg-arc::after {
+    content: ""; position: absolute; top: 90px; left: 60px; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal); box-shadow: 0 0 14px var(--teal);
+  }
+  .bg-arc2 {
+    position: absolute; top: 220px; right: -80px; width: 400px; height: 400px; border-radius: 50%;
+    border: 1px dashed rgba(255, 106, 0, 0.16);
+  }
+
+  /* 四角取景框刻度 */
+  .tick { position: absolute; width: 34px; height: 34px; }
+  .tick::before, .tick::after { content: ""; position: absolute; background: rgba(255,255,255,0.22); }
+  .tick::before { width: 34px; height: 1.5px; }
+  .tick::after { width: 1.5px; height: 34px; }
+  .tick.tl { top: 44px; left: 44px; }
+  .tick.tr { top: 44px; right: 44px; transform: scaleX(-1); }
+  .tick.bl { bottom: 44px; left: 44px; transform: scaleY(-1); }
+  .tick.br { bottom: 44px; right: 44px; transform: scale(-1); }
+
+  .wrap { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; padding: 108px 84px 72px; }
+
+  .term {
+    font-family: var(--mono); font-size: 21px; color: var(--faint);
+    letter-spacing: 0.5px; margin-bottom: 26px;
+  }
+  .term .p { color: var(--teal); }
+  .term .flag { color: var(--orange); }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 24px; font-weight: 600; color: var(--orange);
+    letter-spacing: 0.42em; text-indent: 0.42em; margin-bottom: 30px;
+    padding: 12px 30px; border: 1px solid rgba(255,106,0,0.38); border-radius: 999px;
+    background: var(--orange-soft);
+  }
+
+  .wordmark {
+    font-family: var(--sans); font-size: 150px; font-weight: 800; letter-spacing: -0.035em;
+    line-height: 1; display: flex; align-items: center;
+  }
+  .wordmark .dash {
+    display: inline-block; width: 34px; height: 22px; border-radius: 6px;
+    background: var(--orange); margin: 0 10px;
+    box-shadow: 0 0 28px rgba(255,106,0,0.85), 0 0 70px rgba(255,106,0,0.4);
+  }
+
+  .headline { margin-top: 34px; font-size: 46px; font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
+  .headline em { font-style: normal; color: var(--orange); }
+  .subline { margin-top: 18px; font-size: 27px; color: var(--sub); letter-spacing: 0.06em; }
+
+  /* 闭环六步 */
+  .loop { margin-top: 66px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .pill {
+    font-size: 21px; font-weight: 600; color: var(--ink); white-space: nowrap;
+    padding: 13px 18px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .pill.hot { border-color: rgba(255,106,0,0.5); background: linear-gradient(180deg, rgba(255,106,0,0.16), rgba(255,106,0,0.05)); }
+  .arrow { font-family: var(--mono); font-size: 20px; color: var(--orange); text-shadow: 0 0 12px rgba(255,106,0,0.6); }
+
+  /* 三支柱 */
+  .pillars { margin-top: 66px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; width: 100%; }
+  .card {
+    border-radius: 18px; padding: 34px 30px 30px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+    border: 1px solid var(--line); position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; top: 0; left: 30px; right: 30px; height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .card .en { font-family: var(--mono); font-size: 19px; font-weight: 600; letter-spacing: 0.3em; color: var(--accent); }
+  .card .zh { margin-top: 14px; font-size: 42px; font-weight: 700; letter-spacing: 0.04em; }
+  .card .desc { margin-top: 12px; font-size: 21px; color: var(--sub); line-height: 1.55; }
+  .card.c1 { --accent: var(--orange); }
+  .card.c2 { --accent: var(--teal); }
+  .card.c3 { --accent: #7C9EFF; }
+
+  /* 底部双形态 */
+  .bottom { margin-top: auto; width: 100%; }
+  .rule { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,106,0,0.75), transparent); margin-bottom: 34px; }
+  .modes { display: flex; align-items: flex-end; justify-content: space-between; }
+  .modes .claim { font-size: 34px; font-weight: 700; }
+  .modes .claim .sep { color: var(--orange); margin: 0 10px; }
+  .modes .clouds { text-align: right; }
+  .cloud { font-size: 21px; color: var(--sub); line-height: 1.8; }
+  .cloud b { color: var(--ink); font-weight: 600; }
+  .cloud .tag {
+    font-family: var(--mono); font-size: 16px; color: var(--teal);
+    border: 1px solid rgba(45,212,191,0.4); border-radius: 6px; padding: 2px 8px; margin-right: 10px;
+  }
+
+  .footer {
+    margin-top: 46px; text-align: center;
+    font-family: var(--mono); font-size: 20px; color: var(--faint); letter-spacing: 0.28em; text-indent: 0.28em;
+  }
+  .footer b { color: var(--sub); font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-arc"></div>
+  <div class="bg-arc2"></div>
+  <div class="tick tl"></div><div class="tick tr"></div><div class="tick bl"></div><div class="tick br"></div>
+
+  <div class="wrap">
+    <div class="term"><span class="p">$</span> agent-up <span class="flag">--loop</span> feedback → rollback</div>
+    <div class="eyebrow">AGENT 持续改进平台</div>
+
+    <div class="wordmark">agent<span class="dash"></span>up</div>
+
+    <div class="headline">模型是引擎，<em>让它持续变好</em></div>
+    <div class="subline">反馈驱动的 Agent 配置 · 评估 · 发布 · 回滚 闭环</div>
+
+    <div class="loop">
+      <span class="pill">反馈</span><span class="arrow">→</span>
+      <span class="pill">AI 归因</span><span class="arrow">→</span>
+      <span class="pill">改配置</span><span class="arrow">→</span>
+      <span class="pill">审批发布</span><span class="arrow">→</span>
+      <span class="pill">效果报告</span><span class="arrow">→</span>
+      <span class="pill hot">一键回滚</span>
+    </div>
+
+    <div class="pillars">
+      <div class="card c1">
+        <div class="en">SEE</div>
+        <div class="zh">看得见</div>
+        <div class="desc">反馈实时 AI 归因<br>四个配置分区</div>
+      </div>
+      <div class="card c2">
+        <div class="en">CONTROL</div>
+        <div class="zh">管得住</div>
+        <div class="desc">审批发布 · 不可变<br>版本快照 · 审计</div>
+      </div>
+      <div class="card c3">
+        <div class="en">MEASURE</div>
+        <div class="zh">算得清</div>
+        <div class="desc">上线 7 天效果报告<br>改坏一键回滚</div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="rule"></div>
+      <div class="modes">
+        <div class="claim">模型可换<span class="sep">·</span>闭环不变</div>
+        <div class="clouds">
+          <div class="cloud"><span class="tag">公共云</span><b>百炼 / DashScope</b></div>
+          <div class="cloud"><span class="tag">专有云</span><b>Apsara Stack 私有化</b></div>
+        </div>
+      </div>
+      <div class="footer">better agent <b>·</b> better life</div>
+    </div>
+  </div>
+</body>
+</html>

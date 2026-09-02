@@ -1,0 +1,44 @@
+{
+  "scanned_at": "2026-08-31",
+  "project": "agent-up",
+  "framework": "static (vanilla HTML/CSS)",
+  "target": "GTM/website/index.html",
+  "findings": {
+    "font_stack": [
+      "Noto Serif SC (display + headings + numerals, italic supported)",
+      "Noto Sans SC (body + UI + nav)",
+      "IBM Plex Mono (tracking labels, eyebrows, code, mono UI)"
+    ],
+    "palette": "warm-oat anchor — paper #FBF8F2 / ink #181310 / accent #FF6A00 / orange-text #C24E00 / amber #9A5B08 / green #0B7A55",
+    "motion": "motion-cut (no animation library); only one loop-ring spin (60s) with reduced-motion fallback",
+    "spacing": "4-pt named scale (--space-3xs … --space-3xl)",
+    "framework_detail": "single-file marketing landing (no build step), embedded CSS"
+  },
+  "preserve": [
+    "brand: agent-up + wordmark em-dash italic",
+    "warm-oat paper + orange accent hue",
+    "all measured numbers (232 / 30 / 4×LIVE / 2,557ms / 45·73 / 28 / 6·21% / 2 / 3 …)",
+    "all section copy verbatim",
+    "MOCK / LIVE badge semantics",
+    "demo-path 5 steps",
+    "honesty 8 boundary"
+  ],
+  "introduce": [
+    "macrostructure: Narrative Workflow (8 numbered chapters)",
+    "nav: N6 newspaper masthead (centred wordmark + issue line + inline link row + double rule)",
+    "footer: Ft1 mast-headed (single band, wordmark + tagline + meta + 1 link)",
+    "tokens: every color/font/space references var(--…) only (gate 48 pass)",
+    "three-family typography discipline (gate 37 pass)"
+  ],
+  "removed_tells": [
+    "scroll-fade (.rise IntersectionObserver) → page is just there",
+    "auto-rotating orange marquee → cut (no pause-on-hover-and-focus risk)",
+    "AI canonical nav (wordmark + 8 inline + button-right sticky) → N6 masthead",
+    "3-equal-column pain-grid → tabular spec sheet (asymmetric 120/200/1fr)",
+    "3-equal-column evidence grid (1fr 1fr) → asymmetric 6-col with span3/span6",
+    "uniform hover lift + border + shadow → single signal (border-color only)",
+    "inline #hex / rgba() → named tokens",
+    "tag-left / heading-right two-column section heads → chapter numerals inline in h2",
+    "duplicate 04-family typography (Fraunces + Noto Serif SC + sans + mono) → 3 families"
+  ]
+}
