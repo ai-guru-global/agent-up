@@ -1,0 +1,26 @@
+# skills-up.yaml 示例配置
+# 用法：复制到项目根并改名 skills-up.yaml，按需改值。
+# 只认平铺点号键（如 output.dir）；嵌套缩进写法 gate.py 不识别（退出码 2）。
+# 双受众约定：Agent 读键值决定行为；注释面向人，改值前先读注释。
+
+version: 1                   # 配置版本号，当前固定为 1
+
+# ---------- source：文档源 ----------
+source.doc_paths: [docs/distilled]   # 文档源目录列表（相对项目根），skills-up 从这里扫 Markdown 清单；默认 docs/distilled，也接受任意手写/第三方文档目录
+source.exclude: ["**/_plan.md", "**/_plan.yaml"]   # 扫描时排除的 glob 模式列表，计划文件不作为源文档参与检查；值含 ** 必须用引号包裹；默认排除两个 _plan 文件
+source.follow_links: true    # 扫描文档源时是否跟随符号链接；默认 true
+
+# ---------- output：产物位置与命名 ----------
+output.dir: docs/skills      # 产物技能的输出目录（相对项目根，目录必须存在）；默认 docs/skills
+output.naming: kebab-case    # 产物技能目录与 stub 文件的命名风格；默认 kebab-case（全小写、连字符分隔，禁止中文文件名与下划线）
+
+# ---------- skill：产物技能写作约束 ----------
+skill.language: zh           # 产物技能的写作语言；默认 zh
+skill.max_skill_lines: 200   # 产物技能 SKILL.md 的最大行数（含 frontmatter），超过必须拆 stub；默认 200
+skill.trigger_words: required   # 触发词要求档位：required 表示 frontmatter description 必须给出可用触发词且不得含模糊词（"各种"、"相关"、"等"）；默认 required
+
+# ---------- plan：技能计划 ----------
+plan.auto_approve: false     # 是否跳过第 4 步硬门禁自动批准技能计划；默认 false，改 true 需自担风险
+
+# ---------- gate：门禁 ----------
+gate.fail_on: [error]        # 门禁阻断级别：JSON 报告中属于该集合的 finding 会使退出码为 1；默认 [error]，可追加 warning 使警告也阻断

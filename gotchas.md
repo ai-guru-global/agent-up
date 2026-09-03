@@ -149,3 +149,31 @@ python3 "$S/gate.py" --config code-up.yaml
 ```
 
 四层验证各覆盖不同失败面：existence 管"锚点存在"、extract-lines 管"语义相符"、对账管"有无引用被吞"、gate 管"格式与协议"。任何一层只看退出码都会失守。
+
+---
+
+# skills-up 首次真实验收 gotchas（agent-up 仓库）
+
+> 来源：Task 13 skills-up 首次真实验收（source_commit `7524808330e38b5510c65b690348f59c127559c2`，2026-09-03）。
+> 范围：本仓库 docs/distilled/（10 篇）经 skills-up 蒸馏为 agent-up-services 技能（1 hub + 19 stub）时验证到的坑。产物 20 文件、gate errors=[] warnings=[] 一次通过。
+
+## 1. gate 的 mermaid 校验存在覆盖盲区：组件 stub 自带的 mermaid 不会被编译
+
+`check_mermaid_present_and_compiles` 只对两类文档强制校验 mermaid：hub，以及含字面 `### 问题现象` 的排查类文档。不含该字面串的 stub（组件视图）即使写了 mermaid，也不会被 mmdc 编译——写错了 gate 照样绿灯。应对不是依赖盲区，而是结构性绕开：组件 stub 零 mermaid（跨服务图集中到 architecture-contracts 一处，其 mermaid 会被校验），排查 stub 恰好 1 个 flowchart。这样 12 个 mermaid 块全部落在 gate 的校验射程内。
+
+## 2. 占位符正则会误伤真实内容：`HTTP xxx` 命中 XXX
+
+`_PLACEHOLDER_RE = (?i)\b(TBD|TODO|FIXME|XXX)\b|待补充` 是大小写不敏感的词边界匹配。源文档里「HTTP xxx」（表示任意状态码）这类真实表述会命中 XXX 报 error。写产物时把「HTTP xxx」改写为「HTTP 状态码」；同理任何用三个字母当省略号的写法（如「参数 xxx」）都要换成文字表述。
+
+## 3. 表格单元格内不能写 `||`
+
+markdown 表格里用 `||` 表示逻辑或会破坏表格结构（被解析为单元格边界）。写「`A || null` 语义」这类内容时改用文字「逻辑或收口」「空值合并」，把代码形态留在行内代码之外的表达里。
+
+## 4. mermaid 中文 label 纪律：双引号 + 禁四类字符
+
+排查 stub 的 flowchart 节点 label 一律双引号包裹，label 内禁：括号（含中文括号）、斜杠、冒号、`file:line` 锚点。任何一处违例 mmdc 都编译失败，且失败信息指向行号而非原因。稳妥写法：label 只用中文短语与顿号，锚点与代码形态放正文不放图里。
+
+## 5. hub-stub 拆分让 gate 成为轻负担，但两条 error 线最容易踩
+
+60 行 hub + 19 个单一职责 stub 的形态下，最容易触发 error 的是：stub frontmatter 出现未知键（白名单只有 title、source、source_commit，多写 depth 等即 error），以及产物中出现 markdown 链接或绝对路径（源文档的 `[path:line](url)` 引用形态必须整体转写为行内代码）。蒸馏前先扫一遍源文档的链接密度，逐个转写比事后补漏省力。
+

@@ -1,0 +1,141 @@
+version: 1
+generated_by: skills-up
+source_commit: 7524808330e38b5510c65b690348f59c127559c2
+
+# 技能计划：把 docs/distilled/ 的 10 篇蒸馏文档收口为 1 个技能。
+# 决策依据见同目录 _plan.md（硬门禁标的，批准前不动手蒸馏）。
+skills:
+  - name: agent-up-services
+    description: >-
+      Use when 需要理解、排查或修改 agent-up 平台服务层（apps/web 的 services
+      模块：agent-service、audit-service、effectiveness-service、feedback-service、
+      llm-service、release-service、retrieval-service、skill-service、wiki-service）
+      时使用，包括：回答某服务的职责边界、暴露接口、调用方式与设计决策；排查
+      agent 配置保存异常、审计记录缺失、反馈状态迁移被拒、发布版本派生与回滚异常、
+      LLM 网关 503/502/504、检索评分不符预期、技能绑定不生效、wiki 页面误删等问题；
+      分析服务间契约（AppError 体系、actor 从 context 传递、审计写入约定、
+      store 统一存储）与发布主线数据流。不适用于：agent-up 前端页面（apps/web）
+      的问题、非 agent-up 项目的通用 Node.js/Next.js 问题、通用 Skill 编写问题。
+    trigger_check:
+      should_trigger:
+        - "agent-up 的 release-service 回滚之后版本号是怎么派生的？"
+        - "为什么 agent 配置保存成功了，但列表里 versions 只显示 5 条？"
+        - "audit 记录写入失败会让请求报错吗？"
+      should_not_trigger:
+        - '帮我用 Next.js 15 写一个服务端组件（通用前端，无 agent-up 服务层语境）'
+        - '改一下 agent-up 登录页的样式（apps/web 前端，不在本技能范围）'
+        - '把这份 Markdown 文档蒸馏成技能（skills-up 的职责）'
+    covers:
+      - path: docs/distilled/services-overview.md
+        maps_to: references/architecture-contracts.md
+      - path: docs/distilled/agent-service.md
+        maps_to: references/agent-service-component.md + references/agent-service-troubleshooting.md
+      - path: docs/distilled/audit-service.md
+        maps_to: references/audit-service-component.md + references/audit-service-troubleshooting.md
+      - path: docs/distilled/effectiveness-service.md
+        maps_to: references/effectiveness-service-component.md + references/effectiveness-service-troubleshooting.md
+      - path: docs/distilled/feedback-service.md
+        maps_to: references/feedback-service-component.md + references/feedback-service-troubleshooting.md
+      - path: docs/distilled/llm-service.md
+        maps_to: references/llm-service-component.md + references/llm-service-troubleshooting.md
+      - path: docs/distilled/release-service.md
+        maps_to: references/release-service-component.md + references/release-service-troubleshooting.md
+      - path: docs/distilled/retrieval-service.md
+        maps_to: references/retrieval-service-component.md + references/retrieval-service-troubleshooting.md
+      - path: docs/distilled/skill-service.md
+        maps_to: references/skill-service-component.md + references/skill-service-troubleshooting.md
+      - path: docs/distilled/wiki-service.md
+        maps_to: references/wiki-service-component.md + references/wiki-service-troubleshooting.md
+    hub_draft:
+      main_flow:
+        - "1. 判断问题类型：单服务职责/接口/数据流 → 路由表第 1 组；单服务故障排查 → 路由表第 2 组；跨服务契约/边界/演进 → 架构契约 stub"
+        - "2. 按路由表读对应 stub（每个 references/ 引用都带「当…时…读」时机）"
+        - "3. 回答时只引用 stub 收录的关键决策与已知坑，不臆造 stub 未收录的源码细节"
+      mermaid: |
+        flowchart TD
+            A["收到 agent-up 服务层问题"] --> B{"问题类型？"}
+            B -->|"单服务职责、接口、数据流"| C["读对应服务组件 stub"]
+            B -->|"单服务故障排查"| D["读对应服务排查 stub"]
+            B -->|"跨服务契约、边界、演进"| E["读架构契约 stub"]
+      red_flags:
+        - "想把 fire-and-forget 审计改成同步阻塞 → 停（契约 stub：审计写入是设计决策）"
+        - "想跨服务绕过 store 直接读写文件 → 停（契约 stub：存储统一走 store）"
+        - "想回答 stub 未收录的源码细节 → 停（蒸馏边界，不臆造）"
+        - "想省略排查四要素直接给修复建议 → 停（troubleshooting stub 纪律）"
+    stubs:
+      - file: references/architecture-contracts.md
+        entity: data_flow + decision
+        source: docs/distilled/services-overview.md
+        content: 服务层边界、四条模块间契约（AppError 体系 / actor 从 context 取 / 写操作记审计 / 存储统一走 store）、发布主线数据流、演进动因
+      - file: references/agent-service-component.md
+        entity: component
+        source: docs/distilled/agent-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/agent-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/agent-service.md
+        symptoms: 配置改不动、versions 只显示 5 条、withProductGroup 逐行读文件慢
+      - file: references/audit-service-component.md
+        entity: component
+        source: docs/distilled/audit-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/audit-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/audit-service.md
+        symptoms: 审计记录缺失、审计文件全量重写、静默失败无告警
+      - file: references/effectiveness-service-component.md
+        entity: component
+        source: docs/distilled/effectiveness-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/effectiveness-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/effectiveness-service.md
+        symptoms: 效果报告为空、onDisk 悬空、GET 带写副作用
+      - file: references/feedback-service-component.md
+        entity: component
+        source: docs/distilled/feedback-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/feedback-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/feedback-service.md
+        symptoms: 状态迁移被拒、assignedTo/verificationNote 丢失、tag 无 ALL 豁免
+      - file: references/llm-service-component.md
+        entity: component
+        source: docs/distilled/llm-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/llm-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/llm-service.md
+        symptoms: 503/502/504 三档错误、api-key 凭据缺失、超时
+      - file: references/release-service-component.md
+        entity: component
+        source: docs/distilled/release-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/release-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/release-service.md
+        symptoms: 版本号派生异常、diff 基线不符预期、回滚行为不符预期
+      - file: references/retrieval-service-component.md
+        entity: component
+        source: docs/distilled/retrieval-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/retrieval-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/retrieval-service.md
+        symptoms: 检索评分不符预期、CJK 查询召回差、生产零调用
+      - file: references/skill-service-component.md
+        entity: component
+        source: docs/distilled/skill-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/skill-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/skill-service.md
+        symptoms: 技能绑定不生效、unbind 静默成功、publishedAt 脱节
+      - file: references/wiki-service-component.md
+        entity: component
+        source: docs/distilled/wiki-service.md
+        sections: 职责 / 设计原理 / 关键决策 / 暴露接口 / 数据流
+      - file: references/wiki-service-troubleshooting.md
+        entity: troubleshooting_path
+        source: docs/distilled/wiki-service.md
+        symptoms: 页面被物理删除、listPages 抛裸 Error、跨 vault 扫描慢
