@@ -1,0 +1,23 @@
+# code-up 蒸馏计划（由 Task 8a 会话生成，等待用户批准）
+# path 为相对 output.dir（docs/distilled/）的 .md 文件名
+documents:
+  - path: services-overview.md
+    depth: standard
+  - path: agent-service.md
+    depth: standard
+  - path: audit-service.md
+    depth: standard
+  - path: effectiveness-service.md
+    depth: standard
+  - path: feedback-service.md
+    depth: standard
+  - path: llm-service.md
+    depth: standard
+  - path: release-service.md
+    depth: core
+  - path: retrieval-service.md
+    depth: standard
+  - path: skill-service.md
+    depth: standard
+  - path: wiki-service.md
+    depth: standard

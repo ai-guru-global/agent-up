@@ -1,0 +1,22 @@
+# =============================================================================
+# code-up 配置（agent-up）
+#
+# 由 examples/code-up.yaml.example 拷贝修改而来；所有路径相对项目根。
+# 键形契约：所有键一律平铺点号键（如 output.dir）。嵌套缩进写法
+# （output: 换行缩进 dir:）不被 gate.py 识别——缺平铺键 output.dir
+# 会直接 exit 2（GateConfigError）。
+# =============================================================================
+
+version: 1                        # 配置格式版本，当前恒为 1；无默认（必填）；AI 消费
+project.name: agent-up            # 项目名，写入 _plan.md 摘要与文档元信息；无默认（必填）；AI 消费
+source.paths: apps/web/lib/services  # 待蒸馏的源码目录（相对项目根）；无默认（必填）；AI 消费（主流程第 2 步扫描清单）
+source.exclude: []                # 扫描时排除的 glob 模式列表；默认空；AI 消费
+source.languages: [.ts]           # 源码主语言；默认 [typescript]；AI 消费
+depth.mode: auto                  # auto | manual；auto=按分量评分自动分档；默认 auto；AI 消费
+depth.thresholds.core: 0.7        # 分量评分 ≥ 此值判 core；默认 0.7；AI 消费
+depth.thresholds.standard: 0.3    # 分量评分 ≥ 此值判 standard、低于判 shallow；默认 0.3；AI 消费
+depth.manual_overrides: {}        # mode: manual 时生效；默认空；AI 消费
+output.dir: docs/distilled        # 蒸馏文档输出目录（相对项目根）；默认 docs/distilled；AI 与 gate.py 双方消费
+output.language: zh               # 蒸馏文档语言；默认 zh；AI 消费
+plan.auto_approve: false          # true 跳过硬门禁（主流程第 4 步人工批准），不推荐；默认 false；AI 消费
+gate.fail_on: [error]             # gate.py 消费：列表内级别的 finding 计入阻断；默认 [error]
