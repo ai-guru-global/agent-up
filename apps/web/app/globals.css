@@ -50,7 +50,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-force-light]) {
     --background: #09090b;
     --foreground: #fafafa;
     --surface: #18181b;
@@ -76,6 +76,12 @@
     --scrollbar-thumb: #3f3f46;
     --scrollbar-thumb-hover: #52525b;
   }
+}
+
+/* 静态演示版固定浅色：demo 构建在 <html> 上打 data-force-light，
+   跳过系统深色变量，并让原生控件/滚动条同步浅色 */
+:root[data-force-light] {
+  color-scheme: light;
 }
 
 body {

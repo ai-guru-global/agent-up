@@ -166,7 +166,7 @@ export default function DashboardHome() {
               最新反馈
             </h2>
             <Link
-              href="/feedback"
+              href="/feedback/"
               className="rounded text-xs text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
             >
               查看全部
@@ -217,7 +217,7 @@ export default function DashboardHome() {
               最新发布
             </h2>
             <Link
-              href="/releases"
+              href="/releases/"
               className="rounded text-xs text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
             >
               查看全部
@@ -239,7 +239,7 @@ export default function DashboardHome() {
                 <div key={rel.id} className="flex items-center justify-between gap-3 py-3">
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={`/agents/${rel.agentId}`}
+                      href={`/agents/${rel.agentId}/`}
                       className="truncate rounded text-sm text-[var(--foreground)] hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
                     >
                       {rel.agent?.name ?? rel.agentId}
@@ -267,25 +267,25 @@ export default function DashboardHome() {
         />
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/agents"
+            href="/agents/"
             className="inline-flex h-9 items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-elevated)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             管理 Agent
           </Link>
           <Link
-            href="/feedback"
+            href="/feedback/"
             className="inline-flex h-9 items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-elevated)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             处理反馈
           </Link>
           <Link
-            href="/releases"
+            href="/releases/"
             className="inline-flex h-9 items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-elevated)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             审批发布
           </Link>
           <Link
-            href="/architecture"
+            href="/architecture/"
             className="inline-flex h-9 items-center rounded-md px-3.5 text-[13px] font-medium text-[var(--muted)] transition-colors hover:bg-[var(--surface-elevated)] hover:text-[var(--foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             第一次使用？先看架构总览

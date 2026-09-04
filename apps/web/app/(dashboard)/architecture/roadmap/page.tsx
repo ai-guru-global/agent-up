@@ -143,7 +143,7 @@ export default function RoadmapPage() {
             [
               <span><strong>目标完成校验（Oracle L3）</strong></span>,
               <Pill tone="accent">Oracle · agent loop 三层</Pill>,
-              "Release 通过条件 = 不仅要人工 approve，还要通过一组可测行为（对标 Anthropic sprint contract）",
+              "Release 通过条件 = 不仅要人工 approve（批准），还要通过一组可测行为（对标 Anthropic 的冲刺契约 sprint contract）",
               "防止「模型停了≠目标达了」；让改进可验证",
             ],
             [
@@ -156,7 +156,7 @@ export default function RoadmapPage() {
               <span><strong>发布效果 7 天报告</strong></span>,
               <Pill tone="neutral">通用可观测</Pill>,
               "Release 通过后定时任务：对比发布前后 7 天的同 Agent 反馈率/严重度/解决率",
-              "改进 loop 的「observation」—— 知道改得对不对",
+              "改进 loop 的「observation（观察结果）」—— 知道改得对不对",
             ],
             [
               <span><strong>灰度发布（Canary）</strong></span>,

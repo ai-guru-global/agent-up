@@ -181,7 +181,7 @@ export default function AgentsPage() {
             {agents.map((agent) => (
               <li key={agent.id}>
                 <Link
-                  href={`/agents/${agent.id}`}
+                  href={`/agents/${agent.id}/`}
                   className="block bg-[var(--surface)] p-5 transition-colors hover:bg-[var(--surface-elevated)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ring)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">

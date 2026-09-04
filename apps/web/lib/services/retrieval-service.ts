@@ -101,7 +101,7 @@ interface WikiPage {
 }
 
 function loadPages(vaultId: string): WikiPage[] {
-  const pagesDir = join(process.cwd(), "data", "wiki-vaults", vaultId, "pages");
+  const pagesDir = join(_getDataDir(), "wiki-vaults", vaultId, "pages");
   if (!existsSync(pagesDir)) return [];
   return readdirSync(pagesDir)
     .filter((f) => f.endsWith(".json"))

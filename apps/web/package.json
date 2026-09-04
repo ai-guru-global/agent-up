@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:demo": "DEMO_EXPORT=1 next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

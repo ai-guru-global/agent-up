@@ -151,16 +151,16 @@ export default function ArchitectureOverviewPage() {
       >
         <Mermaid chart={threeLoopsChart} />
         <Insight label="与业界 Loop 工程的关系">
-          L1 对应通用的 <strong>agentic loop</strong>（ReAct / while+tools，见
-          <a href="/architecture/loop" className="text-[var(--accent)] hover:underline"> Loop 工程</a>）。L2/L3
-          是产品层的 <strong>改进 loop</strong>，本质是给 Agent 这个「运行时」提供一套受控的持续迭代 harness（见{" "}
-          <a href="/architecture/harness" className="text-[var(--accent)] hover:underline">Harness 工程</a>）。
+          L1 对应通用的 <strong>agentic loop（智能体循环）</strong>，如 ReAct / while+tools（见
+          <a href="/architecture/loop/" className="text-[var(--accent)] hover:underline"> Loop 工程</a>）。L2/L3
+          是产品层的 <strong>改进循环</strong>，本质是给 Agent 这个「运行时」提供一套受控的持续迭代 harness（执行框架，见{" "}
+          <a href="/architecture/harness/" className="text-[var(--accent)] hover:underline">Harness 工程</a>）。
         </Insight>
       </Section>
 
       <Section
         title="六层参考模型 · Model 之外，都是改进空间"
-        description="业界把 Agent 技术栈画成六层嵌套（常见心智模型，本图重绘）——每一层包住下面一层：模型在最内层，外面依次包着 Prompt、Context、Harness、Loop、Graph。AgentUp 不造模型，治理的是 Model 外面的各层。"
+        description="业界把 Agent 技术栈画成六层嵌套（常见心智模型，本图重绘）——每一层包住下面一层：模型在最内层，外面依次包着 Prompt（提示词）、Context（上下文）、Harness（执行框架）、Loop（循环）、Graph（编排）。AgentUp 不造模型，治理的是模型以外的各层。"
       >
         <Mermaid chart={stackModelChart} />
         <Table
@@ -192,25 +192,25 @@ export default function ArchitectureOverviewPage() {
           head={["分区", "内容", "类比", "改它的典型场景"]}
           rows={[
             [
-              <strong>Prompt</strong>,
+              <strong>Prompt（提示词）</strong>,
               "系统提示词、角色设定、约束条件、输出格式",
               "Agent 的「性格与纪律」",
               "回答风格不对、越界承诺、格式混乱",
             ],
             [
-              <strong>Knowledge</strong>,
+              <strong>Knowledge（知识）</strong>,
               "指向 Wiki vault；两层知识架构：蒸馏态知识优先检索，MCP 工具兜底查活数据",
               "Agent 的「长期记忆」",
               "知识缺失、知识过期、检索不中",
             ],
             [
-              <strong>Tools</strong>,
+              <strong>Tools（工具）</strong>,
               "MCP 工具配置 + Wiki 查询工具（index/summary/grep/全页读取逐级升级）",
               "Agent 的「手」",
               "工具调用失败、缺少某类能力",
             ],
             [
-              <strong>Routing</strong>,
+              <strong>Routing（路由）</strong>,
               "工单分类规则、分派策略、转人工阈值、升级策略",
               "Agent 的「分诊台」",
               "不该接的接了、该转人工没转",
@@ -449,21 +449,21 @@ export default function ArchitectureOverviewPage() {
                 tag: "深入",
                 description:
                   "通用 agentic loop（ReAct / Anthropic while+tools / Manus context loop / OpenAI Swarm）的设计核心，以及 AgentUp 三层 Loop 如何与之对齐。",
-                href: "/architecture/loop",
+                href: "/architecture/loop/",
               },
               {
                 title: "Harness 工程",
                 tag: "深入",
                 description:
                   "Harness 五大子系统、OpenAI 百万行 Codex 案例的七大决策、Anthropic Generator/Evaluator 三体设计，映射到 AgentUp 的四分区配置与发布流。",
-                href: "/architecture/harness",
+                href: "/architecture/harness/",
               },
               {
                 title: "改进路线图",
                 tag: "落地",
                 description:
                   "把 Harness / Loop 业界经验转化为 AgentUp 的 P0/P1/P2 改进项：来源 → 落点 → 预期收益。",
-                href: "/architecture/roadmap",
+                href: "/architecture/roadmap/",
               },
             ]}
           />

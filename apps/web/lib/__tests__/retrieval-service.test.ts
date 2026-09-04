@@ -5,9 +5,9 @@ import { mkdirSync, writeFileSync } from "fs";
 import { _setDataDir } from "@/lib/data/store";
 import { searchWiki } from "@/lib/services/retrieval-service";
 
-/** 在临时 dataDir 下写一个 wiki page JSON */
+/** 在当前测试 dataDir 下写一个 wiki page JSON */
 function seedPage(vaultId: string, page: Record<string, unknown>) {
-  const dir = join(tmpdir(), "retrieval-test", "wiki-vaults", vaultId, "pages");
+  const dir = join(dataDir, "wiki-vaults", vaultId, "pages");
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, `${page.id}.json`), JSON.stringify(page, null, 2));
 }

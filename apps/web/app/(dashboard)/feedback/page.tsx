@@ -312,7 +312,7 @@ export default function FeedbackPage() {
                             Agent:{" "}
                             {fb.agent ? (
                               <Link
-                                href={`/agents/${fb.agent.id}`}
+                                href={`/agents/${fb.agent.id}/`}
                                 className="rounded text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
                               >
                                 {fb.agent.name}

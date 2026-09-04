@@ -195,7 +195,7 @@ export default function ReleasesPage() {
           }
           action={
             <Link
-              href="/agents"
+              href="/agents/"
               className="inline-flex h-9 items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-medium text-[var(--foreground)] transition-colors duration-150 hover:border-[var(--muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
             >
               去 Agent 列表改配置
@@ -227,7 +227,7 @@ export default function ReleasesPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           {rel.agent ? (
                             <Link
-                              href={`/agents/${rel.agentId}`}
+                              href={`/agents/${rel.agentId}/`}
                               className="rounded font-semibold text-[var(--foreground)] hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
                               title="打开这个 Agent 的详情页，查看当前生效配置与版本历史"
                             >

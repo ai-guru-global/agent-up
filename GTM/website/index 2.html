@@ -85,8 +85,6 @@ body{background:var(--color-paper);color:var(--color-ink);font-family:var(--font
 ::-webkit-scrollbar-thumb{background:var(--color-scroll);border-radius:5px}
 ::-webkit-scrollbar-thumb:hover{background:var(--color-accent-text)}
 a{color:inherit;text-decoration:none}
-.lead a,.sub a{color:var(--color-accent-text)}
-.lead a:hover,.sub a:hover{text-decoration:underline}
 a:focus-visible,button:focus-visible{outline:2px solid var(--color-accent-text);outline-offset:3px;border-radius:2px}
 img,svg{display:block;max-width:100%}
 
@@ -292,7 +290,6 @@ h2 .em{color:var(--color-accent-text)}
 .dstep h3{font-family:var(--font-serif);font-weight:900;font-size:20px;margin:var(--space-2xs) 0 var(--space-xs);color:var(--color-ink)}
 .dstep p{color:var(--color-ink-2);font-size:14.5px;max-width:46ch}
 .dstep code{font-family:var(--font-mono);font-size:12.5px;background:var(--color-paper);border:1px solid var(--color-rule);padding:1px 7px;border-radius:2px;color:var(--color-accent-text)}
-.dstep a:hover code{border-color:var(--color-accent-text);color:var(--color-accent-text)}
 .dstep .exp{display:block;margin-top:var(--space-xs);font-family:var(--font-mono);font-size:11.5px;letter-spacing:.05em;color:var(--color-green-deep)}
 
 /* ============================================
@@ -391,7 +388,6 @@ footer a:hover{color:var(--color-accent-text)}
       <li><a href="#compare">06 对比</a></li>
       <li><a href="#demo">07 演示动线</a></li>
       <li><a href="#honesty">08 边界</a></li>
-      <li><a href="https://qtb3subkcwy5.meoo.fun" class="product-link" lang="en">在线演示 →</a></li>
       <li><a href="https://npwgp04gxyp1.meoo.fun" class="product-link" lang="en">FDE Scope →</a></li>
     </ul>
   </nav>
@@ -404,14 +400,14 @@ footer a:hover{color:var(--color-accent-text)}
       <h1><span class="hl">模型是引擎，</span><span class="hl"><span class="en">agent-up</span> 把它变成</span><span class="hl">持续改进的生产系统。</span></h1>
       <p class="hero-meta">GTM · 2026 · AGENT IMPROVEMENT PLATFORM</p>
       <p class="sub">企业把 Agent 上线只是开始。agent-up 管住之后的一切：<b>配置 · 评估 · 发布 · 回滚</b>——
-        反馈进来自动归因，改配置走审批快照，上线七天出效果报告，改坏了分区级一键回滚。在线演示已开放自助访问（MOCK 登录 allengaller / 123）。</p>
+        反馈进来自动归因，改配置走审批快照，上线七天出效果报告，改坏了分区级一键回滚。</p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="https://qtb3subkcwy5.meoo.fun">打开在线演示（全流程可点击）</a>
-        <a class="btn btn-ghost" href="#cta">预约 30 分钟深度演示</a>
+        <a class="btn btn-primary" href="#cta">预约 30 分钟深度演示</a>
+        <a class="btn btn-ghost" href="#demo">先看 8 分钟演示动线</a>
         <a class="btn btn-product" href="https://npwgp04gxyp1.meoo.fun">FDE Scope 交付方法论 →</a>
       </div>
       <div class="facts">
-        <div><div class="n">241</div><div class="t">自动化测试</div></div>
+        <div><div class="n">232</div><div class="t">自动化测试</div></div>
         <div><div class="n">30</div><div class="t">API 端点</div></div>
         <div><div class="n">4<i>×LIVE</i></div><div class="t">真实 LLM 集成点</div></div>
         <div><div class="n">2</div><div class="t">部署形态</div></div>
@@ -581,7 +577,7 @@ footer a:hover{color:var(--color-accent-text)}
       <div class="cell w2"><span class="tag">AUDIT · RBAC</span><h3>全量审计与角色协同</h3>
         <p>所有写操作 append-only 审计日志；产品组、CRE、工单团队三角色协作。</p></div>
       <div class="cell w2"><span class="tag">ENGINEERING</span><h3>工程纪律</h3>
-        <p>241 测试 / 23 Zod Schema 全量校验 / 结构化错误体系，不是 demo 品质。</p></div>
+        <p>232 测试 / 23 Zod Schema 全量校验 / 结构化错误体系，不是 demo 品质。</p></div>
     </div>
   </div>
 </section>
@@ -665,27 +661,24 @@ footer a:hover{color:var(--color-accent-text)}
   <div class="wrap">
     <div class="sec-head">
       <h2><span class="ch">07</span>8 分钟，把闭环<span class="em">走一遍</span></h2>
-      <p class="lead">以下每一步都是真实系统操作（非录屏）：MOCK 数据有徽标，真实模型调用有 LIVE 徽标。演示站已上线——<a href="https://qtb3subkcwy5.meoo.fun">qtb3subkcwy5.meoo.fun</a>，MOCK 登录 allengaller / 123，每一步都能直接点开。</p>
+      <p class="lead">以下每一步都是真实系统操作（非录屏）：MOCK 数据有徽标，真实模型调用有 LIVE 徽标。</p>
     </div>
     <div class="demo-steps">
       <div class="dstep"><span class="min">STEP 1 · 约 1 分钟</span>
         <h3>证明「模型是活的」</h3>
-        <p>打开 <a href="https://qtb3subkcwy5.meoo.fun/maas/"><code>/maas</code></a> 点「发起真实调用」——实时返回模型身份、时延与 tokens。平台连接的不是截图，是正在运行的推理服务。<span class="exp">LIVE 实测 · mimo-v2.5-pro · 2,557ms · 45 入 / 73 出 tokens（2026-08-25）</span></p></div>
+        <p>打开 <code>/maas</code> 点「发起真实调用」——实时返回模型身份、时延与 tokens。平台连接的不是截图，是正在运行的推理服务。<span class="exp">LIVE 实测 · mimo-v2.5-pro · 2,557ms · 45 入 / 73 出 tokens（2026-08-25）</span></p></div>
       <div class="dstep"><span class="min">STEP 2 · 约 1.5 分钟</span>
         <h3>反馈进来，AI 归因</h3>
-        <p>在 <a href="https://qtb3subkcwy5.meoo.fun/feedback/"><code>/feedback</code></a> 挑一条 NEGATIVE 反馈点「AI 归因」——LLM 指出问题在哪个分区、理由、怎么改。<span class="exp">LIVE 实测 · fb-001 → 归因 KNOWLEDGE 分区，附改进建议</span></p></div>
+        <p>在 <code>/feedback</code> 挑一条 NEGATIVE 反馈点「AI 归因」——LLM 指出问题在哪个分区、理由、怎么改。<span class="exp">LIVE 实测 · fb-001 → 归因 KNOWLEDGE 分区，附改进建议</span></p></div>
       <div class="dstep"><span class="min">STEP 3 · 约 2 分钟</span>
         <h3>改配置，立即验证</h3>
-        <p>按归因建议在 <a href="https://qtb3subkcwy5.meoo.fun/agents/ecs-assistant/"><code>/agents/ecs-assistant</code></a> 修改 Prompt 分区，保存后在「试聊 Playground」用当前配置当场试聊——改完即验，不赌上线。<span class="exp">LIVE 实测 · 以当前配置当场应答 SSH 排查，第一步指向安全组规则</span></p></div>
+        <p>按归因建议在 <code>/agents/ecs-assistant</code> 修改 Prompt 分区，保存后在「试聊 Playground」用当前配置当场试聊——改完即验，不赌上线。<span class="exp">LIVE 实测 · 以当前配置当场应答 SSH 排查，第一步指向安全组规则</span></p></div>
       <div class="dstep"><span class="min">STEP 4 · 约 2 分钟</span>
         <h3>审批发布，AI 把关</h3>
-        <p><a href="https://qtb3subkcwy5.meoo.fun/releases/"><code>/releases</code></a> 提交发布 → 查看自动 diff + 「AI 变更摘要」（影响面与风险）→ 审批通过，生成不可变版本快照。<span class="exp">LIVE 实测 · AI 识破「说明与变更不符」，提示疑似空操作</span></p></div>
+        <p><code>/releases</code> 提交发布 → 查看自动 diff + 「AI 变更摘要」（影响面与风险）→ 审批通过，生成不可变版本快照。<span class="exp">LIVE 实测 · AI 识破「说明与变更不符」，提示疑似空操作</span></p></div>
       <div class="dstep"><span class="min">STEP 5 · 约 1.5 分钟</span>
         <h3>效果报告与回滚底气</h3>
         <p>版本历史里看 7 天效果报告徽标；顺手演示「回滚此分区」——改坏了，一步退回去，回滚本身有审计。<span class="exp">MOCK 演示 · 报表样式与聚合口径见「实测实录」</span></p></div>
-      <div class="dstep"><span class="min">STEP 6 · 加分项 · 约 1 分钟</span>
-        <h3>架构叙事与知识沉淀</h3>
-        <p>给技术决策者补一层深度：<a href="https://qtb3subkcwy5.meoo.fun/architecture/"><code>/architecture</code></a> 三页讲清 Loop 工程、Harness 分层与演进路线；<a href="https://qtb3subkcwy5.meoo.fun/wiki/"><code>/wiki</code></a> 与 <a href="https://qtb3subkcwy5.meoo.fun/skills/"><code>/skills</code></a> 展示知识库检索与技能沉淀。</p></div>
     </div>
   </div>
 </section>
@@ -711,7 +704,7 @@ footer a:hover{color:var(--color-accent-text)}
     </div>
     <p class="honesty-note"><b>为什么主动说这个？</b>因为在客户现场，「哪里是真的、哪里是演示」必须 10 秒内说清楚。
       我们把边界做成了 UI 的一部分——这本身也是产品方法论：<b>改进的前提，是对现状诚实。</b></p>
-    <p class="provenance">本页数字口径 · 241 测试 / 30 API 路由 / 4×LIVE 为项目实测统计；2,557ms 与 tokens 为 2026-08-25 MiMo 实测；反馈、发布与报表数值为演示种子（MOCK）。</p>
+    <p class="provenance">本页数字口径 · 232 测试 / 30 路由 / 4×LIVE 为项目实测统计；2,557ms 与 tokens 为 2026-08-25 MiMo 实测；反馈、发布与报表数值为演示种子（MOCK）。</p>
   </div>
 </section>
 
@@ -722,11 +715,10 @@ footer a:hover{color:var(--color-accent-text)}
       <h2>下一步：<span class="em">4 周，跑通一个真实改进闭环</span></h2>
       <p class="lead">不做大而全的实施。从一个产品组、一个 Agent 开始，让闭环先转起来。</p>
       <!-- TODO(GTM): 预约通道——将下方 href 替换为 Calendly / 企微二维码链接 -->
-      <a class="btn btn-primary" href="https://qtb3subkcwy5.meoo.fun">现在就打开在线演示</a>
-      <a class="btn btn-ghost" href="#cta" data-booking="pending">预约 30 分钟深度演示</a>
+      <a class="btn btn-primary" href="#cta" data-booking="pending">预约 30 分钟深度演示</a>
       <a class="btn btn-product" href="https://npwgp04gxyp1.meoo.fun">先看 FDE Scope 18 阶段交付 SOP →</a>
-      <p class="cta-micro">在线演示 · MOCK 登录 allengaller / 123 · 全流程可点击</p>
-      <p class="cta-micro">30 分钟深度演示 · 无需 prep · 可随时取消</p>
+      <p class="cta-micro">30 分钟 · 无需 prep · 可随时取消</p>
+      <p class="cta-micro">演示环境即刻可开 · allengaller / 123</p>
     </div>
     <div class="poc">
       <div class="row"><span class="n">1</span><span class="t"><b>第 1 周 · 接入</b><span>选定 1 个产品组 + 1 个值班 Agent，四分区配置迁入</span></span></div>
@@ -741,8 +733,7 @@ footer a:hover{color:var(--color-accent-text)}
   <div class="wrap">
     <span class="wordmark">agent<em>—</em>up</span>
     <span class="tagline">better agent, better life</span>
-    <span>页面数据与项目实测同步 · 更新 2026-09-03</span>
-    <a href="https://qtb3subkcwy5.meoo.fun">在线演示</a>
+    <span>页面数据与项目实测同步 · 更新 2026-08-31</span>
     <a href="https://github.com/ai-guru-global/agent-up">GitHub 仓库</a>
     <a href="https://npwgp04gxyp1.meoo.fun" class="product-link" lang="en">FDE Scope →</a>
     <span class="right">公共云 · 专有云 | 模型可换 · 闭环不变</span>

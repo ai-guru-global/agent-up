@@ -12,13 +12,14 @@
 | 02 | [面试话术转换指南](./02-interview-playbook.md) | 面试官（全栈 SA / MaaS SA） | 文字 | v1.0（2026-08-26） |
 | 03 | [3 分钟演示视频脚本](./03-demo-video-script.md) | 客户 / 面试官（录制统一脚本） | 文字（逐屏台词 + 操作动作 + 预期证据） | v1.0（2026-08-31） |
 | 04 | [客户 FAQ](./04-customer-faq.md) | 企业客户（会后答疑） | 文字（10 Q + 速答卡） | v1.0（2026-08-31） |
-| W1 | [产品首页](./website/index.html) | 通用（客户/面试统一入口） | 独立静态页（单文件，零构建）· [线上版](https://n5x2fzeq9fne.meoo.fun) | v1.3（2026-09-01 第 05 节新增「六层参考模型」嵌套图：Model→Graph 层与四分区/闭环的映射；v1.2 2026-08-31 实测证据区块：探针/归因/摘要/试聊实录 + 7 天效果报表样式 + 演示动线逐步实测预期；v1.1 impeccable 打磨） |
+| W1 | [产品首页](./website/index.html) | 通用（客户/面试统一入口） | 独立静态页（单文件，零构建）· [线上版](https://agent-up.meoo.fun) | v1.4（2026-09-03：新增在线演示入口、演示动线深链接、测试口径 241；v1.3 2026-09-01 六层参考模型嵌套图；v1.2 2026-08-31 实测证据区块；v1.1 impeccable 打磨） |
+| W2 | [产品演示版（可点击全流程 Demo）](https://qtb3subkcwy5.meoo.fun) | 客户 / 面试官（自助演示） | Next.js 静态导出 SPA（线上直接点，MOCK 登录 allengaller / 123） | v3（2026-09-03：默认浅色 · 全站中文文案+英文括号备注 · 17 路由 · 深链接自愈） |
 | P1 | [GTM 海报](./assets/poster-v1.png) | 通用 | 图片（阿里橙商务风） | v1 |
 | P2 | [深色科技风海报](./assets/poster-v2-dark.png) | 技术社区 | 图片（1080×1620，[HTML 源](./assets/poster-v2-dark.html) 可维护；另有 [AI 生成备选版](./assets/poster-v2-dark-ai-alt.png)，中文文案有失真仅作氛围参考） | v2（2026-08-31） |
 
 **W1 使用方式**：单文件 HTML，双击即开；或任意静态托管，如
 `cd GTM/website && python3 -m http.server 4173` → http://localhost:4173。
-线上版已发布 Meoo CDN：https://n5x2fzeq9fne.meoo.fun （Meoo 会把页面 `<title>` 改写为项目名 "AgentUp GTM"，属平台标准行为）
+线上版已发布 Meoo CDN：https://agent-up.meoo.fun （Meoo 会把页面 `<title>` 改写为项目名，属平台标准行为；旧地址 n5x2fzeq9fne.meoo.fun 已 404，外链一律用 agent-up.meoo.fun）
 
 ## 核心叙事（所有物料共用，改口径只改这里）
 
@@ -26,13 +27,15 @@
 - **三痛点**：改不动（prompt 在代码里）/ 不敢改（无审批无回滚）/ 说不清（无效果度量）
 - **闭环**：反馈 → AI 归因 → 改配置 → 审批发布 → 效果报告 → 一键回滚
 - **双形态**：公共云（百炼/DashScope）+ 专有云（Apsara Stack），模型可换、闭环不变
+- **自助演示**：https://qtb3subkcwy5.meoo.fun 全流程可点击（MOCK 登录 allengaller / 123，默认浅色）
 - **诚实边界**：业务数据 MOCK（有徽标）+ LLM 调用 LIVE（有徽标），主动声明不回避
 
 ## 事实口径（对外数字必须与实测一致）
 
 | 口径 | 当前值 | 核实命令 |
 |------|--------|---------|
-| 测试数 | 232 | `cd apps/web && pnpm test` |
+| 测试数 | 241 | `cd apps/web && pnpm test` |
+| 演示站路由 | 17（含 10 个 Agent 详情静态页） | `cd apps/web && pnpm build:demo`（日志列出生成路由） |
 | Zod schema | 23 | `grep -c 'Schema = z' apps/web/lib/schemas.ts` |
 | API route 文件 | 30 | `find apps/web/app/api -name route.ts \| wc -l` |
 | 真实 LLM 集成点 | 4（探针/归因/摘要/试聊） | 见 `docs/api/api-reference.md` 第四节 |

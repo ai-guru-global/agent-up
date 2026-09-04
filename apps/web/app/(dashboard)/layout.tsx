@@ -12,21 +12,21 @@ import { MockTag } from "@/components/ui";
  * 并在移动端抽屉里直接显示为副标题。
  */
 const navItems = [
-  { label: "工作台", href: "/dashboard", desc: "全局概览：待办、趋势与最近动态" },
-  { label: "Agent", href: "/agents", desc: "管理 Agent 的四分区配置与版本" },
-  { label: "反馈", href: "/feedback", desc: "收集问题、归因到分区并跟踪处理" },
-  { label: "发布", href: "/releases", desc: "审批配置变更并生成版本快照" },
-  { label: "Skills", href: "/skills", desc: "可复用的技能组件，供 Agent 绑定" },
-  { label: "知识库", href: "/wiki", desc: "Agent 的长期记忆，检索的语料来源" },
-  { label: "模型服务", href: "/maas", desc: "模型接入与连通性探测（MaaS）" },
-  { label: "设置", href: "/settings", desc: "产品组、角色权限与审计日志" },
+  { label: "工作台", href: "/dashboard/", desc: "全局概览：待办、趋势与最近动态" },
+  { label: "Agent", href: "/agents/", desc: "管理 Agent 的四分区配置与版本" },
+  { label: "反馈", href: "/feedback/", desc: "收集问题、归因到分区并跟踪处理" },
+  { label: "发布", href: "/releases/", desc: "审批配置变更并生成版本快照" },
+  { label: "Skills", href: "/skills/", desc: "可复用的技能组件，供 Agent 绑定" },
+  { label: "知识库", href: "/wiki/", desc: "Agent 的长期记忆，检索的语料来源" },
+  { label: "模型服务", href: "/maas/", desc: "模型接入与连通性探测（MaaS）" },
+  { label: "设置", href: "/settings/", desc: "产品组、角色权限与审计日志" },
 ];
 
 const archItems = [
-  { label: "架构总览", href: "/architecture", desc: "平台设计思路与四分区模型" },
-  { label: "Loop 工程", href: "/architecture/loop", desc: "三层改进闭环的运转方式" },
-  { label: "Harness 工程", href: "/architecture/harness", desc: "Agent 外壳与上下文工程" },
-  { label: "改进路线图", href: "/architecture/roadmap", desc: "已完成与规划中的能力" },
+  { label: "架构总览", href: "/architecture/", desc: "平台设计思路与四分区模型" },
+  { label: "Loop 工程", href: "/architecture/loop/", desc: "三层改进闭环的运转方式" },
+  { label: "Harness 工程", href: "/architecture/harness/", desc: "Agent 外壳与上下文工程" },
+  { label: "改进路线图", href: "/architecture/roadmap/", desc: "已完成与规划中的能力" },
 ];
 
 function isActive(href: string, pathname: string) {
@@ -110,7 +110,7 @@ export default function DashboardLayout({
     <>
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] px-5">
         <Link
-          href="/dashboard"
+          href="/dashboard/"
           onClick={closeDrawer}
           title="AgentUp · Agent 持续改进平台，回到工作台"
           className="text-[15px] font-semibold tracking-tight text-[var(--foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
@@ -229,7 +229,7 @@ export default function DashboardLayout({
             </span>
           </button>
           <Link
-            href="/dashboard"
+            href="/dashboard/"
             className="text-[15px] font-semibold tracking-tight text-[var(--foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             AgentUp

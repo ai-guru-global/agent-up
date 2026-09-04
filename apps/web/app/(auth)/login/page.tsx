@@ -113,7 +113,7 @@ export default function LoginPage() {
         <p className="mt-4 text-[11px] leading-relaxed text-[var(--subtle)]">
           不想登录也可以{" "}
           <Link
-            href="/dashboard"
+            href="/dashboard/"
             className="rounded text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             直接进入工作台

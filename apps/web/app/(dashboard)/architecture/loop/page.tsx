@@ -271,13 +271,13 @@ export default function LoopEngineeringPage() {
             [
               <span><strong>轴 2 · 多 Agent 扩展</strong></span>,
               "把单个 loop 扩展成多个协作 loop：专业化、并行、控制转移",
-              "OpenAI handoff / Cursor 并行 worktree / Claude Research fan-out",
+              "OpenAI handoff（控制转移）/ Cursor 并行 worktree（工作树）/ Claude Research fan-out（扇出并行）",
               <span>L2 的「Release 审批」可演进为「agent 自审 + agent 互审」（Anthropic Generator/Evaluator）</span>,
             ],
             [
               <span><strong>轴 3 · 持久化 / 可恢复</strong></span>,
               "loop 跑到一半崩了能续；代码更新不破坏在跑的 agent",
-              <Pill tone="good">LangGraph checkpoint</Pill>,
+              <Pill tone="good">LangGraph checkpoint（检查点）</Pill>,
               "AgentVersion 快照 = 配置级 checkpoint；灰度发布 = 彩虹发布的配置版",
             ],
           ]}
@@ -299,11 +299,11 @@ export default function LoopEngineeringPage() {
             ["Agent", "一个 instructions + tools 的集合，是 loop 的「当前态」"],
             ["Tool", "模型发出意图 → harness 执行 → 结果回灌"],
             [
-              <span><strong>Handoff</strong></span>,
-              "一等公民控制转移：A 让位给 B，B 拿到新指令集 + 工具集。多 Agent 不需要额外 orchestrator 抽象",
+              <span><strong>Handoff（移交）</strong></span>,
+              "一等公民控制转移：A 让位给 B，B 拿到新指令集 + 工具集。多 Agent 不需要额外的编排器（orchestrator）抽象",
             ],
             ["Guardrail", "loop 开始前（输入校验）与结束后（输出校验），独立于 turn loop"],
-            [<span><strong>max_turns</strong></span>, "主要防 runaway 机制；超限是 first-class 终止态"],
+            [<span><strong>max_turns</strong></span>, "主要防 runaway（失控）机制；超过上限就正式终止这一轮"],
             ["Tracing", "记录每次模型调用 / 工具 / handoff —— 可观测性的基础"],
           ]}
         />
@@ -354,11 +354,11 @@ export default function LoopEngineeringPage() {
             [
               <span><strong>过早终止</strong></span>,
               "模型说「完成了」但目标没达成",
-              "只检查「模型停没停」而非「目标达没达」（Oracle L3 缺位）",
-              "目标完成校验（Oracle L3）；Anthropic sprint contract 的可测行为",
+              "只检查「模型停没停」而非「目标达没达」（L3 目标完成校验缺位）",
+              "目标完成校验（L3 层）；Anthropic sprint contract（冲刺契约）的可测行为",
             ],
             [
-              <span><strong>跑飞 / runaway</strong></span>,
+              <span><strong>跑飞 / runaway（失控）</strong></span>,
               "同一工具反复调用、永不收敛",
               "无循环检测、无 max_turns、无预算上限",
               "max_turns + 预算 + 循环检测（同 tool+args 重复 N 次即断）",
@@ -390,10 +390,10 @@ export default function LoopEngineeringPage() {
           head={["门类型", "业界来源", "AgentUp 落点", "状态"]}
           rows={[
             ["人工中断 / 审批门", "Anthropic HITL", "Release 审批（人工 approve/reject）", <Pill tone="good">已实现</Pill>],
-            ["max_turns / 预算", "通用防 runaway", "Wiki 蒸馏 Job 的迭代上限 + token 预算", <Pill tone="warn">规划中</Pill>],
+            ["max_turns / 预算", "通用防 runaway（失控）", "Wiki 蒸馏 Job 的迭代上限 + token 预算", <Pill tone="warn">规划中</Pill>],
             ["循环检测", "Manus / Anthropic", "反馈去重；同一根因重复触发告警", <Pill tone="warn">规划中</Pill>],
             ["上下文压缩", "compaction / reset", "Release 详情页只显示 diff 而非全量配置", <Pill tone="warn">规划中</Pill>],
-            ["目标完成校验", "Oracle L3", "Release 通过前跑回归（agent 自审 + 历史工单 replay）", <Pill tone="bad">未做（P1）</Pill>],
+            ["目标完成校验", "L3 层", "Release 通过前跑回归（agent 自审 + 历史工单 replay）", <Pill tone="bad">未做（P1）</Pill>],
             ["外部怀疑式评估", "Anthropic Evaluator", "Release 审批前加 agent 互审（4 标准打分）", <Pill tone="bad">未做（P1）</Pill>],
           ]}
         />
@@ -416,11 +416,11 @@ export default function LoopEngineeringPage() {
         />
         <p className="mt-4 text-xs text-zinc-400">
           想看这些 loop 背后的 harness 工程纪律？前往{" "}
-          <a href="/architecture/harness" className="text-[var(--accent)] hover:underline">
+          <a href="/architecture/harness/" className="text-[var(--accent)] hover:underline">
             Harness 工程
           </a>
           。想把它们落到 AgentUp 的改进项？前往{" "}
-          <a href="/architecture/roadmap" className="text-[var(--accent)] hover:underline">
+          <a href="/architecture/roadmap/" className="text-[var(--accent)] hover:underline">
             改进路线图
           </a>
           。
@@ -434,13 +434,13 @@ export default function LoopEngineeringPage() {
         <Table
           head={["实践", "反直觉之处", "来源"]}
           rows={[
-            ["保留失败在上下文，不静默重试", "失败 + 错误栈留在 context，模型隐式降低该动作先验 —— 比擦掉重试更有效", <Pill tone="good">Manus + Anthropic</Pill>],
-            ["append-only 上下文 + 稳定前缀", "永不编辑历史 turn；追加在末尾 —— 为了 KV-cache 命中（10x 成本差）", <Pill tone="good">Manus</Pill>],
-            ["错误作为 observation 直送模型", "不要包装重试逻辑；把错误栈原样回灌，模型自我纠错", <Pill tone="good">Anthropic</Pill>],
+            ["保留失败在上下文，不静默重试", "失败 + 错误栈留在上下文里，模型会隐式降低该动作的先验概率 —— 比擦掉重试更有效", <Pill tone="good">Manus + Anthropic</Pill>],
+            ["append-only（只追加）上下文 + 稳定前缀", "永不编辑历史轮次；新内容只追加在末尾 —— 为了 KV-cache（键值缓存）命中率（成本差约 10 倍）", <Pill tone="good">Manus</Pill>],
+            ["错误作为 observation（观察结果）直送模型", "不要包装重试逻辑；把错误栈原样回灌，模型自我纠错", <Pill tone="good">Anthropic</Pill>],
             ["用文件系统绕过上下文限制", "别激进压缩；把可恢复内容落文件，只留引用", <Pill tone="good">Manus</Pill>],
             ["分离规划与执行", "让更便宜的模型做规划，强模型做执行 —— 降低成本不降质量", <Pill tone="good">Cursor / Anthropic</Pill>],
-            ["引入结构化变异防 rut", "批量任务里用不同序列化/措辞/顺序，防止模型陷入重复模式", <Pill tone="good">Manus</Pill>],
-            ["corrections cheap, waiting expensive", "高通量系统里别无限阻塞；flake 用后续 run 解决", <Pill tone="good">OpenAI</Pill>],
+            ["引入结构化变异防 rut（陷入重复套路）", "批量任务里用不同序列化/措辞/顺序，防止模型陷入重复模式", <Pill tone="good">Manus</Pill>],
+            ["corrections cheap, waiting expensive（纠错便宜，等待昂贵）", "高通量系统里别无限阻塞；偶发失败（flake）放到后续运行里解决", <Pill tone="good">OpenAI</Pill>],
           ]}
         />
       </Section>
@@ -455,11 +455,10 @@ export default function LoopEngineeringPage() {
             { title: "Building Effective Agents — Anthropic", url: "https://www.anthropic.com/engineering/building-effective-agents", note: "while + tools 最小范式；7 种终止条件" },
             { title: "Context Engineering for AI Agents — Manus", url: "https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus", note: "上下文工程五个反直觉决策" },
             { title: "The Anatomy of an Agent Loop — Steve Kinney", url: "https://stevekinney.com/writing/agent-loops", note: "生产级终止条件详解" },
-            { title: "The Agent Loop Decoded: Three Levels — Oracle", url: "https://blogs.oracle.com/developers/the-agent-loop-decoded-three-levels-every-agent-engineer-must-know", note: "loop 三层；L3 目标完成校验" },
             { title: "openai/swarm — GitHub", url: "https://github.com/openai/swarm", note: "「一个简单 Python loop」" },
             { title: "How We Built Our Multi-Agent Research System — Anthropic", url: "https://www.anthropic.com/engineering/multi-agent-research-system", note: "orchestrator-worker；多 Agent +90.2%" },
             { title: "Cursor 2.0 Agent-First Architecture", url: "https://www.digitalapplied.com/blog/cursor-2-0-agent-first-architecture-guide", note: "并行 worktree + Plan Mode" },
-            { title: "LangGraph: Conditional Edge and Loop", url: "https://blog.gopenai.com/conditional-edge-and-cycle-in-langgraph-explained-da4a112bf1ea", note: "cyclic StateGraph + checkpoint" },
+            { title: "LangGraph 官方文档", url: "https://langchain-ai.github.io/langgraph/", note: "条件边（Conditional Edge）与循环 StateGraph 的权威说明" },
           ]}
         />
       </Section>

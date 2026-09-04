@@ -145,7 +145,7 @@ export default function HarnessEngineeringPage() {
           head={["阶段", "年代", "核心问题", "代表"]}
           rows={[
             ["奠基", "2022", "怎么让 LLM 边推理边行动", "ReAct"],
-            ["标准化", "2023-24", "工具调用格式统一；最小可用范式", "function calling / Anthropic while+tools"],
+            ["标准化", "2023-24", "工具调用格式统一；最小可用范式", "function calling（函数调用）/ Anthropic while+tools"],
             ["生产化", "2025", "长任务不崩；成本可控；工程纪律", <span>Manus / <strong>OpenAI 百万行 Codex</strong></span>],
             ["多 Agent + 评估分离", "2026", "专业化协作；生成/评估分离", <span><strong>Anthropic Generator/Evaluator</strong> / Claude Research</span>],
           ]}
@@ -156,8 +156,8 @@ export default function HarnessEngineeringPage() {
       </Section>
 
       <Section
-        title="① 术语 · Scaffold vs Harness（HF Agent Glossary）"
-        source="huggingface.co/blog/agent-glossary"
+        title="① 术语 · Scaffold（脚手架）vs Harness（执行框架）"
+        source="HuggingFace《Agent Glossary》术语表"
         description="业内术语正在收敛。把这两个词分清，是讨论 harness 工程的前提。"
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -166,7 +166,7 @@ export default function HarnessEngineeringPage() {
               Scaffolding · 行为定义层
             </p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--foreground)]">
-              决定模型「怎么看待世界」的部分：system prompt、tool descriptions、响应解析规则、上下文与记忆管理。塑造模型的行为。
+              决定模型「怎么看待世界」的部分：system prompt（系统提示词）、tool descriptions（工具描述）、响应解析规则、上下文与记忆管理。塑造模型的行为。
             </p>
           </Card>
           <Card>
@@ -181,10 +181,10 @@ export default function HarnessEngineeringPage() {
         <Table
           head={["术语", "一句话定义"]}
           rows={[
-            ["Model", "LLM 本身 —— 文本进文本出，调用间无记忆，只能「表达」调用工具的意图"],
-            ["Policy", "Agent 在给定情境下遵循的行为 —— 部分在权重里，部分在 scaffold+harness 里"],
-            ["Orchestrator", "更高层控制器，把多个 Agent 当单元管理；每个 Agent 跑自己的 harness"],
-            ["Sub-agent", "被另一个 Agent 调用的 Agent；有独立 model + scaffold，独立推理"],
+            ["Model（模型）", "LLM 本身 —— 文本进文本出，调用间无记忆，只能「表达」调用工具的意图"],
+            ["Policy（策略）", "Agent 在给定情境下遵循的行为 —— 部分在权重里，部分在 scaffold+harness 里"],
+            ["Orchestrator（编排器）", "更高层控制器，把多个 Agent 当单元管理；每个 Agent 跑自己的 harness"],
+            ["Sub-agent（子智能体）", "被另一个 Agent 调用的 Agent；有独立 model + scaffold，独立推理"],
           ]}
         />
         <Insight label="为什么要分清">
@@ -194,21 +194,21 @@ export default function HarnessEngineeringPage() {
 
       <Section
         title="② Harness 五大子系统（业界共识）"
-        source="Akshay Pachaar / Daily Dose of DS / Firecrawl / Oracle"
-        description="综合多个架构拆解，harness 一致地分解为五个子系统。Oracle 进一步指出「agent loop 有三层」—— 第 3 层「目标完成校验」是最被低估、也是最大的改进杠杆。"
+        source="Akshay Pachaar / Daily Dose of DS / Firecrawl"
+        description="综合多个架构拆解，harness 一致地分解为五个子系统。业界还把 agent loop 分为三层——第 3 层「目标完成校验」是最被低估、也是最大的改进杠杆。"
       >
         <Mermaid chart={harnessFiveSubsystems} />
         <Table
           head={["#", "子系统", "职责", "常见失败 / 改进点"]}
           rows={[
-            ["1", <span><strong>编排循环</strong><br /><span className="text-xs text-zinc-400">「心跳」</span></span>, "驱动 observe→think→act→observe", "只检查「模型停没停」而非「目标达没达」 —— Oracle 的第 3 层 loop 缺位"],
+            ["1", <span><strong>编排循环</strong><br /><span className="text-xs text-zinc-400">「心跳」</span></span>, "驱动 observe→think→act→observe", "只检查「模型停没停」而非「目标达没达」 —— 三层模型中 L3「目标完成校验」缺位"],
             ["2", <span><strong>工具</strong><br /><span className="text-xs text-zinc-400">「Agent 的手」</span></span>, "执行有副作用的动作", "模型只发意图 → harness 路由 → 回灌结果；参数校验 / 沙箱是重点"],
             ["3", <span><strong>记忆</strong></span>, "短期 in-context + 长期 external", "harness 要主动管理「什么留在上下文」—— Manus 的文件系统即上下文"],
             ["4", <span><strong>上下文/状态</strong></span>, "模型每步看到什么", "渐进式披露 ——「给一张地图，不是 1000 页手册」"],
             ["5", <span><strong>验证 / 护栏</strong></span>, "权限、错误处理、停止条件", "边界校验、linters-as-feedback、Ralph Wiggum loop 检测"],
           ]}
         />
-        <Insight label="Oracle 的 agent loop 三层（最重要的 meta-insight）">
+        <Insight label="Agent loop 的三层模型（最重要的元洞察）">
           <strong>L1</strong>：单次 prompt→response（一次 LLM 调用）。<strong>L2</strong>：工具执行循环（模型发 call → 执行 → 回结果）。<strong>L3</strong>：目标完成循环 —— harness 主动检查「目标真的达成了吗」，而不是「模型停了吗」。
           <br />
           <span className="text-zinc-500">绝大多数被低估的工程缺口都在 L3。这也是 OpenAI Codex 案例的「Ralph Wiggum loop」和 Anthropic Evaluator 要解决的核心问题。</span>
@@ -217,7 +217,7 @@ export default function HarnessEngineeringPage() {
 
       <Section
         title="③ OpenAI · Harness Engineering 七大决策（百万行 Codex 案例）"
-        source="openai.com/index/harness-engineering/"
+        source="OpenAI《Harness Engineering》官方博客"
         description="5 个月、3 名（后增至 7 名）工程师，用 Codex 写出约 100 万行代码、合并约 1500 个 PR，0 行手写。核心论断：「人类转向，Agent 执行」。工程师的职责从「写代码」变成「设计环境、表达意图、构建反馈环」。"
       >
         <Mermaid chart={openaiSevenDecisions} />
@@ -226,7 +226,7 @@ export default function HarnessEngineeringPage() {
           rows={[
             ["1", <span><strong>Repo 即真相源 + 渐进披露</strong></span>, "AGENTS.md ≈100 行做目录，深度知识放 docs/。理由：巨型指令会挤占任务上下文、变成「全重要=无指引」、立刻腐烂、无法机械验证", "AgentUp 的四分区 Prompt 应避免堆砌 —— 把详细约束沉淀到 Wiki，Prompt 只放路由 + 引用"],
             ["2", <span><strong>机械约束架构</strong></span>, "按业务域刚性分层（Types→Config→Repo→Service→Runtime→UI），用 linters 强制；lint 错误信息本身就是给 Agent 的 remediation 指令", "AgentUp 应给 Agent 配置加 schema 校验 + 「为什么拒绝」的可读理由（已有 Zod，可强化错误信息）"],
-            ["3", <span><strong>让应用对 Agent 可读</strong></span>, "每个 git worktree 可启动；Chrome DevTools Protocol 接进 runtime；可观测按 worktree 暴露。不在 repo 里的「等于不存在」", "L1 Agent 应能访问 wiki + MCP；CRE 的反馈应自带可复现的会话/证据，否则对改进者「不可读」"],
+            ["3", <span><strong>让应用对 Agent 可读</strong></span>, "每个 git worktree（工作树）可启动；Chrome DevTools Protocol 接进 runtime；可观测按 worktree 暴露。不在 repo 里的「等于不存在」", "L1 Agent 应能访问 wiki + MCP；CRE 的反馈应自带可复现的会话/证据，否则对改进者「不可读」"],
             ["4", <span><strong>Ralph Wiggum 反馈环</strong></span>, "Codex 本地自审 → 云端 agent 审 → 响应反馈 → 迭代到 reviewer 满意。逐步把审查推到 agent-to-agent", <span><strong>这正是 L3 Evaluator 的雏形</strong> —— AgentUp 应在 Release 审批前加一道「agent 自审 + agent 互审」</span>],
             ["5", <span><strong>最小阻塞门禁</strong></span>, "PR 短命；test flake 用后续 run 解决而非无限阻塞。理由：高通量系统里 corrections 便宜、waiting 昂贵", "AgentUp 的 Release 审批当前是「人工全阻塞」—— 高频小改应走 fast-track（灰度 + 自动回滚）"],
             ["6", <span><strong>熵清理 / garbage collection</strong></span>, "Agent 会复制仓库里已有的模式（包括坏的）→ 漂移。解法：编码 golden principles + 后台 agent 扫偏离 + 开自动合并的 refactor PR", <span><strong>L3 的关键能力</strong> —— AgentUp 应定期扫描所有 Agent 配置，发现偏离基线的 Prompt/知识并提示</span>],
@@ -234,14 +234,14 @@ export default function HarnessEngineeringPage() {
           ]}
         />
         <Insight label="最反直觉的一条">
-          OpenAI 在某些情况下<strong>让 Agent 重新实现库的子集，而不是包装上游</strong>（例：自带带并发上限 + 100% 测试 + OTel 的 map helper，而不是用 p-limit）。理由是「无聊、可组合的技术更容易被 Agent 建模」。
+          OpenAI 在某些情况下<strong>让 Agent 重新实现库的子集，而不是包装上游</strong>（例：自己写一个带并发上限、带完整测试和 OpenTelemetry（可观测遥测）埋点的 map 工具函数，而不是引入 p-limit 这类并发限制库）。理由是「无聊、可组合的技术更容易被 Agent 建模」。
           <span className="text-zinc-500"> → 对 AgentUp：Wiki 蒸馏引擎宁可简单可控，也不要引入复杂的不透明依赖。</span>
         </Insight>
       </Section>
 
       <Section
         title="③ bis · HuggingFace smolagents · 代码即动作 vs JSON 即动作"
-        source="huggingface.co/docs/smolagents"
+        source="huggingface/smolagents（GitHub 仓库）"
         description="smolagents（约 1000 行）是最干净的开源 harness 参考实现。它用两个 Agent 类体现了 harness 设计的一大分流：CodeAgent（动作=Python 代码）vs ToolCallingAgent（动作=JSON 工具调用）。"
       >
         <Mermaid chart={smolagentsArch} />
@@ -280,14 +280,14 @@ export default function HarnessEngineeringPage() {
         <Table
           head={["角色", "职责", "关键设计"]}
           rows={[
-            [<span><strong>Planner</strong></span>, "把 1-4 句的 prompt 扩成完整 spec", "雄心范围；只到产品 + 高层技术，不下钻实现 —— 否则错误会级联放大"],
+            [<span><strong>Planner（规划者）</strong></span>, "把 1-4 句的 prompt 扩成完整 spec（规格说明）", "雄心范围；只到产品 + 高层技术，不下钻实现 —— 否则错误会级联放大"],
             [
-              <span><strong>Generator</strong></span>,
+              <span><strong>Generator（生成者）</strong></span>,
               "一次建一个特性",
-              <span>与 Evaluator 通过<strong>文件</strong>协商 sprint contract（什么算 done + 可测行为）；<br />完成后交付给 Evaluator</span>,
+              <span>与 Evaluator 通过<strong>文件</strong>协商 sprint contract（冲刺契约：什么算做完、有哪些可测行为）；<br />完成后交付给 Evaluator</span>,
             ],
             [
-              <span><strong>Evaluator</strong></span>,
+              <span><strong>Evaluator（评估者）</strong></span>,
               "用 Playwright MCP 点活页面、截图、打分、写批评",
               <span>调到「怀疑」而非默认；4 标准里前两个（设计质量、原创性）权重最高 —— 因为这是 Claude 最弱的<br /><strong>不是固定 yes/no 门</strong> —— 仅在任务超出模型独自可靠完成的范围时才值得这个成本</span>,
             ],
@@ -298,9 +298,9 @@ export default function HarnessEngineeringPage() {
           rows={[
             [
               "长跑上下文一致性",
-              <span><strong>Compaction</strong><br />就地摘要旧 turn</span>,
-              <span><strong>Context reset</strong><br />清空 + 结构化交接给新 Agent</span>,
-              "Opus 4.5/4.6 降低了 context anxiety，reset 可省略；早期两者结合用",
+              <span><strong>Compaction（压缩）</strong><br />就地摘要旧轮次</span>,
+              <span><strong>Context reset（上下文重置）</strong><br />清空 + 结构化交接给新 Agent</span>,
+              "Opus 4.5/4.6 缓解了 context anxiety（上下文焦虑），reset 可以省略；早期两者结合使用",
             ],
             [
               "自我评估偏宽",
@@ -313,7 +313,7 @@ export default function HarnessEngineeringPage() {
         <Insight label="Anthropic 的 meta-lesson（最重要的一句）">
           <strong>「harness 里的每一个组件，都编码了一条『模型独自做不到』的假设 —— 去压力测试这些假设，它们会随模型升级而过时。」</strong>
           <br />
-          Opus 4.6 发布后，Anthropic 直接删掉了 sprint 结构、把 Evaluator 改成单次 end-of-run。「有趣的 harness 组合不会随模型进步而缩小，而是会移动 —— AI 工程师的工作就是不断找到下一个新颖组合。」
+          Opus 4.6 发布后，Anthropic 直接删掉了 sprint 结构、把 Evaluator 改成单次 end-of-run（整轮结束）。「有趣的 harness 组合不会随模型进步而缩小，而是会移动 —— AI 工程师的工作就是不断找到下一个新颖组合。」
           <span className="text-zinc-500"> → 对 AgentUp：今天为 L1 Agent 设计的护栏，应随基座模型升级而定期重评；Evaluator 的边界是会外移的。</span>
         </Insight>
       </Section>
@@ -387,7 +387,7 @@ export default function HarnessEngineeringPage() {
         </Insight>
         <p className="mt-4 text-xs text-zinc-400">
           想看这些改进项的优先级排序？前往{" "}
-          <a href="/architecture/roadmap" className="text-[var(--accent)] hover:underline">
+          <a href="/architecture/roadmap/" className="text-[var(--accent)] hover:underline">
             改进路线图
           </a>
           。
@@ -455,12 +455,12 @@ export default function HarnessEngineeringPage() {
             ],
             [
               <span><strong>逐 sprint 评估</strong></span>,
-              "模型能否在一次 end-of-run 评估里保证质量？",
+              "模型能否在一次 end-of-run（整轮结束）评估里保证质量？",
               "改成单次 end-of-run 评估，省掉中间 QA 轮",
             ],
             [
-              <span><strong>context reset</strong></span>,
-              "模型长跑还有 context anxiety 吗？",
+              <span><strong>context reset（上下文重置）</strong></span>,
+              "模型长跑还有 context anxiety（上下文焦虑）吗？",
               "去掉 reset，直接连续跑（Opus 4.5+ 可省）",
             ],
             [
@@ -469,7 +469,7 @@ export default function HarnessEngineeringPage() {
               "降低 Evaluator 的怀疑度，或只在超阈值时启用",
             ],
             [
-              <span><strong>logit masking</strong></span>,
+              <span><strong>logit masking（屏蔽候选词表）</strong></span>,
               "模型能否自己选对工具？",
               "放宽 mask，减少状态机复杂度",
             ],
@@ -491,15 +491,11 @@ export default function HarnessEngineeringPage() {
       >
         <References
           items={[
-            { title: "Harness engineering: leveraging Codex — OpenAI", url: "https://openai.com/index/harness-engineering/", note: "百万行 Codex 案例 · 七大决策" },
             { title: "Harness design for long-running apps — Anthropic", url: "https://www.anthropic.com/engineering/harness-design-long-running-apps", note: "Planner/Generator/Evaluator 三体设计" },
             { title: "Building Effective Agents — Anthropic", url: "https://www.anthropic.com/engineering/building-effective-agents", note: "while+tools 最小范式；反过度工程" },
             { title: "How we built our multi-agent research system — Anthropic", url: "https://www.anthropic.com/engineering/multi-agent-research-system", note: "orchestrator-worker；token 占 80% 性能方差" },
-            { title: "Agent Glossary: Scaffold vs Harness — Hugging Face", url: "https://huggingface.co/blog/agent-glossary", note: "术语权威定义" },
-            { title: "smolagents Guided Tour — Hugging Face", url: "https://huggingface.co/docs/smolagents/guided_tour", note: "CodeAgent vs ToolCallingAgent；最干净的开源 harness" },
+            { title: "huggingface/smolagents — GitHub", url: "https://github.com/huggingface/smolagents", note: "CodeAgent（代码即动作）与 ToolCallingAgent（JSON 工具调用）；最干净的开源 harness" },
             { title: "The Anatomy of an Agent Harness — Daily Dose of DS", url: "https://blog.dailydoseofds.com/p/the-anatomy-of-an-agent-harness", note: "五大子系统拆解" },
-            { title: "The Agent Loop Decoded: Three Levels — Oracle", url: "https://blogs.oracle.com/developers/the-agent-loop-decoded-three-levels-every-agent-engineer-must-know", note: "loop 三层；L3 目标完成校验" },
-            { title: "Agent Harness Engineering — Medium (Adnan Masood)", url: "https://medium.com/@adnanmasood/agent-harness-engineering-the-rise-of-the-ai-control-plane-938ead884b1d", note: "harness 作为 AI 控制面" },
             { title: "anthropics/cwc-long-running-agents — GitHub", url: "https://github.com/anthropics/cwc-long-running-agents", note: "Anthropic 三体设计配套仓库" },
           ]}
         />

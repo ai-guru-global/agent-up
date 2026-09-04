@@ -48,13 +48,13 @@ export default function HomePage() {
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/dashboard"
+            href="/dashboard/"
             className="rounded-md bg-[var(--accent)] px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             进入工作台
           </Link>
           <Link
-            href="/login"
+            href="/login/"
             className="rounded-md px-5 py-2 text-sm font-medium text-[var(--muted)] ring-1 ring-[var(--border)] transition hover:text-[var(--foreground)] hover:ring-[var(--foreground)]/20 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             登录
@@ -118,7 +118,7 @@ export default function HomePage() {
         <p className="mt-8 text-xs leading-relaxed text-[var(--subtle)]">
           想先了解设计思路，可以直接看{" "}
           <Link
-            href="/architecture"
+            href="/architecture/"
             className="rounded text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             架构总览

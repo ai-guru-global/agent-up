@@ -20,13 +20,13 @@ export default function NotFound() {
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Link
-            href="/dashboard"
+            href="/dashboard/"
             className="inline-flex h-9 items-center rounded-md bg-[var(--accent)] px-3.5 text-[13px] font-medium text-white transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             回到工作台
           </Link>
           <Link
-            href="/agents"
+            href="/agents/"
             className="inline-flex h-9 items-center rounded-md border border-[var(--border)] px-3.5 text-[13px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-elevated)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             查看 Agent 列表
