@@ -69,13 +69,6 @@ describe("GET /api/agents/[id]/versions", () => {
 
 describe("POST /api/agents/[id]/config/[partition]/rollback", () => {
   it("rolls back prompt partition to ver-001", async () => {
-    // 先记录当前 prompt 的值
-    const beforeRes = await getConfig(
-      new NextRequest("http://localhost"),
-      { params: Promise.resolve({ id: AGENT_ID, partition: "prompt" }) },
-    );
-    const before = (await beforeRes.json()).data;
-
     // 回滚到 ver-001（初始版本，promptConfig 可能不同）
     const res = await rollback(
       makeRequest("POST", { versionId: "ver-001" }),

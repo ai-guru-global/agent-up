@@ -9,7 +9,6 @@
  *   beforeEach(() => useTempDataDir());
  *   afterEach(() => restoreDataDir());
  */
-import { beforeEach, afterEach } from "vitest";
 import { mkdtempSync, cpSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";

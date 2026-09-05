@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { store, _setDataDir, _getDataDir, generateId } from "@/lib/data/store";
+import { store, _getDataDir, generateId } from "@/lib/data/store";
 import { AppError } from "@/lib/errors";
 import {
   useTempDataDir,

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { success, error, validateBody, handleApiError } from "@/lib/utils";
+import { success, validateBody, handleApiError } from "@/lib/utils";
 import { submitReleaseSchema, reviewReleaseSchema } from "@/lib/schemas";
 import { submitRelease, reviewRelease } from "@/lib/services/release-service";
 import { withActor, resolveActor } from "@/lib/context";

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { store } from "@/lib/data/store";
-import { success, error, validateBody, handleApiError } from "@/lib/utils";
+import { success, validateBody, handleApiError } from "@/lib/utils";
 import { updateRoleSchema } from "@/lib/schemas";
 import { NotFoundError, AuthorizationError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";

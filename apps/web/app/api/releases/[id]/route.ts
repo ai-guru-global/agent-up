@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { success, error, handleApiError } from "@/lib/utils";
+import { success, handleApiError } from "@/lib/utils";
 import { store } from "@/lib/data/store";
 import { NotFoundError } from "@/lib/errors";
 

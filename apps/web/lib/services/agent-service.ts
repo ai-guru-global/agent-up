@@ -1,6 +1,6 @@
 import { store } from "@/lib/data/store";
 import { getActor } from "@/lib/context";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { NotFoundError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { computeJsonDiff } from "@/lib/diff";
 
