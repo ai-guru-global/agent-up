@@ -242,7 +242,7 @@ export default function RoadmapPage() {
             [<span><strong>Release diff/semver 修复</strong></span>, "release-service.ts + versioning.ts", "changedPartitions 与上一版本真实 diff；无变更拒绝提交；真 SemVer"],
             [<span><strong>反馈状态机</strong></span>, "feedback-service.ts", "非法状态转移（NEW→RESOLVED）被拒"],
             [<span><strong>store 加固</strong></span>, "lib/data/store.ts", "crypto.randomUUID；损坏文件抛 AppError；可测的 _setDataDir"],
-            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>181 个测试，94.4% 语句覆盖</strong>，含 35 个 API 集成测试</span>],
+            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>241 个测试，96.5% 语句覆盖</strong>，含 77 个 API 集成测试</span>],
           ]}
         />
       </Section>
@@ -316,7 +316,7 @@ export default function RoadmapPage() {
               主线 1 · 工程债 <Pill tone="good">部分完成</Pill>
             </p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>181 个测试（94% 覆盖率）</strong>。剩余鉴权与 Prisma 落地待后续工程。
+              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>241 个测试（96.5% 覆盖率）</strong>。剩余鉴权与 Prisma 落地待后续工程。
             </p>
           </Card>
           <Card>

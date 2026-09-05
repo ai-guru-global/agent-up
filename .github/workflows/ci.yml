@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality-gate:
+    name: lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        # packageManager: pnpm@9.15.0，锁文件唯一事实源为 pnpm-lock.yaml
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        # turbo run lint：web 包 eslint 全绿（构建产物目录已忽略）
+        run: pnpm lint
+
+      - name: Test
+        # 241 个单元 + API 集成测试；LLM 端点全 mock fetch，不发真实请求
+        run: cd apps/web && pnpm test
+
+      - name: Build
+        # packages/db 的 build 内含 prisma generate，无需 DATABASE_URL；
+        # 未配置 MIMO_API_KEY 时 LLM 端点仅降级为 503，不影响构建
+        run: pnpm build

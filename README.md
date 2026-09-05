@@ -2,7 +2,7 @@
 
 > better agent, better life
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-232_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-241_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
 
 基于三层 Loop 设计理念的 Agent 持续改进管理平台。面向专有云工单场景，支持各产品组维护改进各自的 Agent 配置（Prompt / 知识库 / 工具 / 路由），通过审批流程发布新版本。
 
@@ -66,7 +66,7 @@
 - **语言**: TypeScript (strict mode)
 - **样式**: Tailwind CSS 4
 - **校验**: Zod（23 个 schema 覆盖所有 API 入参）
-- **测试**: Vitest 3 + v8 coverage（232 个测试）
+- **测试**: Vitest 3 + v8 coverage（241 个测试）
 - **LLM**: 小米 MiMo（mimo-v2.5-pro，OpenAI 兼容协议 Token Plan）——已真实接入 4 个集成点
 - **数据库**: PostgreSQL 16 + Prisma ORM（schema 已就绪，运行时暂用 JSON 文件）
 - **对象存储**: MinIO (S3 兼容)
@@ -91,6 +91,8 @@ agent-up/
 │       │   │   └── settings/       # 设置（角色/权限/审计日志）
 │       │   ├── api/                # API 路由（30 个 route 文件，含 4 个真实 LLM 端点）
 │       │   └── components/         # 共享组件（含 mermaid 渲染器）
+│       ├── demo/                   # 演示模式：内存 mock API + fetch 拦截（静态 Demo 用）
+│       ├── demo-deploy/dist/       # 静态导出产物（pnpm build:demo，gitignored）
 │       ├── lib/
 │       │   ├── errors.ts           # 结构化错误体系（AppError 层级）
 │       │   ├── context.ts          # Actor 请求上下文（为 NextAuth 留接口）
@@ -105,6 +107,7 @@ agent-up/
 │       │       ├── feedback-service       # 反馈（含状态机校验）
 │       │       ├── skill-service          # Skills + 绑定
 │       │       ├── wiki-service           # Wiki Vault + Page
+│       │       ├── retrieval-service      # BM25-lite 本地检索（wiki 关键词检索）
 │       │       ├── effectiveness-service  # 版本效果报告（懒计算）
 │       │       ├── llm-service            # LLM 网关（MiMo，env 凭据，零硬编码）
 │       │       └── audit-service          # 审计日志（append-only）
@@ -174,18 +177,29 @@ pnpm dev
 ```bash
 pnpm dev                 # 启动开发服务器（turbo）
 pnpm build               # 全量构建
-pnpm lint                # ESLint 检查（当前 0 errors）
+pnpm lint                # ESLint 检查（全绿，0 problems）
 cd apps/web && pnpm test                # 运行全部测试（单元 + API 集成）
 cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 ```
 
 ### 测试
 
-**232 个测试，20 个测试文件：**
+**241 个测试，21 个测试文件：**
 
-- **单元测试**（`lib/__tests__/`，13 个文件）：versioning、errors、schemas、diff、store、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、utils、llm-service（mock fetch）
+- **单元测试**（`lib/__tests__/`，14 个文件）：versioning、errors、schemas、diff、store、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、retrieval-service、utils、llm-service（mock fetch）
 - **API 集成测试**（`app/api/__tests__/`，7 个文件）：agents、releases（含审批流 + diff）、feedback、skills、wiki、versions/rollback、effectiveness 全链路 + LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
 - **隔离**：每个测试用临时数据目录（`_setDataDir`），绝不污染仓库种子数据
+
+## 演示双轨（本地全栈 / 静态导出 Demo）
+
+同一代码库支持两种运行形态，均由 `demo/` 目录支撑：
+
+- **本地全栈（默认）**：`pnpm dev`，真实 Next.js route handler + JSON 文件存储，可选接真实 LLM。
+- **纯静态 Demo**：`cd apps/web && pnpm build:demo`（`DEMO_EXPORT=1 next build`）→ 产物在 `demo-deploy/dist/`（gitignored），可托管到任意静态 CDN，无需 Node 服务端。
+
+`demo/` 目录是 Demo 模式核心：`mock-server.ts` 用内存态镜像全部 API 的响应形状（成功/错误封装、分页、join 字段），`install-fetch.ts` 在浏览器端幂等拦截同源 `/api/*` 请求，`seed.ts` 直接 import `data/` 种子 JSON 作为初始状态；root layout 仅在 `NEXT_PUBLIC_DEMO_MODE=1` 时挂载 `DemoProvider`（含演示角标）。刷新页面即重置内存数据。
+
+> 线上可点击 Demo：https://qtb3subkcwy5.meoo.fun（事实口径见 [GTM/README.md](GTM/README.md)）
 
 ## MOCK 声明与演示用途
 
@@ -320,6 +334,7 @@ flowchart TB
 
 | 分类 | 端点 | 功能 |
 |------|------|------|
+| Auth | `POST /api/auth/login` | MOCK 登录（演示账号 `allengaller`/`123`，见 [MOCK 声明](#mock-声明与演示用途)） |
 | Agent | `GET/POST /api/agents` | 列表 / 创建 |
 | | `GET/PUT/DELETE /api/agents/[id]` | 详情 / 更新 / 归档 |
 | | `GET/PUT /api/agents/[id]/config/[partition]` | 四分区配置读写 |
@@ -440,9 +455,10 @@ A：`allengaller` / `123`（MOCK 登录，登录后即管理员角色，详见 [
 
 本仓库当前为演示 / 面试形态项目；欢迎讨论与复用。提交或评审改动时遵循以下约定：
 
-1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（232 个测试）
+1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（241 个测试）
 2. 新增 mock 能力时遵循全站统一的 MOCK 标注规范（徽标 + 代码注释，见 [MOCK 声明](#mock-声明与演示用途)）
 3. 新增文档按 `YYYY-MM-DD-主题.md` 命名放入 `docs/` 对应目录（规范见 [文档索引](#文档索引)）
+4. commit message 用 Conventional Commits 风格：`feat|fix|docs|chore(scope): 中文摘要`，如 `fix(web): 修复 lint 扫描构建产物`
 
 ## 许可证
 
