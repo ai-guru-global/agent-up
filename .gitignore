@@ -46,3 +46,6 @@ apps/web/prisma/migrations/
 
 # UI 巡检临时产物（本地 Chrome/CDP 截图与脚本，不进版本库）
 .inspect/
+
+# 外部导入知识库（ai-guru-database 快照，仅供本地检索参考，不入版本库）
+docs/knowledge-base/

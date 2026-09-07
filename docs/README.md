@@ -1,8 +1,9 @@
 # docs — 文档体系总索引
 
-> 维护日期：2026-08-26
+> 维护日期：2026-09-07
 > 本目录是 agent-up 全部项目文档的入口。文档按「设计 → 评估 → 交付 → 使用」四层组织，
 > 时间戳即版本：同主题新一轮产出以新日期另建文件，不覆盖旧文档。
+> 外部导入的知识文献另见 [knowledge-base/](./knowledge-base/README.md)。
 
 ## 目录结构
 
@@ -37,6 +38,7 @@
 |------|------|------|
 | 2026-07-31 | [项目整体评估与行业差距分析](./reports/2026-07-31-project-evaluation-and-industry-gap-analysis.md) | 历史快照：五大差距 + P0-P3 路线图 |
 | 2026-08-25 | [MiMo 真实 LLM 接入交付报告](./reports/2026-08-25-mimo-llm-integration-delivery.md) | 实测证据 + 踩坑记录 + 文件清单 |
+| 2026-09-05 | [评测闭环交付报告](./reports/2026-09-05-eval-closed-loop-delivery.md) | trace/评测用例/发布前 AI 评测设计决策 + 测试 251/251（95.9% 语句覆盖） |
 
 索引与外部页面对应关系详见 [reports/README](./reports/README.md)。
 
@@ -48,7 +50,18 @@
 | [部署指南](./guides/deployment.md) | 部署 / 演示准备 | 本地启动、环境变量、生产构建、演示前检查清单 |
 | [故障排查手册](./guides/troubleshooting.md) | 开发者 | 已知问题与修复模式（env 加载、LLM 错误、测试时间炸弹等） |
 
-## 五、快速入口（仓库根）
+## 五、外部导入知识库（knowledge-base）
+
+> 2026-09-07 从 `ai-guru-global/ai-guru-database` 导入的 Agent / RAG / Prompt 工程主题 md 原文快照，
+> 用于 Agent 知识建设与检索引用，非本仓库原创文档，**不入版本库**。来源与更新方式见 [README](./knowledge-base/README.md)。
+
+| 源章节 | 篇数 | 主题 |
+|--------|-----:|------|
+| [15_智能体](./knowledge-base/15_智能体/README.md) | 241 | Agent 工程 / 评估 / 框架 / Harness / 生态 |
+| [14_RAG系统](./knowledge-base/14_RAG系统/README.md) | 63 | RAG 全链路（检索 / 嵌入 / 向量库 / 生产实践） |
+| [07_提示工程](./knowledge-base/05_大模型/07_提示工程/README.md) | 18 | Context 工程 / Prompt 工程 / 结构化生成 |
+
+## 六、快速入口（仓库根）
 
 - 项目总览 / 快速开始：[根 README](../README.md)
 - Web 应用说明：[apps/web/README](../apps/web/README.md)
