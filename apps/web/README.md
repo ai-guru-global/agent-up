@@ -8,7 +8,7 @@ Next.js 16 (App Router, Turbopack) 全栈应用，Agent 改进平台的主界面
 
 ```bash
 pnpm dev          # 独立启动（http://localhost:3000），或在根目录 pnpm dev
-pnpm test         # 241 个测试（单元 + API 集成），临时数据目录隔离
+pnpm test         # 251 个测试（单元 + API 集成），临时数据目录隔离
 pnpm lint         # ESLint（全绿，0 problems）
 pnpm build        # 生产构建
 pnpm build:demo   # 演示模式静态导出（产物 demo-deploy/dist/）
@@ -24,8 +24,8 @@ MOCK 登录演示账号：`allengaller` / `123`。数据源为 `data/` 目录本
 | 目录 | 职责 |
 |------|------|
 | `app/(dashboard)/` | 工作台页面：agents / releases / maas / feedback / skills / wiki / settings / architecture |
-| `app/api/` | 30 个 route 文件（含 4 个真实 LLM 端点），Zod 全量校验；完整说明见 `docs/api/api-reference.md` |
-| `lib/services/` | 业务逻辑层（agent / release / feedback / skill / wiki / retrieval / effectiveness / llm / audit） |
+| `app/api/` | 34 个 route 文件（含 5 个真实 LLM 端点），Zod 全量校验；完整说明见 `docs/api/api-reference.md` |
+| `lib/services/` | 业务逻辑层（agent / release / feedback / skill / wiki / retrieval / effectiveness / trace / eval-case / ai-review / llm / audit） |
 | `lib/data/store.ts` | JSON 文件存储（可用 `_setDataDir` 注入临时目录，测试隔离） |
 | `demo/` | 演示模式 mock（`NEXT_PUBLIC_DEMO_MODE=1` 时浏览器端拦截同源 `/api/*`，内存态镜像 API 响应形状） |
 | `data/` | 种子数据（mock） |
