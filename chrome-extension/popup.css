@@ -1,0 +1,436 @@
+/* popup.css — 视觉语言对齐 agent-up（zinc 灰阶 + blue accent，双主题）。 */
+
+:root {
+  --bg: #fafafa;
+  --fg: #18181b;
+  --surface: #ffffff;
+  --surface-elev: #f4f4f5;
+  --border: #e4e4e7;
+  --accent: #2563eb;
+  --accent-muted: #dbeafe;
+  --muted: #52525b;
+  --subtle: #63636c;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --success: #15803d;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --ring: var(--accent);
+  --code-bg: #18181b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18181b;
+    --fg: #fafafa;
+    --surface: #18181b;
+    --surface-elev: #27272a;
+    --border: #3f3f46;
+    --accent: #3b82f6;
+    --accent-muted: #1e3a5f;
+    --muted: #a1a1aa;
+    --subtle: #a1a1aa;
+    --danger: #f87171;
+    --danger-bg: #2a1213;
+    --danger-border: #7f1d1d;
+    --success: #34d399;
+    --success-bg: #0c1f18;
+    --success-border: #166534;
+    --ring: var(--accent);
+    --code-bg: #fafafa;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 400px;
+  max-height: 560px;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+}
+
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+
+/* ---------- 头部 ---------- */
+.au-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.au-wordmark {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.au-wordmark em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.au-header-title {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.au-badge-live {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- 视图容器 ---------- */
+.au-view {
+  padding: 14px;
+}
+
+/* ---------- 空态 / 结果态 ---------- */
+.au-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 8px 16px;
+  text-align: center;
+}
+
+.au-empty-icon,
+.au-done-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 18px;
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.au-done-icon {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.au-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.au-empty-sub {
+  max-width: 340px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.au-empty-sub code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--surface-elev);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.au-empty-note {
+  max-width: 320px;
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* ---------- Agent 信息条 ---------- */
+.au-agentbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.au-agentbar-label {
+  display: block;
+  color: var(--subtle);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.au-agentbar-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.au-agentbar-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 表单 ---------- */
+.au-field {
+  margin-bottom: 10px;
+}
+
+.au-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.au-req {
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.au-input {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--fg);
+  caret-color: var(--accent);
+}
+
+.au-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.au-textarea {
+  resize: vertical;
+  min-height: 76px;
+  line-height: 1.55;
+}
+
+.au-hint {
+  margin-top: 4px;
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.au-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ---------- 评分分段控件 ---------- */
+.au-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-elev);
+}
+
+.au-seg-opt {
+  cursor: pointer;
+  text-align: center;
+  padding: 4px 0;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.au-seg-opt.is-on {
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- 会话证据 ---------- */
+.au-evidence {
+  margin: 2px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.au-evidence summary {
+  cursor: pointer;
+  padding: 7px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  list-style: none;
+}
+
+.au-evidence summary::-webkit-details-marker {
+  display: none;
+}
+
+.au-evidence summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--subtle);
+  transition: transform 0.15s;
+}
+
+.au-evidence[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.au-evidence-list {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 2px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.au-ev-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.au-ev-who {
+  color: var(--subtle);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.au-ev-text {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--surface-elev);
+  color: var(--fg);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.au-ev-text.is-user {
+  background: var(--accent-muted);
+}
+
+.au-ev-meta {
+  color: var(--subtle);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 身份 / 错误 ---------- */
+.au-identity {
+  margin: 2px 0 10px;
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.au-error {
+  margin-bottom: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--danger-border);
+  border-radius: 7px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---------- 按钮 ---------- */
+.au-btn {
+  cursor: pointer;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 500;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.au-btn:hover {
+  border-color: var(--subtle);
+}
+
+.au-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.au-btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.au-btn-primary:hover {
+  border-color: var(--accent);
+  filter: brightness(1.05);
+}
+
+.au-btn-block {
+  width: 100%;
+  padding: 8px 0;
+}
+
+.au-btn.is-loading {
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.au-done-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.au-code {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .au-code {
+    background: var(--surface-elev);
+    color: var(--fg);
+  }
+
+  .au-btn-primary {
+    color: #ffffff;
+  }
+}

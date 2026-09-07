@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>agent-up 反馈收集</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- 固定头部 -->
+  <header class="au-header">
+    <span class="au-wordmark" aria-hidden="true">agent<em>—</em>up</span>
+    <span class="au-header-title">反馈收集器</span>
+    <span class="au-badge-live" title="通过 Chrome 插件提交的反馈会落入 agent-up 反馈池">EXT</span>
+  </header>
+
+  <!-- 检查中 -->
+  <section id="view-checking" class="au-view" hidden>
+    <div class="au-empty">
+      <p class="au-empty-title">正在读取当前页面…</p>
+      <p class="au-empty-sub">连接试聊 Playground 以捕获会话上下文</p>
+    </div>
+  </section>
+
+  <!-- 非 Agent 详情页：引导 -->
+  <section id="view-empty" class="au-view" hidden>
+    <div class="au-empty">
+      <div class="au-empty-icon" aria-hidden="true">↗</div>
+      <p class="au-empty-title">先打开一个 Agent 详情页</p>
+      <p class="au-empty-sub">
+        本插件在 agent-up 的「试聊 Playground」场景工作：先启动本地全栈
+        <code>pnpm dev</code>（http://localhost:3000），进入任一 Agent 详情页跑一轮对话，
+        再点这里收集反馈。
+      </p>
+      <button id="btn-open-demo" class="au-btn au-btn-primary" type="button">打开演示 Agent 页面</button>
+      <p class="au-empty-note">打不开？确认服务在 3000 端口运行，且页面地址是 /agents/&lt;id&gt;/。</p>
+    </div>
+  </section>
+
+  <!-- 收集表单 -->
+  <section id="view-ready" class="au-view" hidden>
+    <div class="au-agentbar">
+      <div class="au-agentbar-main">
+        <span class="au-agentbar-label">反馈对象</span>
+        <span id="agent-name" class="au-agentbar-name">—</span>
+      </div>
+      <span class="au-agentbar-meta" id="agent-meta">…</span>
+    </div>
+
+    <div class="au-field">
+      <span class="au-label">这次回复感觉如何？<b class="au-req">必选</b></span>
+      <div class="au-seg" role="radiogroup" aria-label="评价">
+        <label class="au-seg-opt is-on" data-rating="NEGATIVE">
+          <input type="radio" name="rating" value="NEGATIVE" checked hidden />
+          <span>不满意</span>
+        </label>
+        <label class="au-seg-opt" data-rating="NEUTRAL">
+          <input type="radio" name="rating" value="NEUTRAL" hidden />
+          <span>一般</span>
+        </label>
+        <label class="au-seg-opt" data-rating="POSITIVE">
+          <input type="radio" name="rating" value="POSITIVE" hidden />
+          <span>满意</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="au-row2">
+      <div class="au-field">
+        <label class="au-label" for="severity">严重程度</label>
+        <select id="severity" class="au-input">
+          <option value="SUGGESTION">建议</option>
+          <option value="MINOR" selected>轻微</option>
+          <option value="MAJOR">严重</option>
+          <option value="CRITICAL">致命</option>
+        </select>
+      </div>
+      <div class="au-field">
+        <label class="au-label" for="tag">问题类型（可选）</label>
+        <select id="tag" class="au-input">
+          <option value="">— 不指定 —</option>
+          <option value="ANSWER_QUALITY">回答质量</option>
+          <option value="KNOWLEDGE_GAP">知识缺口</option>
+          <option value="TOOL_FAILURE">工具失败</option>
+          <option value="ROUTING_ERROR">路由错误</option>
+          <option value="HALLUCINATION">幻觉</option>
+          <option value="OUTDATED_INFO">信息过时</option>
+          <option value="TONE_ISSUE">语气问题</option>
+          <option value="INCOMPLETE">回答不完整</option>
+          <option value="OFF_TOPIC">答非所问</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="au-field">
+      <label class="au-label" for="title">标题</label>
+      <input id="title" class="au-input" type="text" maxlength="200" />
+    </div>
+
+    <div class="au-field">
+      <label class="au-label" for="content">反馈正文（写清哪里不对、期望是什么）<b class="au-req">必填</b></label>
+      <textarea id="content" class="au-input au-textarea" rows="5" placeholder="例如：用户问磁盘扩容是否会影响数据，Agent 只给了步骤没提风险提示，容易引发事故…"></textarea>
+      <p class="au-hint" id="content-hint">提交时最近对话会作为证据归档：Agent 回复的模型与耗时随对话保留，来源、页面 URL 与提交时间一并写入——归因与审批都有据可查。</p>
+    </div>
+
+    <details class="au-evidence">
+      <summary>
+        <span>会话证据预览（<span id="ev-count">0</span> 轮，随反馈提交）</span>
+      </summary>
+      <div id="ev-list" class="au-evidence-list"></div>
+    </details>
+
+    <div class="au-identity" title="演示口径：agent-up 当前为 MOCK 认证（见 lib/context.ts），提交身份经 x-actor-* 请求头声明">
+      提交身份：<b>CRE 张一</b>（cre_viewer）· MOCK 认证占位
+    </div>
+
+    <p class="au-error" id="form-error" role="alert" hidden></p>
+
+    <button id="btn-submit" class="au-btn au-btn-primary au-btn-block" type="button" disabled>提交到反馈池</button>
+  </section>
+
+  <!-- 提交成功 -->
+  <section id="view-done" class="au-view" hidden>
+    <div class="au-empty">
+      <div class="au-done-icon" aria-hidden="true">✓</div>
+      <p class="au-empty-title">反馈已落入反馈池</p>
+      <p class="au-empty-sub">
+        新条目 <span id="done-id" class="au-code">…</span> 已写入。
+        接下来可以在反馈中心对它做 AI 归因 → 改分区配置 → 提交发布审批，走完整个改进闭环。
+      </p>
+      <div class="au-done-actions">
+        <button id="btn-open-list" class="au-btn au-btn-primary" type="button">去反馈列表查看</button>
+        <button id="btn-again" class="au-btn" type="button">再提一条</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

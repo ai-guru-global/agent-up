@@ -16,6 +16,7 @@
 | W2 | [产品演示版（可点击全流程 Demo）](https://qtb3subkcwy5.meoo.fun) | 客户 / 面试官（自助演示） | Next.js 静态导出 SPA（线上直接点，MOCK 登录 allengaller / 123） | v3（2026-09-03：默认浅色 · 全站中文文案+英文括号备注 · 17 路由 · 深链接自愈） |
 | P1 | [GTM 海报](./assets/poster-v1.png) | 通用 | 图片（阿里橙商务风） | v1 |
 | P2 | [深色科技风海报](./assets/poster-v2-dark.png) | 技术社区 | 图片（1080×1620，[HTML 源](./assets/poster-v2-dark.html) 可维护；另有 [AI 生成备选版](./assets/poster-v2-dark-ai-alt.png)，中文文案有失真仅作氛围参考） | v2（2026-08-31） |
+| W3 | [反馈收集器（Chrome 插件 · PoC）](../chrome-extension/) | 客户 / 面试官（现场演示） | 零构建 MV3 扩展（加载已解压即用）· [安装说明](../chrome-extension/README.md) | v0.1（2026-09-07：一键沉淀带对话证据的反馈，补 L1 入口；仅本地全栈形态） |
 
 **W1 使用方式**：单文件 HTML，双击即开；或任意静态托管，如
 `cd GTM/website && python3 -m http.server 4173` → http://localhost:4173。
@@ -48,4 +49,8 @@
 
 ## 待产出（backlog）
 
-（暂无——物料库 01–04 / W1 / P1–P2 已齐；新需求先在此登记再产出）
+物料库 01–04 / W1 / P1–P2 已齐；新需求先在此登记再产出。
+
+| # | 需求 | 状态 |
+|---|------|------|
+| B1 | Chrome 插件演示动线（反馈收集器 PoC 已入库 `chrome-extension/`，含 README 动线；待录 1 分钟独立片段或并入 03 视频脚本） | 已入库，未录视频 |

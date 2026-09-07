@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- agent-up 反馈收集器图标源：主色 #2563eb 渐变 + 白色「对话气泡 + 对勾」图形（对会话打分=反馈）。
+       栅格化：qlmanage -t -s 1024 -o icons icons/icon.svg 后按 16/32/48/128 缩放 -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- 对话气泡（左下带尾巴，避免与通用圆角框混淆） -->
+  <path d="M140 72 H372 A56 56 0 0 1 428 128 V224 A56 56 0 0 1 372 280 H256 L206 330 L214 280 H140 A56 56 0 0 1 84 224 V128 A56 56 0 0 1 140 72 Z"
+        fill="none" stroke="#ffffff" stroke-width="30" stroke-linejoin="round"/>
+  <!-- 气泡内对勾：给这次对话评分 -->
+  <path d="M196 178 L224 206 L300 128" stroke="#ffffff" stroke-width="38" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
