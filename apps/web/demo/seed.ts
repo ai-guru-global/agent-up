@@ -5,6 +5,8 @@ import fb002 from "../data/feedback/fb-002.json";
 import fb003 from "../data/feedback/fb-003.json";
 import rel001 from "../data/releases/rel-001.json";
 import rel002 from "../data/releases/rel-002.json";
+import evalEcs001 from "../data/eval-cases/eval-ecs-001.json";
+import evalEcs002 from "../data/eval-cases/eval-ecs-002.json";
 import ver001 from "../data/versions/ver-001.json";
 import ver002 from "../data/versions/ver-002.json";
 import verRds001 from "../data/versions/ver-rds-001.json";
@@ -50,6 +52,10 @@ export interface DemoState {
   auditLogs: AnyRec[];
   wikiVaults: AnyRec[];
   wikiPages: Record<string, AnyRec[]>;
+  /** 试聊 trace（运行时由 mock chat 端点产生） */
+  traces: AnyRec[];
+  /** 评测用例库（种子 + 运行时从 trace 沉淀） */
+  evalCases: AnyRec[];
   reservedAgentPool: string[];
 }
 
@@ -70,6 +76,8 @@ export function createInitialState(): DemoState {
       "ecs-wiki": [pageEcsDisk, pageEcsSg, pageEcsSsh],
       "rds-wiki": [pageRdsConn],
     },
+    traces: [],
+    evalCases: [evalEcs001, evalEcs002],
   };
   const clone = JSON.parse(JSON.stringify(seed)) as Omit<
     DemoState,

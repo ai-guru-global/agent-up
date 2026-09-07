@@ -566,23 +566,91 @@ function route(
       }
     }
 
-    // /api/agents/:id/chat
+    // /api/agents/:id/chat（镜像真实端点：成功调用后落盘一条 trace，响应带 traceId）
     if (third === "chat" && M === "POST") {
       const a = agentOr404();
       const message = String(payload.message ?? "");
+      const history = Array.isArray(payload.history)
+        ? (payload.history as AnyRec[])
+        : [];
+      const reply = cannedChatReply(a, message);
+      const usage = llmUsage(message);
+      const traceId = newId();
+      state.traces.push({
+        id: traceId,
+        agentId: second,
+        systemPrompt: String((a.promptConfig as AnyRec | null)?.systemPrompt ?? ""),
+        history: history.map((m) => ({ role: m.role, content: m.content })),
+        message,
+        reply,
+        model: LLM_MODEL,
+        usage,
+        latencyMs: 480,
+        createdAt: now(),
+        rating: null,
+        ratedAt: null,
+        note: null,
+      });
       return {
         status: 200,
         body: {
           success: true,
           data: {
-            reply: cannedChatReply(a, message),
+            reply,
             model: LLM_MODEL,
-            usage: llmUsage(message),
+            usage,
             latencyMs: 480,
+            traceId,
           },
         },
         delayMs: 700,
       };
+    }
+
+    // /api/agents/:id/eval-cases（列表 + 从 trace 沉淀）
+    if (third === "eval-cases") {
+      if (M === "GET") {
+        const items = state.evalCases
+          .filter((c) => c.agentId === second)
+          .sort((a, b) =>
+            String(b.createdAt).localeCompare(String(a.createdAt)),
+          );
+        return ok({ items });
+      }
+      if (M === "POST") {
+        const traceId = String(payload.traceId ?? "");
+        const trace = state.traces.find((t) => t.id === traceId);
+        if (!trace) return fail("Trace 不存在，无法沉淀", 404);
+        if (trace.agentId !== second)
+          return fail("该 Trace 不属于此 Agent，无法沉淀为它的评测用例", 422);
+        const message = String(trace.message ?? "");
+        const firstLine = message.split("\n")[0] ?? "";
+        const title =
+          firstLine.length > 32 ? `${firstLine.slice(0, 32)}…` : firstLine;
+        const evalCase: AnyRec = {
+          id: newId(),
+          agentId: second,
+          sourceTraceId: traceId,
+          title,
+          expectation:
+            String(payload.expectation ?? "").trim() ||
+            "回复应正确、完整地解决用户问题，并遵守该 Agent 的约束",
+          systemPrompt: trace.systemPrompt,
+          history: trace.history,
+          message,
+          referenceReply: trace.reply,
+          status: "ACTIVE",
+          createdAt: now(),
+          createdBy: SYSTEM_ACTOR.id,
+        };
+        state.evalCases.push(evalCase);
+        recordAudit("eval_case.create", "eval_case", String(evalCase.id), {
+          agentId: second,
+          sourceTraceId: traceId,
+          title,
+        });
+        return ok(evalCase, 201);
+      }
     }
 
     // /api/agents/:id/versions
@@ -892,6 +960,37 @@ function route(
     }
   }
 
+  // ----- traces & eval-cases（试聊打分与评测用例库，镜像服务端端点） -----
+  if (head === "traces" && second && third === "rate" && M === "POST") {
+    const trace = state.traces.find((t) => t.id === second);
+    if (!trace) return fail("Trace 不存在", 404);
+    const rating = String(payload.rating ?? "");
+    if (rating !== "UP" && rating !== "DOWN")
+      return fail("rating 只能是 UP 或 DOWN", 422);
+    trace.rating = rating;
+    trace.ratedAt = now();
+    trace.note = String(payload.note ?? "").trim() || null;
+    recordAudit("trace.rate", "trace", String(second), {
+      agentId: trace.agentId,
+      rating,
+    });
+    return ok({
+      id: trace.id,
+      agentId: trace.agentId,
+      rating: trace.rating,
+      ratedAt: trace.ratedAt,
+      note: trace.note,
+    });
+  }
+
+  if (head === "eval-cases" && second && M === "DELETE") {
+    const idx = state.evalCases.findIndex((c) => c.id === second);
+    if (idx === -1) return fail("评测用例不存在", 404);
+    state.evalCases.splice(idx, 1);
+    recordAudit("eval_case.delete", "eval_case", String(second), {});
+    return ok({ deleted: true });
+  }
+
   // ----- releases -----
   if (head === "releases") {
     if (!second && M === "GET") {
@@ -948,6 +1047,62 @@ function route(
       recordAudit(auditAction, "release", String(second), {
         agentId: rel.agentId,
         reviewComment: payload.reviewComment ?? null,
+      });
+      return ok(updated);
+    }
+
+    if (second && third === "ai-review" && M === "POST") {
+      const rel = release();
+      if (!rel) return fail("Release 不存在", 404);
+      if (rel.status !== "PENDING")
+        return fail(
+          `只有待审批的 Release 可以运行 AI 评测（当前状态：${String(rel.status)}）`,
+          409,
+        );
+      const cases = state.evalCases.filter(
+        (c) => c.agentId === rel.agentId && c.status === "ACTIVE",
+      );
+      const ts = now();
+      const aiReview: AnyRec =
+        cases.length === 0
+          ? {
+              status: "SKIPPED",
+              runAt: ts,
+              model: LLM_MODEL,
+              totalCases: 0,
+              passed: 0,
+              failed: 0,
+              errorCases: 0,
+              summary:
+                "该 Agent 还没有评测用例（先在 Playground 打分并沉淀），跳过 AI 评测",
+              results: [],
+            }
+          : {
+              status: "PASSED",
+              runAt: ts,
+              model: LLM_MODEL,
+              totalCases: cases.length,
+              passed: cases.length,
+              failed: 0,
+              errorCases: 0,
+              summary: `全部 ${cases.length} 个用例通过，建议批准发布（演示环境固定判定）`,
+              results: cases.map((c) => ({
+                caseId: c.id,
+                title: c.title,
+                verdict: "PASS",
+                score: 5,
+                reason: "候选回复覆盖参考回复要点，且符合该 Agent 的角色约束（演示环境固定判定）",
+              })),
+            };
+      const updated = { ...rel, aiReview };
+      const idx = state.releases.indexOf(rel);
+      state.releases[idx] = updated;
+      recordAudit("release.ai_review", "release", String(second), {
+        agentId: rel.agentId,
+        status: aiReview.status,
+        passed: aiReview.passed as number,
+        failed: aiReview.failed as number,
+        errorCases: aiReview.errorCases as number,
       });
       return ok(updated);
     }

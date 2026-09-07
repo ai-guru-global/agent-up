@@ -242,7 +242,22 @@ export default function RoadmapPage() {
             [<span><strong>Release diff/semver 修复</strong></span>, "release-service.ts + versioning.ts", "changedPartitions 与上一版本真实 diff；无变更拒绝提交；真 SemVer"],
             [<span><strong>反馈状态机</strong></span>, "feedback-service.ts", "非法状态转移（NEW→RESOLVED）被拒"],
             [<span><strong>store 加固</strong></span>, "lib/data/store.ts", "crypto.randomUUID；损坏文件抛 AppError；可测的 _setDataDir"],
-            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>241 个测试，96.5% 语句覆盖</strong>，含 77 个 API 集成测试</span>],
+            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>251 个测试，95.9% 语句覆盖</strong>，含 87 个 API 集成测试</span>],
+          ]}
+        />
+      </Section>
+
+      <Section
+        title="本轮已完成 · 评测闭环（2026-09-05）"
+        description="试聊 trace 落盘 → 👍/👎 打分 → 沉淀评测用例 → 发布前 AI 评测：用 Release 快照 prompt 回放该 Agent 全部用例、LLM 判官逐条 PASS/FAIL，审批人不再盲批——对应下方 P2「失败工单 → 评测集」的核心闭环，先落地手动沉淀 + 手动触发版。"
+      >
+        <Table
+          head={["交付项", "文件", "收益"]}
+          rows={[
+            [<span><strong>试聊 trace 落盘 + 打分</strong></span>, "lib/services/trace-service.ts + chat / traces/[id]/rate", "每次成功回复服务端落盘（失败不打断）；Playground 提供 👍/👎（可改分）"],
+            [<span><strong>评测用例库</strong></span>, "lib/services/eval-case-service.ts + agents/[id]/eval-cases", "打分后可一键沉淀（自动校验 trace 归属），含完整输入 + 参考回复；种子含 2 条 ECS 用例"],
+            [<span><strong>发布前 AI 评测门禁</strong></span>, "lib/services/ai-review-service.ts + releases/[id]/ai-review", "仅 PENDING 可跑：快照 prompt 回放全部用例，判官 PASS/FAIL 写回 aiReview；无配置/无用例自动 SKIPPED，结论不阻断审批"],
+            [<span><strong>前端与 Demo 同步</strong></span>, "agent-detail.tsx + releases/page.tsx + demo/mock-server.ts", "Playground 打分/沉淀面板 + Release 评测结果块；演示模式同形状 mock 端点"],
           ]}
         />
       </Section>
@@ -316,7 +331,7 @@ export default function RoadmapPage() {
               主线 1 · 工程债 <Pill tone="good">部分完成</Pill>
             </p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>241 个测试（96.5% 覆盖率）</strong>。剩余鉴权与 Prisma 落地待后续工程。
+              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>251 个测试（95.9% 覆盖率）</strong>；v1.5 再落地评测闭环（trace 落盘 → 沉淀用例 → 发布前 AI 评测门禁）。剩余鉴权与 Prisma 落地待后续工程。
             </p>
           </Card>
           <Card>

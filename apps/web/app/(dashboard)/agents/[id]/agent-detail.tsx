@@ -22,6 +22,7 @@ import {
   Textarea,
   metaOf,
 } from "@/components/ui";
+import { EvalCasePanel } from "./eval-case-panel";
 
 interface AgentDetail {
   id: string;
@@ -440,6 +441,8 @@ export default function AgentDetailPage() {
       </div>
 
       <ChatPlayground agentId={id} />
+
+      <EvalCasePanel agentId={id} />
 
       <VersionHistory agentId={id} activePartition={activeTab} onRollbackDone={fetchConfig} />
     </div>
@@ -1059,6 +1062,11 @@ interface ChatMsg {
   role: "user" | "assistant";
   content: string;
   meta?: string;
+  /** 该条回复对应的服务端 trace（用于打分与沉淀）；LLM 未配置或调用失败时为空 */
+  traceId?: string | null;
+  rating?: "UP" | "DOWN" | null;
+  /** 已沉淀为评测用例 */
+  promoted?: boolean;
 }
 
 /** 试聊 Playground：加载该 Agent 当前 Prompt 配置真实调用 MiMo，会话仅存前端内存 */
@@ -1067,17 +1075,26 @@ function ChatPlayground({ agentId }: { agentId: string }) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState("");
+  /** 正在打分/沉淀的 traceId（防重复提交） */
+  const [actingId, setActingId] = useState<string | null>(null);
+  /** 行内沉淀表单展开的 assistant 消息索引 */
+  const [promotingIdx, setPromotingIdx] = useState<number | null>(null);
+  const [expectation, setExpectation] = useState("");
+  const [actionMsg, setActionMsg] = useState("");
+  const [actionErr, setActionErr] = useState("");
 
   const send = async () => {
     const message = input.trim();
     if (!message || sending) return;
     setSending(true);
     setErr("");
+    setActionMsg("");
+    setActionErr("");
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     setMessages((prev) => [...prev, { role: "user", content: message }]);
     setInput("");
     try {
-      const res = await fetch(`/api/agents/${agentId}//chat`, {
+      const res = await fetch(`/api/agents/${agentId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, history }),
@@ -1091,6 +1108,9 @@ function ChatPlayground({ agentId }: { agentId: string }) {
             role: "assistant",
             content: d.reply,
             meta: `${d.model} · ${d.latencyMs}ms · ${d.usage?.totalTokens ?? 0} tokens`,
+            traceId: d.traceId ?? null,
+            rating: null,
+            promoted: false,
           },
         ]);
       } else {
@@ -1100,6 +1120,69 @@ function ChatPlayground({ agentId }: { agentId: string }) {
       setErr("网络错误");
     } finally {
       setSending(false);
+    }
+  };
+
+  /** 给某条回复打分（👍 / 👎），打分结果写回服务端 trace */
+  const rate = async (msg: ChatMsg, rating: "UP" | "DOWN") => {
+    if (!msg.traceId || actingId) return;
+    setActingId(msg.traceId);
+    setActionMsg("");
+    setActionErr("");
+    try {
+      const res = await fetch(`/api/traces/${msg.traceId}/rate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setMessages((prev) =>
+          prev.map((m) => (m.traceId === msg.traceId ? { ...m, rating } : m)),
+        );
+        setActionMsg(
+          rating === "UP"
+            ? "已标记「有帮助」——可以继续沉淀为评测用例"
+            : "已标记「需改进」——建议沉淀为评测用例并在下一次发布时重点验证",
+        );
+      } else {
+        setActionErr(json.error || "打分失败");
+      }
+    } catch {
+      setActionErr("网络错误");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  /** 确认沉淀：把该条 trace 写入评测用例库 */
+  const confirmPromote = async (msg: ChatMsg, idx: number) => {
+    if (!msg.traceId || actingId) return;
+    setActingId(msg.traceId);
+    setActionErr("");
+    try {
+      const res = await fetch(`/api/agents/${agentId}/eval-cases`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          traceId: msg.traceId,
+          expectation: expectation.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setMessages((prev) =>
+          prev.map((m, i) => (i === idx ? { ...m, promoted: true } : m)),
+        );
+        setPromotingIdx(null);
+        setActionMsg("已沉淀为评测用例：发布前 AI 评测会自动覆盖这个场景");
+      } else {
+        setActionErr(json.error || "沉淀失败");
+      }
+    } catch {
+      setActionErr("网络错误");
+    } finally {
+      setActingId(null);
     }
   };
 
@@ -1119,8 +1202,9 @@ function ChatPlayground({ agentId }: { agentId: string }) {
 
       <Hint className="mt-1 max-w-3xl">
         用它在提交审批之前先验一遍改动效果：上面保存过的草稿配置会立即被这里使用，不需要等发布。
-        会话只存在于当前页面的内存里，刷新或离开就清空，也不会写入反馈或日志。
-        每次回复下方会标注实际使用的模型、耗时与 token 消耗，便于评估成本。
+        每次成功回复都会在服务端落盘为一条 trace；给回复打分后可以一键沉淀为评测用例——
+        下次提交发布时，AI 评测会用待发布配置重放这些用例做回归检查。
+        会话历史本身仍只存在当前页面内存里，刷新即清空。
       </Hint>
 
       <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -1129,9 +1213,9 @@ function ChatPlayground({ agentId }: { agentId: string }) {
             输入一条工单消息，用当前配置试聊（真实调用）
           </p>
         ) : (
-          <div className="max-h-80 space-y-3 overflow-y-auto" role="log" aria-live="polite" aria-label="试聊对话记录">
-            {messages.map((m, i) => (
-              <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
+          <div className="max-h-96 space-y-3 overflow-y-auto" role="log" aria-live="polite" aria-label="试聊对话记录">
+            {messages.map((m, idx) => (
+              <div key={idx} className={m.role === "user" ? "flex justify-end" : ""}>
                 <div
                   className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap sm:max-w-[80%] ${
                     m.role === "user"
@@ -1149,6 +1233,89 @@ function ChatPlayground({ agentId }: { agentId: string }) {
                       {m.meta}
                     </p>
                   )}
+                  {m.role === "assistant" && m.traceId && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => rate(m, "UP")}
+                        disabled={actingId === m.traceId}
+                        aria-pressed={m.rating === "UP"}
+                        title="这条回复正确解决了问题——可沉淀为评测用例做回归"
+                        className={`rounded-md border px-1.5 py-0.5 text-[11px] transition-colors disabled:opacity-50 ${
+                          m.rating === "UP"
+                            ? "border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success)]"
+                            : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {m.rating === "UP" ? "✓ 有帮助" : "有帮助"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rate(m, "DOWN")}
+                        disabled={actingId === m.traceId}
+                        aria-pressed={m.rating === "DOWN"}
+                        title="这条回复有问题——沉淀为用例后可在发布评测中防止回归"
+                        className={`rounded-md border px-1.5 py-0.5 text-[11px] transition-colors disabled:opacity-50 ${
+                          m.rating === "DOWN"
+                            ? "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger)]"
+                            : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {m.rating === "DOWN" ? "✕ 需改进" : "需改进"}
+                      </button>
+                      {!m.promoted && m.rating && promotingIdx !== idx && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPromotingIdx(idx);
+                            setExpectation("");
+                            setActionErr("");
+                          }}
+                          className="rounded-md border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--accent)] transition-colors hover:bg-[var(--surface-elevated)]"
+                          title="沉淀为评测用例：发布前 AI 评测将重放该场景并与本回复对比"
+                        >
+                          沉淀为评测用例
+                        </button>
+                      )}
+                      {m.promoted && (
+                        <span
+                          className="rounded-md border border-[var(--success-border)] bg-[var(--success-bg)] px-1.5 py-0.5 text-[11px] text-[var(--success)]"
+                          title="该回复已进入评测语料库，发布 AI 评测会自动覆盖此场景"
+                        >
+                          ✓ 已沉淀
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {promotingIdx === idx && (
+                    <div className="mt-2 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-2">
+                      <p className="text-[11px] text-[var(--muted)]">
+                        期望行为（可选）：AI 评测将据此判断新配置是否达标
+                      </p>
+                      <textarea
+                        autoFocus
+                        value={expectation}
+                        onChange={(e) => setExpectation(e.target.value)}
+                        rows={2}
+                        placeholder="例：先给出排查步骤，涉及高危操作前提醒风险"
+                        className="mt-1 w-full resize-y rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs text-[var(--foreground)] placeholder:text-[var(--subtle)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ring)]"
+                      />
+                      <div className="mt-1.5 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => confirmPromote(m, idx)}
+                          loading={actingId === m.traceId}
+                          loadingText="沉淀中…"
+                        >
+                          确认沉淀
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setPromotingIdx(null)}>
+                          取消
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -1163,6 +1330,19 @@ function ChatPlayground({ agentId }: { agentId: string }) {
             {err}
             <span className="mt-1 block text-xs">
               可能是模型服务未配置或密钥失效。可以到「模型服务」页做一次连通性探测，确认后再回来重试。
+            </span>
+          </Alert>
+        )}
+        {actionMsg && (
+          <p role="status" className="mt-2 text-xs font-medium text-[var(--success)]">
+            {actionMsg}
+          </p>
+        )}
+        {actionErr && (
+          <Alert tone="danger" title="操作失败" className="mt-2">
+            {actionErr}
+            <span className="mt-1 block text-xs">
+              打分或沉淀未生效。可以刷新页面后在下方评测用例库里确认当前状态。
             </span>
           </Alert>
         )}
@@ -1195,7 +1375,9 @@ function ChatPlayground({ agentId }: { agentId: string }) {
             发送
           </Button>
         </div>
-        <Hint className="mt-2">按 Enter 发送，Shift + Enter 换行。提问越接近真实工单，越能暴露配置问题。</Hint>
+        <Hint className="mt-2">
+          按 Enter 发送，Shift + Enter 换行。提问越接近真实工单，越能暴露配置问题；对回复打分后可沉淀为回归用例。
+        </Hint>
       </div>
     </section>
   );

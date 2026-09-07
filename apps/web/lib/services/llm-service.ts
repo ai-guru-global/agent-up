@@ -69,6 +69,8 @@ export async function chatCompletion(opts: {
   model?: string;
   maxCompletionTokens?: number;
   timeoutMs?: number;
+  /** 请求 OpenAI 兼容的 JSON 结构化输出（发布评测等场景）；system 提示中需同时说明 */
+  responseFormat?: "json_object";
 }): Promise<LlmResult> {
   const cfg = getLlmConfig();
   if (!cfg.apiKey) throw new LlmNotConfiguredError();
@@ -84,6 +86,9 @@ export async function chatCompletion(opts: {
         messages: opts.messages,
         max_completion_tokens:
           opts.maxCompletionTokens ?? DEFAULT_MAX_COMPLETION_TOKENS,
+        ...(opts.responseFormat
+          ? { response_format: { type: opts.responseFormat } }
+          : {}),
       }),
       signal: AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     });

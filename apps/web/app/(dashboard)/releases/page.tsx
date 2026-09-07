@@ -21,6 +21,25 @@ import {
   metaOf,
 } from "@/components/ui";
 
+/** 发布前 AI 评测结果（POST /api/releases/[id]/ai-review 写回 release） */
+interface AiReview {
+  status: "PASSED" | "FAILED" | "SKIPPED";
+  runAt: string;
+  model: string;
+  totalCases: number;
+  passed: number;
+  failed: number;
+  errorCases: number;
+  summary: string;
+  results: Array<{
+    caseId: string;
+    title: string;
+    verdict: "PASS" | "FAIL" | "ERROR";
+    score: number | null;
+    reason: string;
+  }>;
+}
+
 interface Release {
   id: string;
   agentId: string;
@@ -35,6 +54,8 @@ interface Release {
   /** 关联的 Agent。若该 Agent 已被删除，服务端会返回 null，界面需要能兜住 */
   agent: { id: string; name: string } | null;
   version: { id: string; version: string; publishedAt: string } | null;
+  /** 发布前 AI 评测结果（PENDING 时可运行；未运行时为 null） */
+  aiReview?: AiReview | null;
 }
 
 const STATUS_OPTS = ["ALL", "PENDING", "APPROVED", "REJECTED", "CHANGES_REQUESTED"];
@@ -67,6 +88,24 @@ export default function ReleasesPage() {
     release: Release;
     action: "APPROVED" | "REJECTED";
   } | null>(null);
+  /** 正在运行 AI 评测的 releaseId */
+  const [aiReviewing, setAiReviewing] = useState<string | null>(null);
+  const [aiReviewErr, setAiReviewErr] = useState("");
+
+  const runAiReview = async (releaseId: string) => {
+    setAiReviewing(releaseId);
+    setAiReviewErr("");
+    try {
+      const res = await fetch(`/api/releases/${releaseId}/ai-review`, { method: "POST" });
+      const json = await res.json();
+      if (json.success === false) setAiReviewErr(json.error || "评测失败");
+      fetchList();
+    } catch {
+      setAiReviewErr("网络错误，评测未完成");
+    } finally {
+      setAiReviewing(null);
+    }
+  };
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -90,7 +129,6 @@ export default function ReleasesPage() {
   }, [statusFilter]);
 
   // 拉取前同步重置 loading/error 是有意的；setState 均在 await 前完成，无级联风险
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchList(); }, [fetchList]);
 
   const handleReview = async (releaseId: string, action: "APPROVED" | "REJECTED") => {
@@ -173,6 +211,15 @@ export default function ReleasesPage() {
           {reviewError}
           <span className="mt-1 block text-xs">
             这条提交仍保持「待审批」，没有生成版本，也没有退回提交人。可以刷新页面确认当前状态后再试一次。
+          </span>
+        </Alert>
+      )}
+
+      {aiReviewErr && (
+        <Alert tone="danger" title="AI 评测未完成" className="mt-4">
+          {aiReviewErr}
+          <span className="mt-1 block text-xs">
+            评测未写入这条提交（常见原因：LLM 未配置、没有评测用例或上游超时）。可以到 Agent 详情页的 Playground 沉淀几个用例后重试。
           </span>
         </Alert>
       )}
@@ -309,6 +356,19 @@ export default function ReleasesPage() {
                             </Button>
                           </div>
                         )}
+                        {rel.status === "PENDING" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => runAiReview(rel.id)}
+                            loading={aiReviewing === rel.id}
+                            loadingText="评测中…"
+                            disabled={busy}
+                            title="用待发布配置重放该 Agent 的评测用例，由模型判官逐条判定 PASS/FAIL（真实调用，可能耗时较长）。结论仅供参考，不阻断人工审批"
+                          >
+                            AI 评测
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="secondary"
@@ -328,6 +388,7 @@ export default function ReleasesPage() {
                         changedPartitions={rel.changedPartitions}
                       />
                     )}
+                    {rel.aiReview && <AiReviewBlock review={rel.aiReview} />}
                   </Card>
                 </li>
               );
@@ -731,4 +792,62 @@ function formatVal(v: unknown): string {
   if (typeof v === "number" || typeof v === "boolean") return String(v);
   const s = JSON.stringify(v);
   return s.length > 80 ? s.slice(0, 80) + "…" : s;
+}
+
+/** 发布前 AI 评测结果块：状态徽章 + 汇总 + 逐用例判定 */
+function AiReviewBlock({ review }: { review: AiReview }) {
+  const tone =
+    review.status === "PASSED"
+      ? "success"
+      : review.status === "FAILED"
+        ? "danger"
+        : "neutral";
+  const label =
+    review.status === "PASSED"
+      ? "通过"
+      : review.status === "FAILED"
+        ? "未通过"
+        : "已跳过";
+  return (
+    <div className="mt-4 border-t border-[var(--border)] pt-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={tone} title="AI 评测：用待发布配置重放评测用例，由模型判官对照参考回复判定">
+          AI 评测 {label}
+        </Badge>
+        <span className="text-xs tabular-nums text-[var(--subtle)]" title="评测模型 · 运行时间">
+          {review.model} · {new Date(review.runAt).toLocaleString("zh-CN")} · 通过 {review.passed}/{review.totalCases}
+        </span>
+        {review.errorCases > 0 && (
+          <span className="text-[11px] text-[var(--warn)]" title="这些用例在评测中遇到上游错误或判官输出无法解析，需要人工复核">
+            {review.errorCases} 个用例需人工复核
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{review.summary}</p>
+      {review.results.length > 0 && (
+        <ul className="mt-2 space-y-1.5">
+          {review.results.map((r) => (
+            <li key={r.caseId} className="rounded-md bg-[var(--surface-elevated)] px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  tone={r.verdict === "PASS" ? "success" : r.verdict === "FAIL" ? "danger" : "warn"}
+                  title={r.verdict === "PASS" ? "该用例在新配置下通过" : r.verdict === "FAIL" ? "该用例在新配置下未达标" : "该用例评测失败，需人工复核"}
+                >
+                  {r.verdict === "PASS" ? "通过" : r.verdict === "FAIL" ? "未达标" : "需复核"}
+                </Badge>
+                <span className="text-xs font-medium text-[var(--foreground)]">{r.title}</span>
+                {r.score !== null && (
+                  <span className="text-[10px] tabular-nums text-[var(--subtle)]">评分 {r.score}/5</span>
+                )}
+              </div>
+              {r.reason && <p className="mt-1 text-xs leading-relaxed text-[var(--subtle)]">{r.reason}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+      <Hint className="mt-2">
+        AI 评测是用待发布配置真实重放该 Agent 评测用例的结果，仅供审批参考——模型判官可能误判，最终决定请结合下方 diff 与业务判断。
+      </Hint>
+    </div>
+  );
 }

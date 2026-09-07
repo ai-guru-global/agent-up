@@ -166,7 +166,7 @@ export default function ArchitectureOverviewPage() {
         <Table
           head={["技术栈层", "对应 agent-up 能力", "现状"]}
           rows={[
-            ["Model", "MaaS 模型服务（LLM 网关）", "小米 MiMo 已真实接入（4×LIVE）；百炼 / 专有云是下一份网关配置"],
+            ["Model", "MaaS 模型服务（LLM 网关）", "小米 MiMo 已真实接入（5×LIVE）；百炼 / 专有云是下一份网关配置"],
             ["Prompt", "Prompt 分区", "角色 · 约束 · 输出格式，分区编辑 + 独立回滚"],
             ["Context", "Knowledge 分区", "两层知识架构：蒸馏态（Wiki）优先，MCP 活数据兜底"],
             ["Harness", "Tools 分区 + 结构化错误体系", "MCP 工具配置 + 全站统一错误分类"],

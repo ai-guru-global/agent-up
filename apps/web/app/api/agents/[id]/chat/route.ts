@@ -4,12 +4,16 @@ import { store } from "@/lib/data/store";
 import { NotFoundError } from "@/lib/errors";
 import { agentChatSchema } from "@/lib/schemas";
 import { chatCompletion } from "@/lib/services/llm-service";
+import { buildSystemPrompt } from "@/lib/services/prompt-builder";
+import { recordTrace } from "@/lib/services/trace-service";
 
 /**
  * POST /api/agents/[id]/chat — Agent 试聊 Playground（真实调用）。
  *
- * 加载该 Agent 当前的 Prompt 分区配置作为 system prompt，
- * 携带前端会话历史调用 MiMo。会话只存前端内存，不落库。
+ * 加载该 Agent 当前的 Prompt 分区配置作为 system prompt（与发布 AI 评测的
+ * replay 共用 buildSystemPrompt，保证「评测时的行为 == 试聊时的行为」），
+ * 携带前端会话历史调用 MiMo。成功后把整轮上下文落盘为一条 trace，
+ * 响应带 traceId 供前端打分（👍/👎）或沉淀为评测用例。
  */
 export async function POST(
   request: NextRequest,
@@ -24,28 +28,28 @@ export async function POST(
     if (!validated.ok) return validated.response;
     const { message, history = [] } = validated.data;
 
-    // 组装 system prompt：systemPrompt + 角色定义 + 约束 + 输出格式
-    const pc = (agent.promptConfig ?? {}) as {
-      systemPrompt?: string;
-      roleDefinition?: string | null;
-      constraints?: string[];
-      outputFormat?: string | null;
-    };
-    const systemParts = [
-      pc.systemPrompt ?? "",
-      pc.roleDefinition ? `\n## 角色定义\n${pc.roleDefinition}` : "",
-      pc.constraints?.length
-        ? `\n## 约束条件\n${pc.constraints.map((c) => `- ${c}`).join("\n")}`
-        : "",
-      pc.outputFormat ? `\n## 输出格式\n${pc.outputFormat}` : "",
-    ];
+    const systemPrompt = buildSystemPrompt(
+      (agent.promptConfig ?? {}) as Record<string, unknown>,
+    );
 
     const result = await chatCompletion({
       messages: [
-        { role: "system", content: systemParts.join("") },
+        { role: "system", content: systemPrompt },
         ...history.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: message },
       ],
+    });
+
+    // 成功回复后落盘为 trace；落盘失败不打断主流程（recordTrace 内部已兜底）
+    const trace = recordTrace({
+      agentId: id,
+      systemPrompt,
+      history: history.map((m) => ({ role: m.role, content: m.content })),
+      message,
+      reply: result.content,
+      model: result.model,
+      usage: result.usage,
+      latencyMs: result.latencyMs,
     });
 
     return success({
@@ -53,6 +57,7 @@ export async function POST(
       model: result.model,
       usage: result.usage,
       latencyMs: result.latencyMs,
+      traceId: trace?.id ?? null,
     });
   } catch (err) {
     return handleApiError(err);

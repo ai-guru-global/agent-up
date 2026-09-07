@@ -252,6 +252,21 @@ export const agentChatSchema = z.object({
 });
 
 // ============================================================
+// Trace & Eval Case（Playground → 复盘 → 发布评测闭环）
+// ============================================================
+
+export const rateTraceSchema = z.object({
+  rating: z.enum(["UP", "DOWN"]),
+  note: z.string().max(500).optional(),
+});
+
+export const createEvalCaseSchema = z.object({
+  traceId: z.string().min(1, "traceId 不能为空"),
+  /** 期望行为描述：评测判官用它判断新配置是否达标；缺省给出通用兜底文案 */
+  expectation: z.string().max(1000).optional(),
+});
+
+// ============================================================
 // Inferred types
 // ============================================================
 
@@ -273,3 +288,5 @@ export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type CreatePermissionInput = z.infer<typeof createPermissionSchema>;
 export type CreateProductGroupInput = z.infer<typeof createProductGroupSchema>;
 export type AgentChatInput = z.infer<typeof agentChatSchema>;
+export type RateTraceInput = z.infer<typeof rateTraceSchema>;
+export type CreateEvalCaseInput = z.infer<typeof createEvalCaseSchema>;
