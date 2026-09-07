@@ -1234,7 +1234,8 @@ function ChatPlayground({ agentId }: { agentId: string }) {
                     </p>
                   )}
                   {m.role === "assistant" && m.traceId && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    // data-chat-actions：chrome-extension 提取对话证据时整体剔除打分/沉淀操作区，勿删
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" data-chat-actions>
                       <button
                         type="button"
                         onClick={() => rate(m, "UP")}
@@ -1288,7 +1289,7 @@ function ChatPlayground({ agentId }: { agentId: string }) {
                     </div>
                   )}
                   {promotingIdx === idx && (
-                    <div className="mt-2 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-2">
+                    <div className="mt-2 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-2" data-chat-actions>
                       <p className="text-[11px] text-[var(--muted)]">
                         期望行为（可选）：AI 评测将据此判断新配置是否达标
                       </p>
