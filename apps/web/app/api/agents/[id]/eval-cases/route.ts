@@ -41,9 +41,9 @@ export async function POST(
 
     const validated = await validateBody(request, createEvalCaseSchema);
     if (!validated.ok) return validated.response;
-    const { traceId, expectation } = validated.data;
+    const { traceId, expectation, assertions } = validated.data;
 
-    const evalCase = createEvalCaseFromTrace(id, traceId, expectation);
+    const evalCase = createEvalCaseFromTrace(id, traceId, expectation, assertions);
     return success(evalCase, 201);
   } catch (err) {
     return handleApiError(err);

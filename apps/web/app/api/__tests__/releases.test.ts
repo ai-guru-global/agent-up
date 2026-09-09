@@ -153,6 +153,111 @@ describe("PUT /api/releases/[id]/review", () => {
   });
 });
 
+describe("发布门禁：AI 评测 FAILED 后批准须留痕（软门禁）", () => {
+  const failedReview = {
+    status: "FAILED",
+    runAt: "2026-09-08T00:00:00.000Z",
+    model: "mimo-v2.5-pro",
+    totalCases: 2,
+    passed: 1,
+    failed: 1,
+    errorCases: 0,
+    summary: "1 个用例未达标，建议驳回或要求修改后重测",
+    results: [],
+  };
+
+  function seedPendingWithReview(
+    releaseId: string,
+    aiReview: Record<string, unknown> | null,
+  ) {
+    store.write(
+      {
+        id: releaseId,
+        agentId: AGENT_ID,
+        changeNote: "带评测结论的提交",
+        changedPartitions: ["PROMPT"],
+        status: "PENDING",
+        submittedBy: "tester",
+        submittedAt: "2026-09-01T00:00:00.000Z",
+        approvedBy: null,
+        approvedAt: null,
+        reviewComment: null,
+        configSnapshot: {
+          prompt: { systemPrompt: "带门禁测试的提示词" },
+          knowledge: null,
+          tools: null,
+          routing: null,
+          snapshotAt: "2026-09-01T00:00:00.000Z",
+        },
+        version: null,
+        ...(aiReview ? { aiReview } : {}),
+      },
+      "releases",
+      `${releaseId}.json`,
+    );
+  }
+
+  it("FAILED + 无意见 APPROVED → 422，release 保持 PENDING", async () => {
+    seedPendingWithReview("rel-gate1", failedReview);
+    const res = await reviewRelease(
+      makeRequest("PUT", { releaseId: "rel-gate1", action: "APPROVED" }),
+      { params: Promise.resolve({ id: "rel-gate1" }) },
+    );
+    expect(res.status).toBe(422);
+    expect(
+      store.read<{ status?: string }>("releases", "rel-gate1.json")?.status,
+    ).toBe("PENDING");
+  });
+
+  it("FAILED + 有意见 APPROVED → 200，审计含 aiReviewStatus=FAILED", async () => {
+    seedPendingWithReview("rel-gate2", failedReview);
+    const res = await reviewRelease(
+      makeRequest("PUT", {
+        releaseId: "rel-gate2",
+        action: "APPROVED",
+        reviewComment: "已人工复核，FAIL 用例为判官误判，接受发布",
+      }),
+      { params: Promise.resolve({ id: "rel-gate2" }) },
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.status).toBe("APPROVED");
+    expect(json.data.version).toBeTruthy();
+    const logs = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
+    const approve = logs.find(
+      (l) => l.action === "release.approve" && l.resourceId === "rel-gate2",
+    );
+    expect(approve).toBeTruthy();
+    expect((approve?.details as { aiReviewStatus?: string })?.aiReviewStatus).toBe(
+      "FAILED",
+    );
+  });
+
+  it("PASSED + 无意见 APPROVED → 200（门禁不触发）", async () => {
+    seedPendingWithReview("rel-gate3", {
+      ...failedReview,
+      status: "PASSED",
+      passed: 2,
+      failed: 0,
+      summary: "全部 2 个用例通过，建议批准发布",
+    });
+    const res = await reviewRelease(
+      makeRequest("PUT", { releaseId: "rel-gate3", action: "APPROVED" }),
+      { params: Promise.resolve({ id: "rel-gate3" }) },
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("无 aiReview + 无意见 APPROVED → 200（存量行为不变）", async () => {
+    seedPendingWithReview("rel-gate4", null);
+    const res = await reviewRelease(
+      makeRequest("PUT", { releaseId: "rel-gate4", action: "APPROVED" }),
+      { params: Promise.resolve({ id: "rel-gate4" }) },
+    );
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("legacy PUT /api/agents/[id]/release (backward compat)", () => {
   it("still works via the deprecated endpoint", async () => {
     // 先提交

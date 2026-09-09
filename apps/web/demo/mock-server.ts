@@ -365,6 +365,59 @@ function cannedSummary(release: AnyRec, agentName: string): string {
   ].join("\n");
 }
 
+// ---------- 确定性断言（镜像 schemas.evalAssertionSchema + ai-review-service.runAssertions） ----------
+
+const ASSERTION_TYPES = ["contains", "not_contains", "regex"];
+
+function parseAssertions(raw: unknown): Array<{ type: string; value: string }> {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) throw new MockError(422, "断言格式错误");
+  if (raw.length > 5) throw new MockError(422, "断言最多 5 条");
+  return raw.map((item) => {
+    const a = (item ?? {}) as AnyRec;
+    const type = String(a.type ?? "");
+    const value = String(a.value ?? "").trim();
+    if (!ASSERTION_TYPES.includes(type)) throw new MockError(422, "断言类型无效");
+    if (!value) throw new MockError(422, "断言内容不能为空");
+    if (value.length > 200) throw new MockError(422, "断言内容过长");
+    if (type === "regex") {
+      try {
+        new RegExp(value);
+      } catch {
+        throw new MockError(422, "正则表达式无效");
+      }
+    }
+    return { type, value };
+  });
+}
+
+/** 演示环境没有真实的配置重放，用例的候选回复以参考回复代替 */
+function runDemoAssertions(
+  candidate: string,
+  assertions: Array<{ type: string; value: string }>,
+): Array<{ type: string; value: string; passed: boolean; detail: string }> {
+  return assertions.map((a) => {
+    if (a.type === "contains") {
+      const passed = candidate.includes(a.value);
+      return { ...a, passed, detail: passed ? `包含「${a.value}」` : `未包含「${a.value}」` };
+    }
+    if (a.type === "not_contains") {
+      const passed = !candidate.includes(a.value);
+      return {
+        ...a,
+        passed,
+        detail: passed ? `未出现「${a.value}」` : `出现了不应出现的内容「${a.value}」`,
+      };
+    }
+    try {
+      const passed = new RegExp(a.value).test(candidate);
+      return { ...a, passed, detail: passed ? `匹配正则 /${a.value}/` : `未匹配正则 /${a.value}/` };
+    } catch {
+      return { ...a, passed: false, detail: `断言正则无效：/${a.value}/` };
+    }
+  });
+}
+
 // ---------- 主路由 ----------
 
 const VALID_PARTITIONS = ["prompt", "knowledge", "tools", "routing"];
@@ -627,6 +680,7 @@ function route(
         const firstLine = message.split("\n")[0] ?? "";
         const title =
           firstLine.length > 32 ? `${firstLine.slice(0, 32)}…` : firstLine;
+        const assertions = parseAssertions(payload.assertions);
         const evalCase: AnyRec = {
           id: newId(),
           agentId: second,
@@ -639,6 +693,7 @@ function route(
           history: trace.history,
           message,
           referenceReply: trace.reply,
+          ...(assertions.length > 0 ? { assertions } : {}),
           status: "ACTIVE",
           createdAt: now(),
           createdBy: SYSTEM_ACTOR.id,
@@ -1014,12 +1069,26 @@ function route(
       if (!rel) return fail("Release 不存在", 404);
       if (rel.status !== "PENDING")
         return fail(`该 Release 已处理（当前状态：${String(rel.status)}）`, 409);
+      if (!String(payload.releaseId ?? "").trim())
+        return fail("releaseId 不能为空", 422);
       const action = payload.action as string;
       if (
         action === "CHANGES_REQUESTED" &&
         !String(payload.reviewComment ?? "").trim()
       )
         return fail("CHANGES_REQUESTED 必须填写审批意见", 422);
+      // 镜像软门禁：AI 评测 FAILED 后批准必须留下审批意见
+      const aiReviewStatus =
+        ((rel.aiReview as AnyRec | null | undefined)?.status as string) ?? null;
+      if (
+        action === "APPROVED" &&
+        aiReviewStatus === "FAILED" &&
+        !String(payload.reviewComment ?? "").trim()
+      )
+        return fail(
+          "AI 评测未通过：批准前必须填写审批意见，说明采纳理由或人工复核结论",
+          422,
+        );
       const ts = now();
       const updated: AnyRec = {
         ...rel,
@@ -1047,6 +1116,7 @@ function route(
       recordAudit(auditAction, "release", String(second), {
         agentId: rel.agentId,
         reviewComment: payload.reviewComment ?? null,
+        ...(action === "APPROVED" ? { aiReviewStatus } : {}),
       });
       return ok(updated);
     }
@@ -1063,37 +1133,77 @@ function route(
         (c) => c.agentId === rel.agentId && c.status === "ACTIVE",
       );
       const ts = now();
-      const aiReview: AnyRec =
-        cases.length === 0
-          ? {
-              status: "SKIPPED",
-              runAt: ts,
-              model: LLM_MODEL,
-              totalCases: 0,
-              passed: 0,
-              failed: 0,
-              errorCases: 0,
-              summary:
-                "该 Agent 还没有评测用例（先在 Playground 打分并沉淀），跳过 AI 评测",
-              results: [],
-            }
-          : {
-              status: "PASSED",
-              runAt: ts,
-              model: LLM_MODEL,
-              totalCases: cases.length,
-              passed: cases.length,
-              failed: 0,
-              errorCases: 0,
-              summary: `全部 ${cases.length} 个用例通过，建议批准发布（演示环境固定判定）`,
-              results: cases.map((c) => ({
+      let aiReview: AnyRec;
+      if (cases.length === 0) {
+        aiReview = {
+          status: "SKIPPED",
+          runAt: ts,
+          model: LLM_MODEL,
+          totalCases: 0,
+          passed: 0,
+          failed: 0,
+          errorCases: 0,
+          summary:
+            "该 Agent 还没有评测用例（先在 Playground 打分并沉淀），跳过 AI 评测",
+          results: [],
+        };
+      } else {
+        const results = cases.map((c) => {
+          const assertions = (c.assertions ?? []) as Array<{
+            type: string;
+            value: string;
+          }>;
+          if (assertions.length > 0) {
+            const assertionResults = runDemoAssertions(
+              String(c.referenceReply ?? ""),
+              assertions,
+            );
+            const failedOnes = assertionResults.filter((r) => !r.passed);
+            if (failedOnes.length > 0) {
+              return {
                 caseId: c.id,
                 title: c.title,
-                verdict: "PASS",
-                score: 5,
-                reason: "候选回复覆盖参考回复要点，且符合该 Agent 的角色约束（演示环境固定判定）",
-              })),
+                verdict: "FAIL",
+                score: null,
+                reason: `未通过确定性断言（${failedOnes.length}/${assertionResults.length}）：${failedOnes
+                  .map((f) => f.detail)
+                  .join("；")}`,
+                assertions: assertionResults,
+              };
+            }
+            return {
+              caseId: c.id,
+              title: c.title,
+              verdict: "PASS",
+              score: 5,
+              reason: `确定性断言全部通过（${assertionResults.length}/${assertionResults.length}），判官复核无异议（演示环境固定判定）`,
+              assertions: assertionResults,
             };
+          }
+          return {
+            caseId: c.id,
+            title: c.title,
+            verdict: "PASS",
+            score: 5,
+            reason: "候选回复覆盖参考回复要点，且符合该 Agent 的角色约束（演示环境固定判定）",
+          };
+        });
+        const failedCount = results.filter((r) => r.verdict === "FAIL").length;
+        aiReview = {
+          status: failedCount === 0 ? "PASSED" : "FAILED",
+          runAt: ts,
+          model: LLM_MODEL,
+          totalCases: cases.length,
+          passed: results.length - failedCount,
+          failed: failedCount,
+          errorCases: 0,
+          summary:
+            failedCount === 0
+              ? `全部 ${cases.length} 个用例通过，建议批准发布（演示环境固定判定）`
+              : `${failedCount}/${cases.length} 个用例未通过确定性断言；如需批准，请在审批时填写意见说明理由（演示环境固定判定）`,
+          results,
+        };
+      }
       const updated = { ...rel, aiReview };
       const idx = state.releases.indexOf(rel);
       state.releases[idx] = updated;

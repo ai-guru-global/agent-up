@@ -1069,6 +1069,21 @@ interface ChatMsg {
   promoted?: boolean;
 }
 
+/** 沉淀用例时可选的确定性断言类型（与 schemas.ts 的 evalAssertionSchema 对应） */
+type AssertionType = "contains" | "not_contains" | "regex";
+
+const ASSERTION_LABELS: Record<AssertionType, string> = {
+  contains: "包含",
+  not_contains: "不含",
+  regex: "正则",
+};
+
+const ASSERTION_PLACEHOLDERS: Record<AssertionType, string> = {
+  contains: "例：systemctl restart",
+  not_contains: "例：密码",
+  regex: "例：快照|snapshot",
+};
+
 /** 试聊 Playground：加载该 Agent 当前 Prompt 配置真实调用 MiMo，会话仅存前端内存 */
 function ChatPlayground({ agentId }: { agentId: string }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -1080,6 +1095,8 @@ function ChatPlayground({ agentId }: { agentId: string }) {
   /** 行内沉淀表单展开的 assistant 消息索引 */
   const [promotingIdx, setPromotingIdx] = useState<number | null>(null);
   const [expectation, setExpectation] = useState("");
+  /** 沉淀时配置的确定性断言：发布评测先跑断言，未全过则跳过模型判官 */
+  const [assertions, setAssertions] = useState<Array<{ type: AssertionType; value: string }>>([]);
   const [actionMsg, setActionMsg] = useState("");
   const [actionErr, setActionErr] = useState("");
 
@@ -1167,6 +1184,12 @@ function ChatPlayground({ agentId }: { agentId: string }) {
         body: JSON.stringify({
           traceId: msg.traceId,
           expectation: expectation.trim() || undefined,
+          // 内容为空的断言行直接丢弃；全部为空则不传（服务端按未配置断言处理）
+          assertions: assertions.some((a) => a.value.trim())
+            ? assertions
+                .filter((a) => a.value.trim())
+                .map((a) => ({ type: a.type, value: a.value.trim() }))
+            : undefined,
         }),
       });
       const json = await res.json();
@@ -1270,6 +1293,7 @@ function ChatPlayground({ agentId }: { agentId: string }) {
                           onClick={() => {
                             setPromotingIdx(idx);
                             setExpectation("");
+                            setAssertions([]);
                             setActionErr("");
                           }}
                           className="rounded-md border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--accent)] transition-colors hover:bg-[var(--surface-elevated)]"
@@ -1301,6 +1325,73 @@ function ChatPlayground({ agentId }: { agentId: string }) {
                         placeholder="例：先给出排查步骤，涉及高危操作前提醒风险"
                         className="mt-1 w-full resize-y rounded-md border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-xs text-[var(--foreground)] placeholder:text-[var(--subtle)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ring)]"
                       />
+                      <div className="mt-2">
+                        <p className="text-[11px] text-[var(--muted)]">
+                          确定性断言（可选，最多 5 条）：发布评测先跑断言，全部通过才调用模型判官
+                        </p>
+                        {assertions.map((a, i) => (
+                          <div key={i} className="mt-1 flex items-center gap-1.5">
+                            <label className="sr-only" htmlFor={`assertion-type-${i}`}>
+                              断言 {i + 1} 的类型
+                            </label>
+                            <Select
+                              id={`assertion-type-${i}`}
+                              value={a.type}
+                              onChange={(e) =>
+                                setAssertions((prev) =>
+                                  prev.map((p, j) =>
+                                    j === i ? { ...p, type: e.target.value as AssertionType } : p,
+                                  ),
+                                )
+                              }
+                              className="w-20 shrink-0 text-xs"
+                              title="断言类型：包含=回复须含有该内容；不含=回复不得出现该内容；正则=回复须匹配该正则"
+                            >
+                              {(Object.keys(ASSERTION_LABELS) as AssertionType[]).map((t) => (
+                                <option key={t} value={t}>
+                                  {ASSERTION_LABELS[t]}
+                                </option>
+                              ))}
+                            </Select>
+                            <Input
+                              value={a.value}
+                              onChange={(e) =>
+                                setAssertions((prev) =>
+                                  prev.map((p, j) =>
+                                    j === i ? { ...p, value: e.target.value } : p,
+                                  ),
+                                )
+                              }
+                              maxLength={200}
+                              placeholder={ASSERTION_PLACEHOLDERS[a.type]}
+                              aria-label={`断言 ${i + 1} 的内容`}
+                              className="min-w-0 flex-1 text-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAssertions((prev) => prev.filter((_, j) => j !== i))
+                              }
+                              aria-label={`删除断言 ${i + 1}`}
+                              title="删除这条断言"
+                              className="shrink-0 rounded px-1 text-xs text-[var(--muted)] transition-colors hover:text-[var(--danger)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ring)]"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {assertions.length < 5 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAssertions((prev) => [...prev, { type: "contains", value: "" }])
+                            }
+                            className="mt-1 rounded text-[11px] text-[var(--accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ring)]"
+                          >
+                            + 添加断言
+                          </button>
+                        )}
+                      </div>
                       <div className="mt-1.5 flex gap-2">
                         <Button
                           size="sm"

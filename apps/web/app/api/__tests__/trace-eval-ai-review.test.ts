@@ -410,3 +410,179 @@ describe("发布前 AI 评测（replay + judge）", () => {
     expect(ghost.status).toBe(404);
   });
 });
+
+describe("确定性断言（code-based 判分器）", () => {
+  function writePendingRelease(agentId: string, releaseId: string) {
+    store.write(
+      {
+        id: releaseId,
+        agentId,
+        changeNote: "收紧高危操作提示",
+        changedPartitions: ["PROMPT"],
+        status: "PENDING",
+        submittedBy: "tester",
+        submittedAt: "2026-09-08T00:00:00.000Z",
+        approvedBy: null,
+        approvedAt: null,
+        reviewComment: null,
+        configSnapshot: { prompt: { systemPrompt: "新版提示词：高危操作前提醒快照" } },
+        version: null,
+      },
+      "releases",
+      `${releaseId}.json`,
+    );
+  }
+
+  function writeEvalCaseWithAssertions(
+    agentId: string,
+    caseId: string,
+    assertions: unknown[],
+  ) {
+    store.write(
+      {
+        id: caseId,
+        agentId,
+        sourceTraceId: "t-x",
+        title: "磁盘扩容后容量没变化",
+        expectation: "必须先提醒创建快照",
+        systemPrompt: "旧版提示词",
+        history: [],
+        message: "扩容后 df -h 没变化",
+        referenceReply: "先做快照再 growpart/resize2fs",
+        assertions,
+        status: "ACTIVE",
+        createdAt: "2026-09-01T00:00:00.000Z",
+        createdBy: "tester",
+      },
+      "eval-cases",
+      `${caseId}.json`,
+    );
+  }
+
+  it("沉淀请求可携带断言并写入用例", async () => {
+    writeAgent("j1");
+    const { traceId } = await chatOnce("j1", "实例无法 SSH 连接怎么排查");
+
+    const create = await createEvalCase(
+      new NextRequest("http://localhost", {
+        method: "POST",
+        body: JSON.stringify({
+          traceId,
+          expectation: "给出排查步骤",
+          assertions: [
+            { type: "contains", value: "systemctl", description: "须给出服务检查命令" },
+            { type: "not_contains", value: "无法解决" },
+          ],
+        }),
+      }),
+      { params: Promise.resolve({ id: "j1" }) },
+    );
+    const json = await create.json();
+    expect(create.status).toBe(201);
+    expect(json.data.assertions).toEqual([
+      { type: "contains", value: "systemctl", description: "须给出服务检查命令" },
+      { type: "not_contains", value: "无法解决" },
+    ]);
+  });
+
+  it("非法断言（无效 regex / 未知 type / 空 value / 超 5 条）→ 422", async () => {
+    writeAgent("k1");
+    const { traceId } = await chatOnce("k1", "问点什么");
+    const bad = async (assertions: unknown[]) =>
+      createEvalCase(
+        new NextRequest("http://localhost", {
+          method: "POST",
+          body: JSON.stringify({ traceId, assertions }),
+        }),
+        { params: Promise.resolve({ id: "k1" }) },
+      );
+    expect((await bad([{ type: "regex", value: "[[[" }])).status).toBe(422);
+    expect((await bad([{ type: "bogus", value: "x" }])).status).toBe(422);
+    expect((await bad([{ type: "contains", value: "" }])).status).toBe(422);
+    expect(
+      (
+        await bad(
+          Array.from({ length: 6 }, (_, i) => ({ type: "contains", value: `k${i}` })),
+        )
+      ).status,
+    ).toBe(422);
+  });
+
+  it("断言未命中 → 该用例 FAIL 且不调用判官（reason 含断言明细）", async () => {
+    writeAgent("l1");
+    writePendingRelease("l1", "rel-l1");
+    writeEvalCaseWithAssertions("l1", "case-l1", [{ type: "contains", value: "快照" }]);
+
+    const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
+      params: Promise.resolve({ id: "rel-l1" }),
+    });
+    const json = await res.json();
+    const review = json.data.aiReview as {
+      status: string;
+      failed: number;
+      results: Array<{
+        verdict: string;
+        score: number | null;
+        reason: string;
+        assertions: Array<{ type: string; value: string; passed: boolean; detail: string }>;
+      }>;
+    };
+    expect(review.status).toBe("FAILED");
+    expect(review.failed).toBe(1);
+    expect(review.results[0].verdict).toBe("FAIL");
+    expect(review.results[0].score).toBeNull();
+    expect(review.results[0].reason).toContain("确定性断言");
+    expect(review.results[0].reason).toContain("快照");
+    expect(review.results[0].assertions[0].passed).toBe(false);
+    // 只有 replay 一次 LLM 调用，判官零调用（省一半成本且无判官误判）
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(1);
+  });
+
+  it("断言全过 → 走判官流程，结果携带断言明细", async () => {
+    writeAgent("m1");
+    writePendingRelease("m1", "rel-m1");
+    writeEvalCaseWithAssertions("m1", "case-m1", [{ type: "contains", value: "LLM" }]);
+
+    const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
+      params: Promise.resolve({ id: "rel-m1" }),
+    });
+    const json = await res.json();
+    const review = json.data.aiReview as {
+      status: string;
+      results: Array<{
+        verdict: string;
+        assertions: Array<{ type: string; value: string; passed: boolean; detail: string }>;
+      }>;
+    };
+    expect(review.status).toBe("PASSED");
+    expect(review.results[0].verdict).toBe("PASS");
+    expect(review.results[0].assertions).toEqual([
+      { type: "contains", value: "LLM", passed: true, detail: expect.any(String) },
+    ]);
+    // replay + 判官各一次
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(2);
+  });
+
+  it("not_contains 与 regex 断言语义正确（全跑不短路，任一失败即 FAIL）", async () => {
+    writeAgent("n1");
+    writePendingRelease("n1", "rel-n1");
+    writeEvalCaseWithAssertions("n1", "case-n1", [
+      { type: "not_contains", value: "禁词" },
+      { type: "regex", value: "快照|snapshot" },
+    ]);
+
+    const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
+      params: Promise.resolve({ id: "rel-n1" }),
+    });
+    const json = await res.json();
+    const r0 = json.data.aiReview.results[0] as {
+      verdict: string;
+      reason: string;
+      assertions: Array<{ passed: boolean; detail: string }>;
+    };
+    expect(r0.verdict).toBe("FAIL");
+    expect(r0.assertions[0].passed).toBe(true);
+    expect(r0.assertions[1].passed).toBe(false);
+    expect(r0.reason).toContain("快照|snapshot");
+  });
+});

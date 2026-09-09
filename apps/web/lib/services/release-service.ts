@@ -132,6 +132,8 @@ export async function submitRelease(agentId: string, changeNote: string) {
  * 修复：
  * - 已处理的 release 再次审批 → ConflictError（此前是含糊的 Error）
  * - CHANGES_REQUESTED 必须带 reviewComment
+ * - 软门禁：AI 评测 FAILED 的提交，批准必须带 reviewComment（留痕制，
+ *   不取消人工决定权；审计里记审批时点的 aiReviewStatus 快照）
  * - APPROVED 才生成 Version；REJECTED/CHANGES_REQUESTED 不生成
  * - 版本号用 bumpVersion 真实 SemVer
  */
@@ -147,6 +149,13 @@ export async function reviewRelease(
   }
   if (action === "CHANGES_REQUESTED" && !reviewComment?.trim()) {
     throw new ValidationError("CHANGES_REQUESTED 必须填写审批意见");
+  }
+  const aiReviewStatus =
+    (release.aiReview as { status?: string } | null | undefined)?.status ?? null;
+  if (action === "APPROVED" && aiReviewStatus === "FAILED" && !reviewComment?.trim()) {
+    throw new ValidationError(
+      "AI 评测未通过：批准前必须填写审批意见，说明采纳理由或人工复核结论",
+    );
   }
 
   const actor = getActor();
@@ -179,6 +188,7 @@ export async function reviewRelease(
   recordAudit(auditAction, "release", releaseId, {
     agentId: release.agentId,
     reviewComment: reviewComment ?? null,
+    ...(action === "APPROVED" ? { aiReviewStatus } : {}),
   });
 
   return updated;

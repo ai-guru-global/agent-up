@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# demo 上传暂存目录（Meoo 产物副本 + 历史构建归档，均不入库）
+/demo-deploy/
+
+# 运行时产物：试聊 trace 落盘（仅运行时生成，种子不含）
+/data/traces/

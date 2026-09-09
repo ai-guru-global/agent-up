@@ -15,6 +15,14 @@ import { NotFoundError, ValidationError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { getTrace, type TraceRecord } from "@/lib/services/trace-service";
 
+export interface EvalAssertion {
+  type: "contains" | "not_contains" | "regex";
+  /** contains/not_contains 为关键词；regex 为正则表达式（schema 已校验可编译） */
+  value: string;
+  /** 展示用说明，如「回复须包含工单号」 */
+  description?: string;
+}
+
 export interface EvalCase {
   id: string;
   agentId: string;
@@ -23,6 +31,8 @@ export interface EvalCase {
   title: string;
   /** 期望行为描述（沉淀时可填）；AI 评测与判官会参考它 */
   expectation: string;
+  /** 确定性断言（可选）：发布前 AI 评测先跑断言，任一失败直接 FAIL 不调判官 */
+  assertions?: EvalAssertion[];
   systemPrompt: string;
   history: TraceRecord["history"];
   message: string;
@@ -53,6 +63,7 @@ export function createEvalCaseFromTrace(
   agentId: string,
   traceId: string,
   expectation?: string,
+  assertions?: EvalAssertion[],
 ): EvalCase {
   const trace = getTrace(traceId);
   if (!trace) throw new NotFoundError("Trace 不存在，无法沉淀");
@@ -67,6 +78,7 @@ export function createEvalCaseFromTrace(
     sourceTraceId: traceId,
     title: summarizeTitle(trace.message),
     expectation: expectation?.trim() || DEFAULT_EXPECTATION,
+    ...(assertions && assertions.length > 0 ? { assertions } : {}),
     systemPrompt: trace.systemPrompt,
     history: trace.history,
     message: trace.message,

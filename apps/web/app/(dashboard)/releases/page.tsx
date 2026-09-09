@@ -12,12 +12,14 @@ import {
   EmptyState,
   Hint,
   InlineField,
+  Modal,
   PARTITION,
   PageHeader,
   RELEASE_STATUS,
   Select,
   Skeleton,
   StatusBadge,
+  Textarea,
   metaOf,
 } from "@/components/ui";
 
@@ -37,8 +39,22 @@ interface AiReview {
     verdict: "PASS" | "FAIL" | "ERROR";
     score: number | null;
     reason: string;
+    /** 确定性断言明细（code-based 判分器）；用例未配置断言时为空 */
+    assertions?: Array<{
+      type: "contains" | "not_contains" | "regex";
+      value: string;
+      passed: boolean;
+      detail: string;
+    }>;
   }>;
 }
+
+/** 断言类型的界面简称（与 schemas.ts 的 evalAssertionSchema 对应） */
+const ASSERTION_LABELS: Record<string, string> = {
+  contains: "包含",
+  not_contains: "不含",
+  regex: "正则",
+};
 
 interface Release {
   id: string;
@@ -91,6 +107,8 @@ export default function ReleasesPage() {
   /** 正在运行 AI 评测的 releaseId */
   const [aiReviewing, setAiReviewing] = useState<string | null>(null);
   const [aiReviewErr, setAiReviewErr] = useState("");
+  /** 通过审批时填写的审批意见；AI 评测 FAILED 时必填（软门禁），意见进审计日志 */
+  const [approveComment, setApproveComment] = useState("");
 
   const runAiReview = async (releaseId: string) => {
     setAiReviewing(releaseId);
@@ -131,14 +149,23 @@ export default function ReleasesPage() {
   // 拉取前同步重置 loading/error 是有意的；setState 均在 await 前完成，无级联风险
   useEffect(() => { fetchList(); }, [fetchList]);
 
-  const handleReview = async (releaseId: string, action: "APPROVED" | "REJECTED") => {
+  const handleReview = async (
+    releaseId: string,
+    action: "APPROVED" | "REJECTED",
+    reviewComment?: string,
+  ) => {
     setProcessing(releaseId);
     setReviewError("");
     try {
       const res = await fetch(`/api/releases/${releaseId}/review`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        // releaseId 为后端 schema 必填项（以 path id 为准，body 回显同值）
+        body: JSON.stringify({
+          releaseId,
+          action,
+          ...(reviewComment?.trim() ? { reviewComment: reviewComment.trim() } : {}),
+        }),
       });
       const json = await res.json();
       if (json.success === false) {
@@ -150,11 +177,16 @@ export default function ReleasesPage() {
     } finally {
       setProcessing(null);
       setPendingReview(null);
+      setApproveComment("");
     }
   };
 
   const filtered = statusFilter !== "ALL";
   const pendingCount = items.filter((r) => r.status === "PENDING").length;
+  /** 软门禁：待通过的那条提交 AI 评测 FAILED 时，审批意见必填 */
+  const gateBlocked =
+    pendingReview?.action === "APPROVED" &&
+    pendingReview.release.aiReview?.status === "FAILED";
 
   return (
     <div>
@@ -332,6 +364,15 @@ export default function ReleasesPage() {
                             审批意见: {rel.reviewComment}
                           </p>
                         )}
+                        {rel.status === "PENDING" && (rel.aiReview?.status === "FAILED" ? (
+                          <p className="mt-2 text-xs font-medium text-[var(--danger)]" title="软门禁：批准时必须填写审批意见，说明采纳理由或人工复核结论">
+                            AI 评测未通过：批准前需填写审批意见说明采纳理由
+                          </p>
+                        ) : !rel.aiReview ? (
+                          <p className="mt-2 text-xs text-[var(--subtle)]" title="建议先运行 AI 评测做一次自动回归，再决定通过或驳回">
+                            尚未运行 AI 评测
+                          </p>
+                        ) : null)}
                       </div>
                       <div className="flex flex-row-reverse items-center justify-end gap-2 sm:flex-col sm:items-end">
                         {rel.status === "PENDING" && (
@@ -397,15 +438,11 @@ export default function ReleasesPage() {
         </>
       )}
 
-      <ConfirmDialog
+      {/* APPROVED 用 Modal 而非 ConfirmDialog：软门禁要求 AI 评测 FAILED 时必须填写审批意见 */}
+      <Modal
         open={pendingReview?.action === "APPROVED"}
-        onCancel={() => setPendingReview(null)}
-        onConfirm={() => pendingReview && handleReview(pendingReview.release.id, "APPROVED")}
+        onClose={() => setPendingReview(null)}
         title="确认通过这次配置变更？"
-        tone="primary"
-        confirmLabel="通过并发布"
-        loading={processing !== null}
-        loadingLabel="发布中…"
         description={
           <>
             将通过「{pendingReview?.release.agent?.name ?? "已删除的 Agent"}」的配置变更
@@ -420,14 +457,79 @@ export default function ReleasesPage() {
             </span>
           </>
         }
-        warning={
+        footer={
           <>
+            <Button
+              variant="secondary"
+              onClick={() => setPendingReview(null)}
+              disabled={processing !== null}
+            >
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() =>
+                pendingReview &&
+                handleReview(
+                  pendingReview.release.id,
+                  "APPROVED",
+                  approveComment.trim() || undefined,
+                )
+              }
+              loading={processing !== null}
+              loadingText="发布中…"
+              disabled={gateBlocked}
+              title={
+                gateBlocked
+                  ? "AI 评测未通过：填写审批意见说明采纳理由后才能通过"
+                  : "通过这次变更，并立即生成一个新的不可变版本"
+              }
+            >
+              通过并发布
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3 text-[13px] leading-relaxed text-[var(--foreground)]">
+          <Alert tone="warn" title="请确认后再继续">
             通过后会立即生成一个新版本(版本号自增)并成为当前生效配置,面向真实用户。
             版本快照不可修改;如需撤回,只能到 Agent 详情页回滚到上一个版本。
             审批动作会连同你的身份写入审计日志。
-          </>
-        }
-      />
+          </Alert>
+          {gateBlocked && (
+            <Alert tone="danger" title="AI 评测未通过">
+              这次提交的发布前 AI 评测结论为「未通过」。按发布门禁要求，批准前必须填写审批意见，
+              说明采纳理由或人工复核结论；意见将随审批动作一起写入审计日志。
+            </Alert>
+          )}
+          <div>
+            <label
+              htmlFor="approve-comment"
+              className="text-[13px] font-medium text-[var(--foreground)]"
+            >
+              审批意见{gateBlocked ? "（必填）" : "（选填）"}
+            </label>
+            <Textarea
+              id="approve-comment"
+              value={approveComment}
+              onChange={(e) => setApproveComment(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder={
+                gateBlocked
+                  ? "例：已人工复核 FAIL 用例，确认为判官误判，风险可控，允许发布"
+                  : "补充说明这次通过的理由（可选）"
+              }
+              className="mt-1"
+            />
+            <p className="mt-1 text-[11px] text-[var(--subtle)]">
+              {gateBlocked
+                ? "留空将无法通过审批（后端会以 422 拒绝并保留「待审批」状态）。"
+                : "审批意见会显示在这条提交记录上，并写入审计日志。"}
+            </p>
+          </div>
+        </div>
+      </Modal>
 
       <ConfirmDialog
         open={pendingReview?.action === "REJECTED"}
@@ -841,6 +943,36 @@ function AiReviewBlock({ review }: { review: AiReview }) {
                 )}
               </div>
               {r.reason && <p className="mt-1 text-xs leading-relaxed text-[var(--subtle)]">{r.reason}</p>}
+              {r.assertions && r.assertions.length > 0 && (
+                <ul className="mt-1.5 space-y-0.5">
+                  {r.assertions.map((a, i) => (
+                    <li key={i} className="flex flex-wrap items-center gap-1.5 text-[11px] leading-relaxed">
+                      <span
+                        aria-hidden="true"
+                        className={
+                          a.passed
+                            ? "font-medium text-[var(--success)]"
+                            : "font-medium text-[var(--danger)]"
+                        }
+                        title={a.passed ? "断言通过" : "断言未通过"}
+                      >
+                        {a.passed ? "✓" : "✗"}
+                      </span>
+                      <span className="sr-only">{a.passed ? "断言通过：" : "断言未通过："}</span>
+                      <span
+                        className="rounded border border-[var(--border)] px-1 text-[10px] text-[var(--muted)]"
+                        title="确定性断言（code-based 判分），不经过模型判官"
+                      >
+                        {ASSERTION_LABELS[a.type] ?? a.type}
+                      </span>
+                      <code className="max-w-[24rem] truncate text-[var(--muted)]" title={a.value}>
+                        {a.value}
+                      </code>
+                      <span className="text-[var(--subtle)]">{a.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

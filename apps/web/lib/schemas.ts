@@ -260,10 +260,33 @@ export const rateTraceSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+/** 确定性断言（code-based 判分器）：发布前 AI 评测先跑断言，全过才走 LLM 判官 */
+export const evalAssertionSchema = z
+  .object({
+    type: z.enum(["contains", "not_contains", "regex"]),
+    value: z.string().min(1, "断言内容不能为空").max(200, "断言内容过长"),
+    description: z.string().max(200).optional(),
+  })
+  .refine((a) => a.type !== "regex" || isValidRegexPattern(a.value), {
+    message: "正则表达式无效",
+    path: ["value"],
+  });
+
+function isValidRegexPattern(pattern: string): boolean {
+  try {
+    new RegExp(pattern);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const createEvalCaseSchema = z.object({
   traceId: z.string().min(1, "traceId 不能为空"),
   /** 期望行为描述：评测判官用它判断新配置是否达标；缺省给出通用兜底文案 */
   expectation: z.string().max(1000).optional(),
+  /** 确定性断言（≤5 条）：contains/not_contains 为关键词，regex 为正则 */
+  assertions: z.array(evalAssertionSchema).max(5, "断言最多 5 条").optional(),
 });
 
 // ============================================================
@@ -290,3 +313,4 @@ export type CreateProductGroupInput = z.infer<typeof createProductGroupSchema>;
 export type AgentChatInput = z.infer<typeof agentChatSchema>;
 export type RateTraceInput = z.infer<typeof rateTraceSchema>;
 export type CreateEvalCaseInput = z.infer<typeof createEvalCaseSchema>;
+export type EvalAssertionInput = z.infer<typeof evalAssertionSchema>;

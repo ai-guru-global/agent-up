@@ -17,10 +17,17 @@ import { NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { chatCompletion, isLlmConfigured, LlmUpstreamError, type LlmMessage } from "@/lib/services/llm-service";
 import { buildSystemPrompt } from "@/lib/services/prompt-builder";
-import type { EvalCase } from "@/lib/services/eval-case-service";
+import type { EvalCase, EvalAssertion } from "@/lib/services/eval-case-service";
 
 export type AiReviewStatus = "PASSED" | "FAILED" | "SKIPPED";
 export type CaseVerdict = "PASS" | "FAIL" | "ERROR";
+
+export interface AssertionResult {
+  type: EvalAssertion["type"];
+  value: string;
+  passed: boolean;
+  detail: string;
+}
 
 export interface AiReviewCaseResult {
   caseId: string;
@@ -28,6 +35,52 @@ export interface AiReviewCaseResult {
   verdict: CaseVerdict;
   score: number | null;
   reason: string;
+  /** 确定性断言明细（仅当用例配置了断言时返回） */
+  assertions?: AssertionResult[];
+}
+
+/**
+ * 确定性断言（code-based 判分器）：零 LLM 成本的硬约束检查。
+ * 全部执行、不短路——结果里的失败明细要能完整呈现给审批人。
+ * 存量数据里的无效正则（绕过 schema 写入）按「未命中」处理，如实呈现。
+ */
+export function runAssertions(
+  candidate: string,
+  assertions: EvalAssertion[],
+): AssertionResult[] {
+  return assertions.map((a) => {
+    if (a.type === "contains") {
+      const passed = candidate.includes(a.value);
+      return {
+        type: a.type,
+        value: a.value,
+        passed,
+        detail: passed ? `包含「${a.value}」` : `未包含「${a.value}」`,
+      };
+    }
+    if (a.type === "not_contains") {
+      const passed = !candidate.includes(a.value);
+      return {
+        type: a.type,
+        value: a.value,
+        passed,
+        detail: passed
+          ? `未出现「${a.value}」`
+          : `出现了不应出现的内容「${a.value}」`,
+      };
+    }
+    try {
+      const passed = new RegExp(a.value).test(candidate);
+      return {
+        type: a.type,
+        value: a.value,
+        passed,
+        detail: passed ? `匹配正则 /${a.value}/` : `未匹配正则 /${a.value}/`,
+      };
+    } catch {
+      return { type: a.type, value: a.value, passed: false, detail: `断言正则无效：/${a.value}/` };
+    }
+  });
 }
 
 export interface AiReviewResult {
@@ -98,6 +151,25 @@ async function evaluateCase(evalCase: EvalCase, systemPrompt: string): Promise<A
     ];
     const candidate = await chatCompletion({ messages: replayMsgs });
 
+    // 确定性断言先行（零 LLM 成本）：任一失败直接 FAIL，跳过判官调用
+    const assertions = evalCase.assertions ?? [];
+    let assertionResults: AssertionResult[] | null = null;
+    if (assertions.length > 0) {
+      assertionResults = runAssertions(candidate.content, assertions);
+      const failedAssertions = assertionResults.filter((r) => !r.passed);
+      if (failedAssertions.length > 0) {
+        return {
+          ...base,
+          verdict: "FAIL",
+          score: null,
+          reason: `未通过确定性断言（${failedAssertions.length}/${assertionResults.length}）：${failedAssertions
+            .map((f) => f.detail)
+            .join("；")}`,
+          assertions: assertionResults,
+        };
+      }
+    }
+
     const judgeUser = [
       `## 用例\n标题：${evalCase.title}\n期望行为：${evalCase.expectation}\n问题：${clip(evalCase.message)}`,
       `## 参考回复（上一版配置的表现）\n${clip(evalCase.referenceReply)}`,
@@ -120,9 +192,16 @@ async function evaluateCase(evalCase: EvalCase, systemPrompt: string): Promise<A
         verdict: "ERROR",
         score: null,
         reason: "判官输出无法解析为 JSON，请人工复核",
+        ...(assertionResults ? { assertions: assertionResults } : {}),
       };
     }
-    return { ...base, verdict: parsed.verdict, score: parsed.score, reason: parsed.reason || "（无理由）" };
+    return {
+      ...base,
+      verdict: parsed.verdict,
+      score: parsed.score,
+      reason: parsed.reason || "（无理由）",
+      ...(assertionResults ? { assertions: assertionResults } : {}),
+    };
   } catch (err) {
     const reason =
       err instanceof LlmUpstreamError || (err instanceof Error && err.name === "TimeoutError")

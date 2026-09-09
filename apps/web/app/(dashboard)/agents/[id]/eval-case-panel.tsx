@@ -10,6 +10,13 @@ import {
   Skeleton,
 } from "@/components/ui";
 
+/** 断言类型的界面简称（与 schemas.ts 的 evalAssertionSchema 对应） */
+const ASSERTION_LABELS: Record<string, string> = {
+  contains: "包含",
+  not_contains: "不含",
+  regex: "正则",
+};
+
 interface EvalCaseItem {
   id: string;
   agentId: string;
@@ -21,6 +28,8 @@ interface EvalCaseItem {
   status: string;
   createdAt: string;
   createdBy: string;
+  /** 沉淀时配置的确定性断言（code-based 判分）；未配置时为空 */
+  assertions?: Array<{ type: string; value: string }>;
 }
 
 /**
@@ -134,6 +143,20 @@ export function EvalCasePanel({ agentId }: { agentId: string }) {
                     <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--subtle)]">
                       期望：{c.expectation}
                     </p>
+                    {c.assertions && c.assertions.length > 0 && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <span className="text-[10px] text-[var(--subtle)]">断言：</span>
+                        {c.assertions.map((a, i) => (
+                          <span
+                            key={i}
+                            className="rounded border border-[var(--border)] bg-[var(--background)] px-1 py-px text-[10px] text-[var(--muted)]"
+                            title="确定性断言：发布评测先跑断言，全部通过才调用模型判官"
+                          >
+                            {ASSERTION_LABELS[a.type] ?? a.type}「{a.value}」
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-1 text-[10px] tabular-nums text-[var(--subtle)]">
                       沉淀于 {new Date(c.createdAt).toLocaleString("zh-CN")}
                       {c.createdBy ? ` · ${c.createdBy}` : ""} · 含参考回复
