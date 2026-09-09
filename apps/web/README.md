@@ -8,7 +8,7 @@ Next.js 16 (App Router, Turbopack) 全栈应用，Agent 改进平台的主界面
 
 ```bash
 pnpm dev          # 独立启动（http://localhost:3000），或在根目录 pnpm dev
-pnpm test         # 251 个测试（单元 + API 集成），临时数据目录隔离
+pnpm test         # 260 个测试（单元 + API 集成），临时数据目录隔离
 pnpm lint         # ESLint（全绿，0 problems）
 pnpm build        # 生产构建
 pnpm build:demo   # 演示模式静态导出（产物 demo-deploy/dist/）

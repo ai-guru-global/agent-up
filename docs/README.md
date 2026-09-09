@@ -1,6 +1,6 @@
 # docs — 文档体系总索引
 
-> 维护日期：2026-09-07
+> 维护日期：2026-09-09
 > 本目录是 agent-up 全部项目文档的入口。文档按「设计 → 评估 → 交付 → 使用」四层组织，
 > 时间戳即版本：同主题新一轮产出以新日期另建文件，不覆盖旧文档。
 > 外部导入的知识文献另见 [knowledge-base/](./knowledge-base/README.md)。
@@ -23,6 +23,7 @@
 | 2026-07-06 | [扩展设计](./superpowers/specs/2026-07-06-agent-improvement-platform-extended-design.md) | Approved → Partially Implemented | L1/L2/L3 完整架构与 Harness 对齐；Prisma 持久化仍为规划 |
 | 2026-08-21 | [MaaS 集成 mock 层](./superpowers/specs/2026-08-21-maas-integration-mock-design.md) | Approved → Implemented | `/maas` 页 + 种子数据 MaaS 口径（公共云+专有云双形态） |
 | 2026-08-25 | [MiMo 真实 LLM 接入](./superpowers/specs/2026-08-25-mimo-llm-integration-design.md) | Approved → Implemented | LLM 网关 + 4 个真实集成点 |
+| 2026-09-09 | [评测确定性断言与发布门禁增强](./superpowers/specs/2026-09-09-eval-assertion-gate-design.md) | Approved → Partially Implemented（R1/R2 已交付） | R1 断言判分器 + R2 门禁留痕已交付；R3 真实用量 + R4 证据链视图下一轮（源自 Better Harness 文章研究） |
 
 状态语义：`Draft`（起草）→ `Approved`（用户批准）→ `Implemented`（已交付）/ `Partially Implemented`（部分落地）。
 
@@ -31,6 +32,7 @@
 | 日期 | 文档 | 状态 | 摘要 |
 |------|------|------|------|
 | 2026-07-21 | [项目评估 + Harness/Loop 参考](./evaluation/2026-07-21-project-evaluation-and-harness-loop-reference.md) | 历史快照 | 八维评分 + 业界 Loop/Harness 工程参考（`/architecture` 页面源） |
+| 2026-09-09 | [Better Harness 文章深度研究](./evaluation/2026-09-09-better-harness-article-research.md) | 研究快照 | 组织级 Harness 文章事实核查（愿景 vs 仓库现实）+ OpenAI/Anthropic/Langfuse 行业对照 + 对本项目缺口映射与 GTM 叙事建议 |
 
 ## 三、交付报告（reports）
 
@@ -66,3 +68,5 @@
 - 项目总览 / 快速开始：[根 README](../README.md)
 - Web 应用说明：[apps/web/README](../apps/web/README.md)
 - 报告目录规范：[reports/README](./reports/README.md)
+- GTM 物料库（索引 / 事实口径 / backlog）：[GTM/README](../GTM/README.md)
+- Chrome 反馈收集器插件：[chrome-extension/README](../chrome-extension/README.md)
