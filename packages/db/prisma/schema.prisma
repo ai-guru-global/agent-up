@@ -194,7 +194,8 @@ model ConfigChange {
   id          String          @id @default(cuid())
   agentId     String
   agent       Agent           @relation(fields: [agentId], references: [id])
-  partition   ConfigPartition
+  // 回滚留痕会写入 "PROMPT_ROLLBACK" 等带后缀值，枚举装不下；故用文本列
+  partition   String
   before      Json?
   after       Json
   diff        Json
