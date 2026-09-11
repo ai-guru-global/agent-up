@@ -10,6 +10,25 @@ jobs:
     name: lint · test · build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    env:
+      DATABASE_URL: postgresql://agentup:agentup@localhost:5432/agentup?schema=public
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: agentup
+          POSTGRES_PASSWORD: agentup
+          POSTGRES_DB: agentup
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agentup"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,15 +47,20 @@ jobs:
         # packageManager: pnpm@9.15.0，锁文件唯一事实源为 pnpm-lock.yaml
         run: pnpm install --frozen-lockfile
 
+      - name: Apply Prisma migrations
+        # 测试依赖真实 PostgreSQL（服务容器）；deploy 只应用已提交的迁移，不会产生新迁移
+        run: pnpm --filter @agent-up/db exec prisma migrate deploy
+
       - name: Lint
         # turbo run lint：web 包 eslint 全绿（构建产物目录已忽略）
         run: pnpm lint
 
       - name: Test
-        # 241 个单元 + API 集成测试；LLM 端点全 mock fetch，不发真实请求
+        # 测试连服务容器里的真实 PG（vitest 的 dotenv/config 找不到 .env 时回落到
+        # job 级 env 的 DATABASE_URL）；LLM 端点全 mock fetch，不发真实请求
         run: cd apps/web && pnpm test
 
       - name: Build
-        # packages/db 的 build 内含 prisma generate，无需 DATABASE_URL；
+        # packages/db 的 build 内含 prisma generate，无需额外配置；
         # 未配置 MIMO_API_KEY 时 LLM 端点仅降级为 503，不影响构建
         run: pnpm build
