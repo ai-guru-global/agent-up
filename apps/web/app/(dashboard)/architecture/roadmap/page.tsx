@@ -242,7 +242,7 @@ export default function RoadmapPage() {
             [<span><strong>Release diff/semver 修复</strong></span>, "release-service.ts + versioning.ts", "changedPartitions 与上一版本真实 diff；无变更拒绝提交；真 SemVer"],
             [<span><strong>反馈状态机</strong></span>, "feedback-service.ts", "非法状态转移（NEW→RESOLVED）被拒"],
             [<span><strong>store 加固</strong></span>, "lib/data/store.ts", "crypto.randomUUID；损坏文件抛 AppError；可测的 _setDataDir"],
-            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>279 个测试（含 2 个 Prisma 冒烟测试，需 PG），95.9% 语句覆盖</strong>，含 113 个 API 集成测试</span>],
+            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>315 个测试（Prisma 域测试需本地 PG：docker compose up -d postgres）</strong>，含 137 个 API 集成测试</span>],
           ]}
         />
       </Section>
@@ -331,7 +331,7 @@ export default function RoadmapPage() {
               主线 1 · 工程债 <Pill tone="good">部分完成</Pill>
             </p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>279 个测试（95.9% 覆盖率）</strong>；v1.5 再落地评测闭环（trace 落盘 → 沉淀用例 → 发布前 AI 评测）；v1.6 评测升级确定性断言（未过不调判官）与 FAILED 批准须留痕的软门禁；v1.7 新增 MaaS 真实用量聚合与任务证据链视图（只读，非因果证明）；v1.8 新增 Harness 资产演进线（版本快照结构化对比）与多渠道工单接入（channel 适配器 + 幂等 409）；Prisma 批0 基建与 CI 门禁（lint/test/build 连 PG）已落地。剩余鉴权与运行时切换 PG 待后续工程。
+              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>315 个测试</strong>；v1.5 再落地评测闭环（trace 落盘 → 沉淀用例 → 发布前 AI 评测）；v1.6 评测升级确定性断言（未过不调判官）与 FAILED 批准须留痕的软门禁；v1.7 新增 MaaS 真实用量聚合与任务证据链视图（只读，非因果证明）；v1.8 新增 Harness 资产演进线（版本快照结构化对比）与多渠道工单接入（channel 适配器 + 幂等 409）；Prisma 批0 基建与 CI 门禁（lint/test/build 连 PG）已落地。剩余鉴权与运行时切换 PG 待后续工程。
             </p>
           </Card>
           <Card>

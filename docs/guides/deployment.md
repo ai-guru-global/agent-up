@@ -26,13 +26,13 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `pnpm dev` | 开发服务器（Turbopack） |
 | `pnpm build` | 全量生产构建 |
 | `pnpm lint` | ESLint（全绿，0 problems） |
-| `cd apps/web && pnpm test` | 279 个测试（单元 + API 集成；test-db 冒烟测试需先 `docker compose up -d postgres`） |
+| `cd apps/web && pnpm test` | 315 个测试（单元 + API 集成；Prisma 域测试需先 `docker compose up -d postgres`） |
 | `cd apps/web && pnpm test -- --coverage` | 带覆盖率（阈值 lines/functions/statements ≥80，branches ≥70） |
 
 ### 数据与基础设施
 
 - **当前运行时存储**：`apps/web/data/` 本地 JSON 文件（mock 种子数据），由 `lib/data/store.ts` 读写
-- **PostgreSQL（测试用）**：`docker compose up -d postgres` 后测试连真实 PG（`test-db` 冒烟测试 + `_resetDb` 清库基建，批0 已落地）；业务运行时仍为 JSON，批1 起逐步切换
+- **PostgreSQL（Prisma 域）**：`docker compose up -d postgres` 后测试连真实 PG（per-worker 独立测试库互不干扰）；审计 / settings 域运行时已切 Prisma（批0/批1），其余业务仍 JSON，批次推进中
 
 ## 二、环境变量
 
@@ -69,7 +69,7 @@ cd apps/web && npx next start  # 生产模式启动
 | 检查项 | 命令 / 动作 |
 |--------|------------|
 | 依赖与构建 | `pnpm install && pnpm build` 通过 |
-| 测试全绿 | `cd apps/web && pnpm test` → 279/279（需 PG：`docker compose up -d postgres`） |
+| 测试全绿 | `cd apps/web && pnpm test` → 315/315（需 PG：`docker compose up -d postgres`） |
 | 服务启动 | `pnpm dev` 后 `curl http://localhost:3000` 返回 200 |
 | LLM 凭据 | `/maas` 页 LIVE 区块显示模型与 Base URL；点「发起真实调用」有回复 |
 | 演示动线 | ① `/maas` 连通性 → ② 反馈页「AI 归因」→ ③ `/agents/ecs-assistant` 试聊 → ④ `/releases` 查看变更 + AI 摘要 + AI 评测 |
