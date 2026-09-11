@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { GET as probeGet, POST as probePost } from "@/app/api/maas/probe/route";
 import { POST as feedbackInsight } from "@/app/api/feedback/[id]/insight/route";
 import { POST as releaseSummary } from "@/app/api/releases/[id]/summary/route";
 import { POST as agentChat } from "@/app/api/agents/[id]/chat/route";
 import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
@@ -58,9 +60,13 @@ describe("GET/POST /api/maas/probe", () => {
 });
 
 describe("POST /api/feedback/[id]/insight", () => {
-  it("returns LLM insight for existing feedback", async () => {
-    store.write(
-      {
+  // 批2 起 feedback 以 Prisma 为事实源：建档走 PG（断言结构不动）
+  beforeEach(async () => {
+    await _resetDb();
+    await prisma.productGroup.create({ data: { id: "g-a1", name: "g-a1", displayName: "A1 产品组" } });
+    await prisma.agent.create({ data: { id: "a1", name: "测试助手", productGroupId: "g-a1", createdBy: "seed" } });
+    await prisma.feedback.create({
+      data: {
         id: "fb-1",
         agentId: "a1",
         title: "回答不准确",
@@ -68,12 +74,13 @@ describe("POST /api/feedback/[id]/insight", () => {
         rating: "NEGATIVE",
         severity: "MAJOR",
         status: "NEW",
+        submittedBy: "system",
         targetPartition: "PROMPT",
-        submittedAt: "2026-08-20T00:00:00.000Z",
       },
-      "feedback",
-      "fb-1.json",
-    );
+    });
+  });
+
+  it("returns LLM insight for existing feedback", async () => {
     const res = await feedbackInsight(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "fb-1" }),
     });
