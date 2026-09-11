@@ -1232,82 +1232,6 @@ function route(
         return ok(withAgentName(feedback), 201);
       }
 
-      // /api/feedback/ingest（多渠道工单适配器，镜像 feedback-service.ingestFeedback）
-      if (second === "ingest" && M === "POST") {
-        if (!state.agents.find((a) => a.id === payload.agentId))
-          return fail("Agent 不存在", 404);
-        const channel = String(payload.channel ?? "");
-        const PRIORITY: Record<string, string> = {
-          P0: "CRITICAL",
-          P1: "MAJOR",
-          P2: "MINOR",
-          P3: "SUGGESTION",
-        };
-        let draft: {
-          title: string;
-          content: string;
-          rating: string;
-          severity: string;
-          tags: string[];
-          externalRef: { id: string | null; url: string | null };
-        };
-        if (channel === "generic") {
-          draft = {
-            title: String(payload.title ?? ""),
-            content: String(payload.content ?? ""),
-            rating: String(payload.rating ?? "NEGATIVE"),
-            severity: String(payload.severity ?? "MINOR"),
-            tags: (payload.tags as string[]) ?? [],
-            externalRef: { id: (payload.externalId as string) ?? null, url: (payload.externalUrl as string) ?? null },
-          };
-        } else if (channel === "ticket-webhook") {
-          const t = payload.ticket as AnyRec | undefined;
-          if (!t?.key || !t?.subject || !t?.description || !t?.priority)
-            return fail("参数校验失败：ticket.key / subject / description / priority 必填", 422);
-          draft = {
-            title: String(t.subject),
-            content: String(t.description),
-            rating: "NEGATIVE",
-            severity: PRIORITY[String(t.priority)] ?? "MINOR",
-            tags: [],
-            externalRef: { id: String(t.key), url: (t.url as string) ?? null },
-          };
-        } else {
-          return fail(`参数校验失败：未知接入渠道 ${channel || "（缺省）"}`, 422);
-        }
-        if (draft.externalRef.id) {
-          const dup = state.feedback.find(
-            (f) =>
-              f.source === channel &&
-              (f.externalRef as AnyRec | null)?.id === draft.externalRef.id,
-          );
-          if (dup) return fail(`该工单已接入：${String(dup.id)}`, 409);
-        }
-        const feedback: AnyRec = {
-          id: newId(),
-          agentId: payload.agentId,
-          source: channel,
-          title: draft.title,
-          content: draft.content,
-          rating: draft.rating,
-          tags: draft.tags,
-          severity: draft.severity,
-          status: "NEW",
-          targetPartition: null,
-          externalRef: draft.externalRef,
-          sessionData: null,
-          submittedBy: SYSTEM_ACTOR.id,
-          submittedAt: now(),
-        };
-        state.feedback.push(feedback);
-        recordAudit("feedback.ingest", "feedback", String(feedback.id), {
-          channel,
-          externalRefId: draft.externalRef.id,
-          severity: draft.severity,
-        });
-        return ok(withAgentName(feedback), 201);
-      }
-
       if (M === "PUT") {
         const { id, ...rest } = payload;
         if (!id) return fail("id 必填");
@@ -1348,6 +1272,82 @@ function route(
         });
         return ok(withAgentName(updated));
       }
+    }
+
+    // /api/feedback/ingest（多渠道工单适配器，镜像 feedback-service.ingestFeedback）
+    if (second === "ingest" && M === "POST") {
+      if (!state.agents.find((a) => a.id === payload.agentId))
+        return fail("Agent 不存在", 404);
+      const channel = String(payload.channel ?? "");
+      const PRIORITY: Record<string, string> = {
+        P0: "CRITICAL",
+        P1: "MAJOR",
+        P2: "MINOR",
+        P3: "SUGGESTION",
+      };
+      let draft: {
+        title: string;
+        content: string;
+        rating: string;
+        severity: string;
+        tags: string[];
+        externalRef: { id: string | null; url: string | null };
+      };
+      if (channel === "generic") {
+        draft = {
+          title: String(payload.title ?? ""),
+          content: String(payload.content ?? ""),
+          rating: String(payload.rating ?? "NEGATIVE"),
+          severity: String(payload.severity ?? "MINOR"),
+          tags: (payload.tags as string[]) ?? [],
+          externalRef: { id: (payload.externalId as string) ?? null, url: (payload.externalUrl as string) ?? null },
+        };
+      } else if (channel === "ticket-webhook") {
+        const t = payload.ticket as AnyRec | undefined;
+        if (!t?.key || !t?.subject || !t?.description || !t?.priority)
+          return fail("参数校验失败：ticket.key / subject / description / priority 必填", 422);
+        draft = {
+          title: String(t.subject),
+          content: String(t.description),
+          rating: "NEGATIVE",
+          severity: PRIORITY[String(t.priority)] ?? "MINOR",
+          tags: [],
+          externalRef: { id: String(t.key), url: (t.url as string) ?? null },
+        };
+      } else {
+        return fail(`参数校验失败：未知接入渠道 ${channel || "（缺省）"}`, 422);
+      }
+      if (draft.externalRef.id) {
+        const dup = state.feedback.find(
+          (f) =>
+            f.source === channel &&
+            (f.externalRef as AnyRec | null)?.id === draft.externalRef.id,
+        );
+        if (dup) return fail(`该工单已接入：${String(dup.id)}`, 409);
+      }
+      const feedback: AnyRec = {
+        id: newId(),
+        agentId: payload.agentId,
+        source: channel,
+        title: draft.title,
+        content: draft.content,
+        rating: draft.rating,
+        tags: draft.tags,
+        severity: draft.severity,
+        status: "NEW",
+        targetPartition: null,
+        externalRef: draft.externalRef,
+        sessionData: null,
+        submittedBy: SYSTEM_ACTOR.id,
+        submittedAt: now(),
+      };
+      state.feedback.push(feedback);
+      recordAudit("feedback.ingest", "feedback", String(feedback.id), {
+        channel,
+        externalRefId: draft.externalRef.id,
+        severity: draft.severity,
+      });
+      return ok(withAgentName(feedback), 201);
     }
     if (third === "insight" && M === "POST") {
       const fb = state.feedback.find((f) => f.id === second);
