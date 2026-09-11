@@ -646,8 +646,25 @@ git commit -m "docs: .env.example 数据库口径更新（测试/迁移必填 + 
 | --- | --- |
 | `@agent-up/db` 是 TS 源码包，vitest 无法直接加载 | Task 3 `server.deps.inline` |
 | vitest 不自动加载 .env，测试连不上 DB | `test-db.ts` 顶部 `import "dotenv/config"` + Task 4 Step 1 的 apps/web/.env 追加 |
-| 并发 worker 的 PrismaClient 连接池耗尽 PG 100 连接 | Task 3 `maxThreads: 4`（批1 再评估） |
+| 并发 worker 的 PrismaClient 连接池耗尽 PG 100 连接 | Task 3 `maxWorkers: 4`（原计划 maxThreads 经终审指正为无效配置，已改 pool 无关写法；批1 再评估） |
 | 首个 `migrate dev` 遇本地库残留旧表 drift | Task 1 Step 5 的 `docker compose down -v` 重建指引 |
 | 迁移文件被误 ignore | 根 `.gitignore` 仅 ignore `apps/web/prisma/migrations/`；Task 2 Step 5 用 git status 复核 |
 | CI 无法本地验证 | YAML 与既有结构保持一致；真实验证在下次 push，若红按报错修正（属本批收尾职责） |
 | AuditLog.userId 指向 User 的运行时漂移（运行时无 users 集合，actor 是 header 传入） | 不属批0——批1 改 audit 服务时按规格 §3「运行时是事实源」裁决，本批不动 AuditLog |
+
+---
+
+## 终审记录（2026-09-11，批0 收尾时回写）
+
+终审范围 `ed32e7a..ce60420`（含修复提交 ce60420）。已修复：
+
+- **[Critical] CI Test 前无人生成 Prisma Client** —— `@prisma/client` 的 postinstall 在 monorepo 根找不到 schema 会静默跳过，CI 首推必红。已在 ci.yml 增加 `prisma generate` 步骤。
+- **[Important] `poolOptions.threads.maxThreads` 是无效配置** —— Vitest 3 默认 pool 是 forks。已改为 pool 无关的 `maxWorkers: 4`（dist 验证 `maxForks ?? maxWorkers ?? threadsCount`）。
+- **[Minor] test-db.ts 增加 `process.env.VITEST` 模块加载守卫**，非测试环境导入即抛错。
+
+遗留裁决点（批次边界处理，不属批0 代码）：
+
+1. **单库 truncate 与规格 §7 的偏差**：批0 `_resetDb()` 截断的是共享单库（兼本地开发库）；规格要求按 worker 独立建 `test_<n>` 库。批1（22 个测试文件全连 PG）必须二选一：实现按 worker 独立库，或串行化 DB 测试 + 专用 `agentup_test` 库。当前批0 仅 1 个测试文件连库，无实际影响。
+2. **Agent 删除的 FK 行为**：迁移生成 `Trace/EvalCase → Agent` 为 `ON DELETE RESTRICT`（Prisma 默认），而 JSON 文件时代删 Agent 无此约束。批4 改写 trace/eval-case 服务时明确 cascade vs restrict。
+3. **Prisma 实际解析为 6.19.3**（`^6.10.0` caret 区间 + 锁文件钉住），文档口径按 6.19.3。
+4. **maas-usage.test.ts 2 个既有失败**（103f01b 引入，批0 范围外）：该测试拷贝真实 `apps/web/data/`，疑似数据依赖型脆弱测试；归并行 feature 线修复。
