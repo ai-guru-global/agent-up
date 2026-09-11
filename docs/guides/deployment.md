@@ -26,7 +26,7 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `pnpm dev` | 开发服务器（Turbopack） |
 | `pnpm build` | 全量生产构建 |
 | `pnpm lint` | ESLint（全绿，0 problems） |
-| `cd apps/web && pnpm test` | 260 个测试（单元 + API 集成） |
+| `cd apps/web && pnpm test` | 268 个测试（单元 + API 集成） |
 | `cd apps/web && pnpm test -- --coverage` | 带覆盖率（阈值 lines/functions/statements ≥80，branches ≥70） |
 
 ### 数据与基础设施
@@ -69,7 +69,7 @@ cd apps/web && npx next start  # 生产模式启动
 | 检查项 | 命令 / 动作 |
 |--------|------------|
 | 依赖与构建 | `pnpm install && pnpm build` 通过 |
-| 测试全绿 | `cd apps/web && pnpm test` → 260/260 |
+| 测试全绿 | `cd apps/web && pnpm test` → 268/268 |
 | 服务启动 | `pnpm dev` 后 `curl http://localhost:3000` 返回 200 |
 | LLM 凭据 | `/maas` 页 LIVE 区块显示模型与 Base URL；点「发起真实调用」有回复 |
 | 演示动线 | ① `/maas` 连通性 → ② 反馈页「AI 归因」→ ③ `/agents/ecs-assistant` 试聊 → ④ `/releases` 查看变更 + AI 摘要 + AI 评测 |

@@ -1,6 +1,6 @@
 # 评测确定性断言与发布门禁增强设计
 
-> 状态：**Approved → Partially Implemented（R1+R2 已交付 2026-09-09，R3+R4 下一轮）** · 日期：2026-09-09
+> 状态：**Implemented（R1–R4 已交付 2026-09-10；R5 组织级指标代理为 Backlog）** · 日期：2026-09-09
 > 决策记录：D1 软门禁（FAILED 后批准须留痕，硬门禁留作 v2）；D2 断言类型集合 v1 = contains / not_contains / regex；D3 断言失败跳过 LLM 判官；D4 证据链放 Agent 详情页面板（R4 实施时生效）。
 > 来源：[Better Harness 文章深度研究](../../evaluation/2026-09-09-better-harness-article-research.md) 第 4.2 节缺口清单的功能需求转换
 > 上游依赖：评测闭环（2026-09-05 已交付：trace 落盘 → 打分 → 沉淀用例 → 发布前 AI 评测）

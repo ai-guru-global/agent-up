@@ -1,0 +1,446 @@
+{
+  "runId": "wf_801e7c47-f99",
+  "taskId": "wf-aa0f861b-a48",
+  "workflowName": "deep-research",
+  "status": "completed",
+  "result": {
+    "question": "研究问题：《组织级 Harness 的建设路径：从 Better Harness 的实践启程》（微信公众号文章，QoderAI/Better Harness 团队，原文 URL https://mp.weixin.qq.com/s/a5UXf9wo1eMsUYx8Tq0m5w）这篇行业文章对「agent-up」平台（一个面向专有云工单场景的 Agent 持续改进管理平台，核心是三层 Loop：L1 即时交互环 / L2 产品改进环（反馈→AI 归因→审批发布→效果报告→回滚）/ L3 智能进化环预留；四分区配置编辑器 Prompt/Knowledge/Tools/Routing；已落地的评测闭环：试聊 trace 落盘→👍/👎 打分→沉淀评测用例→发布前 AI 评测（快照 replay+判官）；Chrome 插件反馈收集器；GTM 定位为阿里云 MaaS 结合的客户演示/面试项目）的启发与差距分析。\n\n文章核心论点（已抓取全文，可直接采信，不需重新抓取）：\n1. Agent 挑战正从「单点做成」走向「规模运营」；一次成功≠稳定能力，需要持续丰富的测试集来评测。\n2. 三阶段：单点做成（一次任务的上下文/知识/工具能力）→ 团队复制（沉淀为 Skill、模板、MCP 服务、质量规则）→ 规模运营（Skill 市场、MCP 网关、评测体系、模型网关，安全经济地规模化）。\n3. Harness 分层：个人（把一次协作做好：spec 先行、按任务准备上下文和工具、围绕真实产物协作）；团队（环境可被 Agent 操作、规则可自动检查、任务经验持续沉淀为规范/Skill/脚本/Hook/模板/质量门禁）；组织（跨 Agent 任务证据链、治理可复用 Harness 资产并版本化、基于结果决定投入与推广——验收通过率/人工介入/失败重试/返工/资源消耗/后续缺陷）。\n4. 「被调用≠有效」：Dashboard 只是任务反馈的观察入口，要把执行活动与任务意图、验收条件、真实产物、人工验收连接起来；回答四问：任务是否通过验收（Edit 工具调用→提交→release 版本）、Skill/MCP 是否用在正确阶段（失败/错误率反馈给发布者）、哪些消耗没转化为有效进展（无效长程任务）、哪些经验值得沉淀为团队 Harness 资产（如 400k 上下文的成本效果平衡）。\n5. 开源仓库 https://github.com/QoderAI/better-harness，支持从十余种 Coding Agent 读取本地执行数据分析。\n\n需要研究并回答的子问题：\nA. Better Harness 开源项目的实际能力边界（README/代码结构/支持的 Agent adapter 列表/Dashboard 功能），文章说法与仓库事实是否一致；\nB. 行业对照：组织级 Agent 治理/评测平台（LangSmith/Langfuse、Braintrust、Arize Phoenix、W&B Weave、Anthropic 的 agent 工程实践、OpenAI 的 evals/AgentKit 等）在「任务证据链、Skill/MCP 资产治理、成本-效果度量、发布门禁」上分别怎么做，Better Harness 提出的路径在业界的独特性与重叠度；\nC. 对 agent-up 的启发映射：文章三阶段/四问/证据链框架中，哪些 agent-up 已具备（映射到具体页面/服务/端点），哪些是缺口，按 L2 产品改进环优先级给出可落地的改进建议（注意 agent-up 的 GTM 场景是专有云工单 + 面试/客户演示，不是 coding agent）；\nD. 对 agent-up 现有 GTM 叙事（三层 Loop、四分区、评测闭环）的叙事增强建议：文章哪些概念（如任务证据链、Harness 资产版本化、组织三阶段）可以直接强化 One-Pager/面试话术。\n\n输出：中文报告，含引用来源；对文章论点做事实核查（哪些是作者的愿景 vs 已实现）；对 agent-up 的建议要具体到模块/页面级别。项目根目录 /Users/allengaller/Documents/GitHub/ai-guru-global/agent-up，README 与 docs/ 已含大量口径信息，可直接读文件核对。",
+    "caveats": "1) 时间敏感：Better Harness 仓库事实全部基于 2026-09-08 push（commit 60c32d3），该仓库活跃（约 478 commits、约 2180 stars），其 roadmap 状态与功能边界可能快速变化；若隔数月引用需复核。2) Langfuse/Promptfoo 的门禁结论来自厂商文档化教程与官方 Action（附可运行示例），并非厂商自述的生产部署实践；Langfuse 的回归失败为 opt-in（评测脚本显式抛 RegressionError 才失败），引用时应措辞为「官方提供的可运行门禁模式」。3) 行业对照存在覆盖缺口：LangSmith/Braintrust/Arize Phoenix/W&B Weave 四家未在本轮存活 claims 中直接覆盖（仅 LangSmith trajectory-evals 在 claim #12 旁证中被提及），B 组对照目前主要锚定 Langfuse/Promptfoo/OpenAI/Anthropic/AgentKit 五个来源。4) C2/D1 的优先级与话术建议是在已核实事实（6 条 3-0 源码/文档级验证）之上的分析师综合推导，未经 agent-up 团队确认；agent-up 源码核实仅覆盖 verifier 实际检视的文件（ai-review-service.ts、eval-case-service.ts、rate route、eval-case-panel.tsx），发布审批流转的完整实现未逐行审计。5) 被否决 claims 的教训已吸收：(a)「文章夸大适配器数量」被 0-3 否决——文章「十余种」与仓库 12 host 一致，报告中不应出现「夸大」结论；(b)「Anthropic 明确推荐生产中以 human-in-the-loop 运行 agent」被 0-3 否决——话术中不可把「审批发布人工卡点」归因于 Anthropic 的明文建议，应归于门禁工程实践与自身治理设计。6) Anthropic 原文未用「gate/门禁」字面词，本报告中的「发布门禁」是其 CI/CD pre-launch 用法（每次变更与模型升级自动运行、作为质量第一道防线）的功能等价转述；「评测先行」同样是诠释性概括。",
+    "findings": [
+      {
+        "claim": "【A·事实核查】文章称 Better Harness「支持从十余种 Coding Agent 读取本地执行数据分析」与仓库事实相符且措辞准确：官方 Host Adapter Matrix（docs/adapters/README.md）列出 12 个 host 适配器（Claude Code、Augment/Auggie、Codex、Qoder、Cursor、Qwen Code、GitHub Copilot、Pi、Kimi Code、WorkBuddy、Grok、DeepSeek Harness），每个 host 在 scripts/session-analysis/platforms/ 下有独立 session-evidence 适配器；但覆盖度不等（Augment/Auggie 为 partial session adapter，DSH 为 developer-preview JSONL-only），README 明示「README placement is a display choice, not a support-level claim」——文章无夸大，引用安全。",
+        "confidence": "high",
+        "evidence": "对 2026-09-08 push 的当前 HEAD（commit 60c32d3）浅克隆核实：docs/adapters/README.md 表格恰为 12 行 host；scripts/session-analysis/platforms/ 含 12 个 per-host .mjs（augment/claude/codex/copilot/cursor/dsh/grok/kimi/pi/qoder/qwen/workbuddy）加 2 个支撑模块；矩阵原文 ",
+        "Augment/Auggie | Partial session adapter | none | unavailable": "；根 README.md L45-46 原文 ",
+        "README placement is a display choice, not a support-level claim": "。",
+        "十余种": "与 12 一致。第三方镜像（gitcode、skillsllm ~2.1k stars）仅佐证无反驳。",
+        "sources": [
+          "https://github.com/QoderAI/better-harness",
+          "https://github.com/QoderAI/better-harness/blob/main/docs/adapters/README.md"
+        ],
+        "vote": "3-0"
+      },
+      {
+        "claim": "【A·事实核查】Better Harness 官方评测框架是「Agent Work Loop」五维度（任务理解/可控执行/改动验证/可靠交付/经验沉淀），架构为前馈引导（AGENTS.md、specs、Skills、验收标准）+ 反馈传感器（lint、测试、Hooks、评测 agent），输出自包含 HTML+MD 报告与带 impact/expected output/scoped repair/acceptance checks 的 prioritized findings；站点与仓库均不存在「四问」框架——四问是文章作者自己的概念化重构（与五维有主题重叠：验收↔Change Validation、Skill/MCP 阶段↔Controlled Execution、经验沉淀↔Learning Capture）；且仓库已实现 spec 的 AC-2 自认「exact cost、first-pass success、intervention rate 等 org 指标 absent」——文章的组织层量化叙事（验收通过率/人工介入/返工/资源消耗）超出仓库已实现范围。",
+        "confidence": "high",
+        "evidence": "官网/README 原文逐字核实：",
+        "Better Harness combines feedforward guides (AGENTS.md, specs, Skills, acceptance criteria) with feedback sensors (linters, tests, Hooks, evaluation agents), and evaluates five parts of delivery—the Agent Work Loop": "；zh-Hans 首页五维中文名逐字匹配（任务理解/可控执行/改动验证/可靠交付/经验沉淀）；EN+zh 首页 grep「four questions/四问」零命中，仓库 code search 的 3 处 ",
+        "four questions": " 均为无关上下文；docs/specs/2026-09-01-organization-harness-dashboard.md（Status: Implemented）AC-2 原文 ",
+        "Exact cost, first-pass success, intervention rate, autonomy readiness, and invented organization outcomes are absent": "，non-goal 明确不做 org 级 cost/quality/review 聚合；Dashboard 头部指标仅 analyzed sessions/estimated active minutes/model responses/observed Skill invocations；Harness Studio Compare 的 pass rate/cost 仅限冻结变体 A/B 实验判定。非致命保留：五维模型带证据门控的分数上限（59/74/84/94/100），但明确声明「ceiling 而非分数公式」。",
+        "sources": [
+          "https://qoderai.github.io/better-harness/",
+          "https://github.com/QoderAI/better-harness",
+          "https://github.com/QoderAI/better-harness/blob/main/docs/specs/2026-09-01-organization-harness-dashboard.md"
+        ],
+        "vote": "3-0 / 3-0"
+      },
+      {
+        "claim": "【A·事实核查】文章「任务证据链 / 被调用≠有效」论点在仓库中已有对应实现而非纯愿景：Harness Inspector 是只读交互式交付溯源工作台，沿「产品意图→agent 活动→session→文件→commit」链路展示证据并保持证据强度与局限可见；history 视图展示五维度随时间趋势，但仓库自声明「只呈现记录到的趋势、非因果改进证明」。文章提到的「人工验收/验收条件」环节未在 Inspector 文档中显式对应。",
+        "confidence": "high",
+        "evidence": "官网原文 ",
+        "Harness Inspector traces product intent through agent activity, sessions, files, and commits in one read-only workspace, keeping evidence strength and limitations visible.": "；README 有近似表述并注明 ",
+        "the history view shows how the five Agent Work Loop dimensions move": " 与 ",
+        "It shows recorded trends, not causal proof of improvement.": "；不止 README 自述：gh code search 命中 33 个含 inspector 的 TypeScript 源文件（packages/harness-studio/src/server/query/inspector-query.ts、inspector-session-model.ts、i18n/zh-CN 等），概念文档定位为 ",
+        "local, read-only delivery provenance workbench": "，可经 npx @qoder-ai/better-harness inspector 实际运行；托管样例 https://qoderai.github.io/better-harness/inspector 可访问（fictional 数据）。仓库活跃：2026-07-21 创建、约 478 commits、约 2180 stars、2026-09-08 仍在推送。",
+        "sources": [
+          "https://qoderai.github.io/better-harness/",
+          "https://github.com/QoderAI/better-harness",
+          "https://qoderai.github.io/better-harness/inspector"
+        ],
+        "vote": "3-0 / 3-0"
+      },
+      {
+        "claim": "【A·事实核查】文章组织层「基于结果决定投入与推广」属于作者愿景/路线图而非仓库已实现：仓库有明确「反虚标」自我约束（未观测行为保持显式缺失而非编造分数；configured assets 只证明机制存在，只有关联任务证据才证明被使用或改善结果；禁止合成任何 session/cost/activation 证据）；仓库当前是分析报告工具（slash 命令分析 + Inspector + 报告历史 + harness-studio 本地实验），未实现 Skill 市场、MCP 网关或模型网关。",
+        "confidence": "high",
+        "evidence": "README 原文 ",
+        "Better Harness is deliberately honest: unobserved behavior stays explicit instead of becoming an unsupported score or claim": " 与 ",
+        "configured assets can establish that a mechanism exists, but only linked task evidence can establish that it was used or improved an outcome": "；roadmap System Invariants ",
+        "Configured presence never proves observed use": "、",
+        "Do not create synthetic session, hook, model, token, cost, activation, or transfer evidence": "；roadmap 状态模型中 LC-07 Intervention Engine、LC-04 Eval Lab、LC-13 durable HarnessIssue、LC-08 routing 评测、Session-to-Commit/PR/CI outcome adapters 均为 Proposed（仅 HA-02 Implemented、LC-02/LC-05 Partial 首片）；全仓 grep 零命中 skill market/模型网关，",
+        "MCP gateway": " 仅出现于 non-goals（docs/specs/2026-08-31-mcp-context-efficient-access-review.md L38）；harness-studio README ",
+        "Studio does not expose a remotely hosted run gateway": "；LC-12（社区 registry，最近似 Skill 市场）为 Deferred。非致命保留：packages/ 另含 @qoder-ai/harness（Harness-as-Code v0.3）、harness-studio（本地实验+compare）、better-harness-desktop（Electron），均未越过上述边界。",
+        "sources": [
+          "https://github.com/QoderAI/better-harness",
+          "https://github.com/QoderAI/better-harness/blob/main/roadmap.md"
+        ],
+        "vote": "3-0"
+      },
+      {
+        "claim": "【B·行业对照：发布门禁】「发布前评测作为门禁」在业界已产品化为 CI 原生步骤，有 Langfuse 与 Promptfoo 两个独立实现可对照：(1) Langfuse 官方 GitHub Action langfuse/experiment-action（官方 org、MIT、2026-04-20 创建、2026-09-08 仍活跃）针对固定数据集运行评测脚本、把分数以 PR 评论回贴、脚本抛 RegressionError 时使 job 失败；把该 job 设为分支保护 required status check 后门禁即具约束力——回归无法合并。(2) Promptfoo 官方支持 pull_request 触发评测（「Test prompt changes before they reach production」）与 exit-code 硬门禁（有失败用例或通过率低于 PROMPTFOO_PASS_RATE_THRESHOLD 时 exit 100，可经 PROMPTFOO_FAILED_TEST_EXIT_CODE 覆写），评测结果可直接阻断部署；覆盖 GitHub Actions/GitLab CI/Jenkins/Azure/CircleCI 等 8 种 CI。两者均与 agent-up L2「发布前 AI 评测」同类，且比 agent-up 现行「仅供审批参考」更硬。",
+        "confidence": "high",
+        "evidence": "Langfuse 页面原文逐字核实：",
+        "langfuse/experiment-action runs that script against a Langfuse dataset, posts the scores as a pull request comment, and fails the job on regression.": " 与 ",
+        "Marking the job as a required status check in branch protection makes the gate binding: a regression cannot merge.": "；action 仓库经 GitHub API 核实存在且活跃；官方 docs experiments-ci-cd 与 changelog「Experiment CI/CD gates」（2026-05-25）佐证。Promptfoo 文档原文 ",
+        "Test prompt changes before they reach production": "、",
+        "Fail the build when quality thresholds aren't met": "；CLI 文档确认 exit 100 / PROMPTFOO_PASS_RATE_THRESHOLD / PROMPTFOO_FAILED_TEST_EXIT_CODE。保留：Langfuse 的 failure-on-regression 为 opt-in（脚本显式抛错才失败）；两者是厂商文档化的可运行模式，非厂商自述生产部署。",
+        "sources": [
+          "https://langfuse.com/resources/engineering/llm-regression-testing",
+          "https://langfuse.com/docs/evaluation/experiments/experiments-ci-cd",
+          "https://github.com/langfuse/experiment-action",
+          "https://www.promptfoo.dev/docs/integrations/ci-cd/",
+          "https://www.promptfoo.dev/docs/usage/command-line/"
+        ],
+        "vote": "3-0 ×4"
+      },
+      {
+        "claim": "【B·行业对照：OpenAI 评测指南】OpenAI 官方 agent 评测指南为 agent-up 评测闭环提供流程级背书并划定其边界：trace grading 被定位为发现工作流级问题最快的方法；推荐两阶段路径（先对个体 trace 打分明确「好」的标准，再固化为可重复 datasets 与 eval runs）——与 agent-up「试聊 trace 落盘→👍/👎→沉淀评测用例→发布前快照 replay+判官」逐段对应；trace grading 的问题清单含「是否选对了工具」「是否违反策略/指令」（对应四问之「Skill/MCP 是否用在正确阶段」与 agent-up AI 归因，LangSmith trajectory-evals、Langfuse agent evaluation 亦佐证工具选择正确性是公认可评测归因点）；但文档建议的评测用途是「迭代改进 prompt、tool surfaces、routing logic、guardrails」，该页及 OpenAI 其他官方指南均无发布门禁/CI 卡点——文章「审批发布→效果报告」的治理闭环超出主流厂商文档范围，而 agent-up 四分区中 Prompt/Tools/Routing 恰与 OpenAI 建议改进对象一一对应。",
+        "confidence": "high",
+        "evidence": "原文逐条核实：",
+        "Trace grading is the fastest way to identify workflow-level issues.": "；",
+        "Once you know what 'good' looks like, move from individual traces to repeatable datasets and eval runs.": "；问题清单 ",
+        "Did the agent pick the right tool? / Did a handoff happen when it should have? / Did the workflow violate an instruction or safety policy?": "；",
+        "Use the results to refine prompts, tool surfaces, routing logic, or guardrails.": "。verifier 另核 OpenAI「Working with evals」与「Evaluation best practices」两份官方指南：无 gates/approvals/CI blocking 字样（最接近的是 continuous evaluation 的评测节奏而非门禁）。agent-up 代码对应经核实：apps/web/app/api/traces/[id]/rate/route.ts（👍/👎）、apps/web/app/(dashboard)/agents/[id]/eval-case-panel.tsx（沉淀用例）、apps/web/lib/services/ai-review-service.ts（快照 replay+判官 PASS/FAIL、1-5 分）及其集成测试。保留：「背书」是工作流模式的结构类比，非 OpenAI 对 agent-up 产品的官方认可；OpenAI 用语为 ",
+        "questions like": "（举例而非规定）。",
+        "sources": [
+          "https://developers.openai.com/api/docs/guides/agent-evals",
+          "https://github.com/QoderAI/better-harness"
+        ],
+        "vote": "3-0 / 2-0 / 3-0 / 3-0"
+      },
+      {
+        "claim": "【B·行业对照：成本-效果度量】OpenAI《A practical guide to building agents》对 Better Harness 四问之一「哪些消耗没转化为有效进展」给出可操作三步模型选型法：01 以 evals 建立性能基线 → 02 用最强模型达到准确率目标 → 03 用更小模型替换以优化成本与延迟——以 evals（而非仅监控）作为成本优化的前提。",
+        "confidence": "high",
+        "evidence": "原文逐字核实：",
+        "01 Set up evals to establish a performance baseline / 02 Focus on meeting your accuracy target with the best models available / 03 Optimize for cost and latency by replacing larger models with smaller ones where possible": " 及 prose ",
+        "An approach that works well is to build your agent prototype with the most capable model for every task to establish a performance baseline. From there, try swapping in smaller models to see if they still achieve acceptable results.": "；官方 PDF（cdn.openai.com business-guides-and-resources）佐证；第三方 cookbook 与深度解读将其视为 OpenAI 标准 agent 建设指南。「以 evals 而非仅监控」为轻度诠释（该指南 step 01 确以 evals 为前置）。",
+        "sources": [
+          "https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/"
+        ],
+        "vote": "3-0"
+      },
+      {
+        "claim": "【B·行业对照：Anthropic 分类法】Anthropic 官方分类为 Better Harness 三阶段框架与 agent-up L1/L2/L3 Loop 提供业界参照系：agentic 系统分两类——Workflow（LLM 与工具经预定义代码路径编排）与 Agent（LLM 动态指挥自身流程与工具使用），并主张可预测场景优先用 workflow、需要灵活性时才用 agent、只在需要时增加复杂度——agent-up L2 产品改进环本质是 workflow 化固定回路（反馈→AI 归因→审批发布→效果报告→回滚），其确定性设计符合该原则。",
+        "confidence": "high",
+        "evidence": "《Building Effective Agents》（2024-12-19，Erik Schluntz & Barry Zhang）原文逐字核实：",
+        "Workflows are systems where LLMs and tools are orchestrated through predefined code paths.": "、agents 定义为 ",
+        "dynamically direct their own processes and tool usage": "、以及 ",
+        "Workflows offer predictability and consistency for well-defined tasks": " 与 ",
+        "find the simplest solution possible and only increase complexity when needed": "；该文仍是 2025-2026 被 OpenAI agent guide 等广泛引用的权威参照。保留：「行业通用」为研究者概括；L2↔workflow 的映射是分析性应用而非 Anthropic 原文论断。",
+        "sources": [
+          "https://www.anthropic.com/engineering/building-effective-agents"
+        ],
+        "vote": "3-0"
+      },
+      {
+        "claim": "【B·行业对照：Anthropic 评测方法论】「评测闭环」是业界共识而非该文独创，且 Anthropic 给出了与 agent-up L2 环同构的完整方法论：成功关键是「度量性能并持续迭代实现」；评测应在 agent 生命周期任何阶段尽早建立，20-50 个取自真实失败的简单任务即可起步；已上线系统应从 bug tracker 与支持队列提取用例（评测集是需持续维护的 living artifact）；评测分两类——能力/质量评测（探测能做什么、通过率低）与回归评测（验证旧任务仍通过、通过率近 100%）；分阶段使用——发布前自动化评测作门禁（CI/CD 每次变更与模型升级时运行，作为质量第一道防线）+ 上线后生产监控与用户失败回灌用例。这为 agent-up「试聊 trace→👍/👎→沉淀用例→发布前 AI 评测」路径提供权威背书，Chrome 插件反馈收集器正是「支持队列→用例」模式的对应物（explicit signals like thumbs-down）。",
+        "confidence": "high",
+        "evidence": "《Building Effective Agents》原文 ",
+        "The key to success, as with any LLM features, is measuring performance and iterating on implementations.": "；《Demystifying evals for AI agents》（2026-01-09）三段逐字核实：",
+        "Writing evals is useful at any stage in the agent lifecycle...": "、",
+        "In reality, 20-50 simple tasks drawn from real failures is a great start": "、",
+        "If you're already in production, look at your bug tracker and support queue. Converting user-reported failures into test cases ensures your suite reflects actual usage.": "；两类评测原文 ",
+        "Capability or 'quality' evals ask, 'What can this agent do well?'... start at a low pass rate": " / ",
+        "Regression evals ask, 'Does the agent still handle all the tasks it used to?'... nearly 100% pass rate": "；分阶段原文 ",
+        "Automated evals are especially useful pre-launch and in CI/CD, running on each agent change and model upgrade as the first line of defense": " 与 ",
+        "Production monitoring kicks in post-launch": "；pass@k vs pass^k 支撑「一次成功≠稳定能力」；第三方「Eval-First LLM Observability」术语佐证共识。保留：Anthropic 未用「gate/门禁」字面词，属功能等价转述；「评测先行」是对原文的诠释性概括。",
+        "sources": [
+          "https://www.anthropic.com/engineering/building-effective-agents",
+          "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents"
+        ],
+        "vote": "3-0 ×3"
+      },
+      {
+        "claim": "【C·agent-up 缺口】agent-up 评测闭环最大可直接落地缺口是 code-based 判分器：Anthropic 主张 agent 评测混合三种判分器（code-based/model-based/human，并建议「能用确定性判分就用确定性、LLM 判分保灵活、人工判分做校准」）。对照 agent-up 源码核实：已有 model-based（apps/web/lib/services/ai-review-service.ts：用 release.configSnapshot.prompt 回放 + LLM 判官输出 PASS/FAIL、1-5 分）与 human（POST /api/traces/[id]/rate 的 👍/👎），但缺口真实存在——EvalCase.expectation（eval-case-service.ts）是自由文本仅喂给 LLM 判官，apps/web/lib 全域无确定性断言逻辑。可落地为工单场景结构化断言：回复是否包含工单号、是否命中知识库引用、必填字段是否完整。",
+        "confidence": "high",
+        "evidence": "Anthropic 原文 ",
+        "Agent evaluations typically combine three types of graders: code-based, model-based, and human": " 及 ",
+        "Use deterministic graders where possible, LLM graders for flexibility, and human graders for calibration": "；agent-up 侧由 verifier 直接读码核实：expectation 自由文本→LLM judge 单通道，rate 路由 UP|DOWN，grep apps/web/lib 无确定性判分（仅 retrieval-service.ts 的检索 token regex 与判分无关）。这是本轮唯一深入 agent-up 源码级的差距定位，可直接转为 L2 评测闭环的开发任务。",
+        "sources": [
+          "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents",
+          "/Users/allengaller/Documents/GitHub/ai-guru-global/agent-up/apps/web/lib/services/eval-case-service.ts",
+          "/Users/allengaller/Documents/GitHub/ai-guru-global/agent-up/apps/web/lib/services/ai-review-service.ts"
+        ],
+        "vote": "3-0"
+      },
+      {
+        "claim": "【B·行业对照：AgentKit】OpenAI 2025-10-06 发布 AgentKit，定位为构建、部署、优化 Agent 的完整工具集，四组件为 Agent Builder（可视化画布创建工作流）、Connector Registry（集中管理数据与工具连接）、ChatKit（可嵌入聊天 UI）、Evals（数据集+打分的性能评测）——即 OpenAI 的组织级方案同时覆盖「可视化构建+工具连接治理+评测」，与 Better Harness 文章「Skill 市场/MCP 网关/评测体系」三件套在职责划分上高度重叠（组件构成经 OpenAI 官网与文档逐项验证，TechCrunch 同日报道佐证）。",
+        "confidence": "medium",
+        "evidence": "官方公告页逐项核实组件构成与发布日期；TechCrunch（2025-10-06）与第三方逐组件指南佐证。注意：此为本轮唯一 2-1 通过的 claim——分歧点在「高度重叠」的比较性措辞而非组件事实本身（verifier 对事实部分的证据评级为 high）；Connector Registry 为 beta（部分 API/ChatGPT Enterprise/Edu 客户），ChatKit 等亦有分阶段推送，故「产品化」应读作 shipped-beta 而非 GA。",
+        "sources": [
+          "https://openai.com/index/introducing-agentkit/"
+        ],
+        "vote": "2-1"
+      },
+      {
+        "claim": "【B·行业对照：AgentKit 细节】AgentKit 的两个细节与文章论点直接对应但各有边界：(1) Connector Registry 提供组织级连接治理——管理员可跨多个 workspace 统一治理数据与工具连接、含第三方 MCP（",
+        "consolidates data sources into a single admin panel across ChatGPT and the API": "），即「MCP 网关/治理可复用」的对应物已被头部厂商产品化（beta）；但其治理对象是连接而非 prompt/skill/eval 资产版本化，类比应限缩到连接治理层。(2) Evals 体系以「数据集+打分器」组织并新增 Trace grading（对 agent 执行 trace 打分）与 Automated prompt optimization——与 agent-up 评测闭环同类能力，差异在 OpenAI 将 trace 级评估产品化为产品内能力（trace-grading 文档：",
+        "adds structured scores or labels to an agent's trace": "）。",
+        "confidence": "high",
+        "evidence": "公告页原文核实：",
+        "Connector Registry allows admins to govern and maintain data connections across multiple workspaces": "、第三方 MCP 明确在册、beta 限定 ",
+        "beginning its beta rollout to some API, ChatGPT Enterprise and Edu customers": "；Evals 四项新能力（Datasets/Trace grading/Automated prompt optimization/Third-party model support）原文核实；trace-grading 与 agent-evals 两份官方文档佐证。保留：「内置打分器」略有出入——文档让用户 ",
+        "Create a grader and run it against the selected traces": "，但 Evals 内置 grader 类型含 model-graded/LLM judge，「产品化为产品内打分器」的表述成立。",
+        "sources": [
+          "https://openai.com/index/introducing-agentkit/",
+          "https://developers.openai.com/api/docs/guides/trace-grading"
+        ],
+        "vote": "3-0 / 3-0"
+      },
+      {
+        "claim": "【C·agent-up 已具备项映射】文章三阶段/四问/证据链框架中，agent-up 已具备多个对应物（映射到具体模块/页面/端点，均经代码或 README 核实）：试聊 trace 落盘+👍/👎 打分（POST /api/traces/[id]/rate、/agents/[id] Playground）↔ OpenAI trace grading 与 Anthropic「thumbs-down 类显式信号」线上回灌；评测用例沉淀+发布前快照 replay+AI 判官（eval-case-service、ai-review-service、POST /api/releases/[id]/ai-review）↔ Anthropic 回归评测与 OpenAI「datasets+eval runs」两阶段路径的后段；Chrome 插件反馈收集器（chrome-extension/，自动携带会话上下文直落反馈池）↔ Anthropic「从支持队列提取用例」；四分区编辑器（/agents/[id]，Prompt/Knowledge/Tools/Routing）中 Prompt/Tools/Routing 三分区 ↔ OpenAI 建议改进对象 prompt/tool surfaces/routing logic；L2 固定回路 ↔ Anthropic workflow 化可预测设计；release.configSnapshot（不可变版本快照）已具备 Harness 资产版本化雏形。",
+        "confidence": "high",
+        "evidence": "由多条 verifier 的交叉核对汇总：OpenAI 指南↔agent-up 代码的结构对应经逐文件确认（rate route、eval-case-panel.tsx、ai-review-service.ts 及 trace-eval-ai-review 集成测试）；快照 replay 使用 release.configSnapshot.prompt 由 ai-review-service verifier 记录；四分区（README L17/L52）、Chrome 插件（README L61/L209-217）、发布审批页 /releases 均在 agent-up README 核实。定位结论：agent-up 已走通 OpenAI 两阶段路径的前段（trace→用例），缺口在后段的规模化与门禁化。",
+        "sources": [
+          "https://developers.openai.com/api/docs/guides/agent-evals",
+          "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents",
+          "/Users/allengaller/Documents/GitHub/ai-guru-global/agent-up/README.md"
+        ],
+        "vote": "综合自 6 条 3-0/2-0 已核实 claims（#10/11/13/14/16/17）"
+      },
+      {
+        "claim": "【C·L2 优先级改进建议】按 L2 产品改进环优先级的可落地清单（均已映射到模块/页面）：(P0) code-based 判分器——扩展 EvalCase 增加结构化断言类型（期望含工单号/命中 KB 引用/字段完整），发布前 AI 评测先跑确定性断言再跑 LLM 判官（改 eval-case-service.ts + ai-review-service.ts），补齐 Anthropic 三判分器且演示可信度提升最直接；(P0/P1) 把发布前 AI 评测从「仅供审批参考」升级为门禁依据——README 明示当前 AI 评测仅为审批参考，参照 Langfuse required status check 与 Promptfoo exit-code 模式，在 /releases 审批页给 AI 评测结果加阈值红线与可追溯通过/不通过结论（不必取消人工审批，而是给审批以硬依据）；(P1) 成本-效果度量——/maas 页「每 Agent 模型用量」（tokens/预估成本/时延/解决率）当前为 MOCK，可从真实 trace 落盘的 token/耗时聚合出真实用量报表，支撑 OpenAI 三步法（最强模型建基线→小模型降本）；(P1) 证据链视图——把「工单反馈→trace→AI 归因→审批→发布→效果报告（effectiveness-service）→回滚」串成只读证据链页面（对标 Harness Inspector），并沿用其「趋势非因果」的诚实声明；(P2) 工单场景 org 指标代理——一次会话解决率、升级人工次数等可测代理指标（对应文章四问的验收通过率/人工介入率）；(P2) 把 configSnapshot 扩展为带版本与变更历史的 Harness 资产版本化。",
+        "confidence": "high",
+        "evidence": "推导自已核实事实：#18（code-based 缺口经源码核实为真实缺口）；agent-up README L345 原文「发布前 AI 评测……判官逐条 PASS/FAIL，仅供审批参考」（门禁升级的落点）；#6/#7/#8/#9（CI 门禁产品化模式）；#22（三步法）；/maas 用量块为 MOCK（README L322-325）；#2/#3（Inspector 证据链及其自我限定）；#1（org 指标 absent）；#20/#21（资产版本化在业界无直接产品化对应物，AgentKit 只治理连接）。GTM 约束：agent-up 是专有云工单+演示场景，P0 两项均可在 <2 分钟演示动线中呈现（chrome-extension README 的演示动线），无需通用平台能力。",
+        "sources": [
+          "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents",
+          "https://langfuse.com/resources/engineering/llm-regression-testing",
+          "https://www.promptfoo.dev/docs/integrations/ci-cd/",
+          "https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/",
+          "/Users/allengaller/Documents/GitHub/ai-guru-global/agent-up/README.md",
+          "https://github.com/QoderAI/better-harness"
+        ],
+        "vote": "综合推导（基于 6 条 3-0 事实）"
+      },
+      {
+        "claim": "【D·GTM 叙事增强】One-Pager 与面试话术可直接强化的五点：(1) 用 OpenAI 两阶段路径与 Anthropic 方法论（任何阶段尽早评测、20-50 真实失败起步、支持队列回灌、发布前门禁+上线后监控双环）为评测闭环背书，话术定位为「业界共识的垂直场景落地」而非独创——评测闭环不是差异化点，端到端落地才是；(2) 引入文章「任务证据链」概念并对标 Better Harness Inspector（意图→活动→session→文件→commit），agent-up 对应链是「工单反馈→trace→AI 归因→审批→发布→效果报告→回滚」，同时引用其证据诚实原则（configured≠used、趋势非因果、不合成证据）作为可信度差异化——与 agent-up 全站 MOCK/LIVE 标注规范天然契合；(3) 引用「四问」时必须标注为文章作者概念化框架（Better Harness 官方框架是五维 Agent Work Loop），并重述为 agent-up 版本四问：该工单是否解决 / Skill 与知识是否用对阶段 / 哪些消耗无效 / 哪些案例值得沉淀为评测用例；(4) 用 Anthropic Workflow/Agent 分类为 L2 的 workflow 化设计辩护（工单场景可预测性优先）；(5) 用 AgentKit/Connector Registry 佐证治理层已被头部产品化（beta、仅连接治理），agent-up 差异化在「专有云工单端到端闭环」；可把本文对照结论补入 /architecture/loop 与 /architecture/harness 两个既有行业对照页。",
+        "confidence": "high",
+        "evidence": "综合自 #2（四问非官方框架、与五维的主题重叠关系）、#3/#4（Inspector 实现与反虚标原则原文）、#6/#9（OpenAI 背书与 Anthropic 双环）、#8（分类法原文）、#11/#12（AgentKit 及其 beta/边界）、#1（适配器核查，引用文章数据安全）；agent-up README L393-402 确认 /architecture/loop 与 /architecture/harness 已是行业实践对照页，新增对照有现成落点。反例教训：曾有候选 claim 称「Anthropic 推荐生产中以 human-in-the-loop 运行 agent」被 0-3 否决——话术中不可把「审批发布人工卡点」归因于 Anthropic 明文建议，应归于门禁工程实践（Langfuse/Promptfoo 模式）与自身治理设计。",
+        "sources": [
+          "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents",
+          "https://developers.openai.com/api/docs/guides/agent-evals",
+          "https://qoderai.github.io/better-harness/",
+          "https://openai.com/index/introducing-agentkit/",
+          "/Users/allengaller/Documents/GitHub/ai-guru-global/agent-up/README.md"
+        ],
+        "vote": "综合推导"
+      }
+    ],
+    "openQuestions": [
+      "agent-up 发布审批环节的确切现状：发布前 AI 评测结果（POST /api/releases/[id]/ai-review）目前是纯展示还是有任何阈值参与审批决策？需逐行审计 apps/web 发布流程（release-service + /releases 页）才能精确定位门禁改造点与改造量。",
+      "Better Harness 的 per-host session 适配器模式（scripts/session-analysis/platforms/<host>.mjs）能否被 agent-up 借鉴为「工单渠道适配器」——即 Chrome 插件之外，以适配器形式接入专有云工单系统的原生日志/导出，把 L1 trace 回流（README 下一步第 2 项）从单一入口扩展为多渠道？未验证。",
+      "Better Harness roadmap 中 LC-04 Eval Lab、LC-07 Intervention Engine、LC-12 社区 registry 何时从 Proposed 落地？若落地，「组织层=愿景」「无 Skill 市场/MCP 网关」的结论需要重估，届时 agent-up 的差异化窗口是否收窄？",
+      "Braintrust、W&B Weave、Arize Phoenix 在任务证据链与发布门禁上的具体机制是什么？是否已有比 Langfuse/Promptfoo 的 CI 模式更贴合 agent-up「审批制（人工 in the loop）+ AI 评测参考」混合形态的门禁参考实现？（本轮 B 组对照的已知覆盖缺口）"
+    ],
+    "summary": "事实核查结论：文章对 Better Harness 仓库「十余种 Coding Agent」的描述准确（官方矩阵 12 个 host、覆盖度不等、无夸大），「任务证据链」论点有真实实现（Harness Inspector：意图→活动→session→文件→commit 只读溯源工作台），但官方评测框架是五维 Agent Work Loop 而「四问」是文章作者自创的概念化重构；「组织层：基于结果决定投入」及 Skill 市场/MCP 网关/模型网关均属作者愿景——仓库当前是分析报告工具，其已实现 spec 自认 exact cost/first-pass success/intervention rate 等 org 指标 absent。行业对照显示评测闭环（trace 打分→用例沉淀→发布门禁→线上回灌）是 Anthropic/OpenAI/Langfuse/Promptfoo 的共识做法且已产品化，文章的独特性在于把评测扩展为组织层治理与 Harness 资产复用，而这恰是尚无任何厂商产品化的空白地带（OpenAI Connector Registry 仅 beta 且只治理连接）。对 agent-up：已落地的评测闭环方向获业界权威背书（与 OpenAI 两阶段路径逐段对应、与 Anthropic「发布前门禁+线上回灌」双环同构）；经源码核实的最大可落地缺口是 code-based 判分器（EvalCase.expectation 为自由文本、无确定性断言），其次是把发布前 AI 评测从「仅供审批参考」升级为有阈值红线的门禁依据、补齐真实成本-效果度量（/maas 用量块目前为 MOCK）与证据链视图。叙事上建议以「任务证据链+证据诚实」与「专有云工单端到端闭环」做差异化，引用「四问」时须注明为文章作者框架而非 Better Harness 官方。",
+    "refuted": [
+      {
+        "claim": "官方站点明确 Better Harness 支持恰好 10 个宿主适配器（Claude Code、Codex、Qoder、Cursor、Qwen Code、GitHub Copilot、Pi、Kimi Code、WorkBuddy、Grok），其中仅 6 个有已验证的快速开始路径，其余 4 个（Pi、Kimi Code、WorkBuddy、Grok）仅为「适配器支持」，完整交互式报告闭环尚待冒烟验证——这比微信公众号文章所称「支持从十余种 Coding Agent 读取本地执行数据」更保守，文章说法存在夸大。",
+        "source": "https://qoderai.github.io/better-harness/",
+        "vote": "0-3"
+      },
+      {
+        "claim": "Anthropic 明确指出 agent 的自主性带来更高成本与误差累积风险，因此推荐在生产中以 human-in-the-loop 方式运行 agent——这直接印证 agent-up L2 产品改进环中「审批发布」人工卡点的必要性，也印证 Better Harness 文章「基于结果决定投入」的组织治理论点是有业界依据的（同时是『愿景 vs 已实现』核查中的论据性来源而非事实性来源）。",
+        "source": "https://www.anthropic.com/engineering/building-effective-agents",
+        "vote": "0-3"
+      }
+    ],
+    "unverified": [],
+    "sources": [
+      {
+        "url": "https://github.com/QoderAI/better-harness",
+        "quality": "primary",
+        "angle": "项目事实核查",
+        "claimCount": 5
+      },
+      {
+        "url": "https://qoderai.github.io/better-harness/",
+        "quality": "primary",
+        "angle": "项目事实核查",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.braintrust.dev/articles/best-llm-evaluation-platforms-2025",
+        "quality": "blog",
+        "angle": "评测平台横向对照",
+        "claimCount": 5
+      },
+      {
+        "url": "https://langfuse.com/resources/engineering/llm-regression-testing",
+        "quality": "primary",
+        "angle": "评测平台横向对照",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.promptfoo.dev/docs/integrations/ci-cd/",
+        "quality": "primary",
+        "angle": "评测平台横向对照",
+        "claimCount": 5
+      },
+      {
+        "url": "https://developers.openai.com/api/docs/guides/agent-evals",
+        "quality": "primary",
+        "angle": "评测平台横向对照",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.anthropic.com/engineering/building-effective-agents",
+        "quality": "primary",
+        "angle": "权威工程实践",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents",
+        "quality": "primary",
+        "angle": "权威工程实践",
+        "claimCount": 5
+      },
+      {
+        "url": "https://openai.com/index/introducing-agentkit/",
+        "quality": "primary",
+        "angle": "权威工程实践",
+        "claimCount": 5
+      },
+      {
+        "url": "https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/",
+        "quality": "primary",
+        "angle": "权威工程实践",
+        "claimCount": 5
+      },
+      {
+        "url": "https://developers.openai.com/api/docs/guides/evaluation-best-practices",
+        "quality": "primary",
+        "angle": "权威工程实践",
+        "claimCount": 5
+      },
+      {
+        "url": "https://aws.amazon.com/blogs/opensource/governing-ai-assets-at-scale-with-mcp-gateway-and-registry/",
+        "quality": "primary",
+        "angle": "组织级资产治理",
+        "claimCount": 5
+      },
+      {
+        "url": "https://aws.amazon.com/blogs/machine-learning/govern-ai-agent-tool-access-with-amazon-bedrock-agentcore-gateway/",
+        "quality": "primary",
+        "angle": "组织级资产治理",
+        "claimCount": 5
+      },
+      {
+        "url": "https://langfuse.com/resources/engineering/prompt-cicd",
+        "quality": "primary",
+        "angle": "组织级资产治理",
+        "claimCount": 5
+      },
+      {
+        "url": "https://langfuse.com/blog/2026-07-15-llm-certification-financial-services",
+        "quality": "blog",
+        "angle": "组织级资产治理",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills",
+        "quality": "primary",
+        "angle": "组织级资产治理",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.snowflake.com/en/blog/engineering/enterprise-mcp-gateway-ai-agent-governance/",
+        "quality": "primary",
+        "angle": "组织级资产治理",
+        "claimCount": 5
+      },
+      {
+        "url": "https://www.fiddler.ai/blog/ai-agent-failure-rate",
+        "quality": "blog",
+        "angle": "实践者反思与成本效果",
+        "claimCount": 5
+      },
+      {
+        "url": "https://prefactor.tech/blog/ai-agent-reliability-gap-benchmarks-vs-production",
+        "quality": "blog",
+        "angle": "实践者反思与成本效果",
+        "claimCount": 5
+      },
+      {
+        "url": "https://fortune.com/2025/08/18/mit-report-95-percent-generative-ai-pilots-at-companies-failing-cfo/",
+        "quality": "secondary",
+        "angle": "实践者反思与成本效果",
+        "claimCount": 5
+      },
+      {
+        "url": "https://arxiv.org/html/2602.16666v1",
+        "quality": "primary",
+        "angle": "实践者反思与成本效果",
+        "claimCount": 5
+      },
+      {
+        "url": "https://arxiv.org/html/2508.02994v1",
+        "quality": "primary",
+        "angle": "实践者反思与成本效果",
+        "claimCount": 5
+      },
+      {
+        "url": "https://deepeval.com/blog/llm-as-a-judge",
+        "quality": "blog",
+        "angle": "实践者反思与成本效果",
+        "claimCount": 5
+      }
+    ],
+    "stats": {
+      "angles": 5,
+      "sourcesFetched": 23,
+      "claimsExtracted": 115,
+      "claimsVerified": 25,
+      "confirmed": 23,
+      "killed": 2,
+      "unverified": 0,
+      "afterSynthesis": 15,
+      "urlDupes": 0,
+      "budgetDropped": 7,
+      "agentCalls": 105
+    }
+  },
+  "logs": [
+    "Question: 研究问题：《组织级 Harness 的建设路径：从 Better Harness 的实践启程》（微信公众号文章，QoderAI/Better Harness 团…",
+    "Decomposed into 5 angles: 项目事实核查, 评测平台横向对照, 权威工程实践, 组织级资产治理, 实践者反思与成本效果",
+    "实践者反思与成本效果: 6 search results",
+    "组织级资产治理: 6 search results",
+    "权威工程实践: 6 search results",
+    "权威工程实践: 5 novel (1 filtered)",
+    "评测平台横向对照: 6 search results",
+    "评测平台横向对照: 4 novel (2 filtered)",
+    "项目事实核查: 6 search results",
+    "项目事实核查: 2 novel (4 filtered)",
+    "Fetched 23 sources -> 115 claims -> verifying top 25",
+    "confirmed: 文章称 Better Harness『支持从十余种 Coding Agent 读取本地执行数据分析』——仓库事实相符且略有超出：官方 Hos",
+    "confirmed: 文章『任务证据链』论点（把执行活动与任务意图连接）在仓库中已具体实现为 Harness Inspector：一个只读的交互式追踪视图，沿产品",
+    "confirmed: 仓库的实际评测框架是『Agent Work Loop』五维度定性模型（Task Understanding / Controlled Exe",
+    "confirmed: 仓库对能力边界有明确的『反虚标』自我约束：未观测到的行为保持显式缺失而非编造分数；已配置资产只能证明机制存在、只有关联任务证据才能证明被使用",
+    "refuted: 官方站点明确 Better Harness 支持恰好 10 个宿主适配器（Claude Code、Codex、Qoder、Cursor、Qw",
+    "confirmed: Langfuse 实现了绑定式发布门禁：在 GitHub Actions 中运行评测脚本、聚合分低于阈值时抛出 RegressionErro",
+    "confirmed: Better Harness 官方定义的评测框架是「Agent Work Loop」五环节（任务理解、可控执行、改动验证、可靠交付、经验沉淀",
+    "confirmed: Langfuse 提供官方 GitHub Action（langfuse/experiment-action），将评测脚本针对 Langfu",
+    "confirmed: Better Harness 的 Harness Inspector 提供只读工作区，把产品意图与 Agent 活动、会话、文件、提交串联成",
+    "confirmed: Promptfoo 的 CI/CD 集成支持硬性发布门禁：当评测质量阈值未达标时使构建失败（exit code 门禁），即评测结果可以直接阻",
+    "confirmed: Promptfoo 官方支持在 PR 流程中运行 LLM 评测，把评测作为代码合入生产前的检查步骤（pull_request 触发器），这与",
+    "confirmed: OpenAI 官方 agent 评测文档将「trace grading（对单次执行 trace 打分）」定位为发现 agent 工作流级问题",
+    "confirmed: OpenAI 规定 trace grading 应回答的具体问题包括「agent 是否选对了工具」以及是否违反策略——这直接对应 Bette",
+    "parallel[1] failed: agent({schema}): subagent completed without calling StructuredOutput",
+    "confirmed: OpenAI 文档给出的评测工作流是两阶段路径：先对个体 trace 打分以明确「好」的标准，再把标准固化为可重复的 datasets 和  (1 verifier errors)",
+    "confirmed: OpenAI 文档对评测结果的建议用途是迭代改进 prompt、工具面（tool surfaces）、路由逻辑与护栏，而非自动化发布门禁/C",
+    "confirmed: Anthropic 在官方工程文章中给出了行业通用的基础分类法：agentic 系统分为「Workflow（LLM 与工具经预定义代码路径编",
+    "confirmed: Anthropic 将 agent 成功的关键归结为「度量性能并持续迭代实现」，即评测先行——与 Better Harness 文章「一次成",
+    "confirmed: Anthropic 官方主张评测应在 agent 生命周期任何阶段尽早建立，起步规模仅需从真实失败中抽取 20-50 个简单任务；对已上线的",
+    "refuted: Anthropic 明确指出 agent 的自主性带来更高成本与误差累积风险，因此推荐在生产中以 human-in-the-loop 方式运",
+    "confirmed: Anthropic 将评测分为两类——能力/质量评测（探测 agent 能做什么，通过率低）与回归评测（验证旧任务是否仍然通过，通过率接近 ",
+    "confirmed: Anthropic 规定 agent 评测应混合三种判分器：代码判分、模型判分（LLM judge）、人工判分。对照 agent-up 现状",
+    "confirmed: OpenAI 于 2025-10-06 发布 AgentKit，将其定位为构建、部署、优化 Agent 的完整工具集，核心组件为 Agent",
+    "confirmed: AgentKit 的 Evals 体系以「数据集 + 打分器」组织，并新增 Trace grading（对 agent 执行 trace 打",
+    "confirmed: AgentKit 的 Connector Registry 提供组织级「工具/连接资产治理」能力：管理员可跨多个工作区统一治理和维护数据与工",
+    "confirmed: OpenAI 指南将模型选型方法论明确为三步：先建立 evals 性能基线、用最强模型达到准确率目标、再用更小模型替换以优化成本与延迟——这",
+    "Verified 25 claims; confirmed 23, refuted 2, unverified 0"
+  ],
+  "failures": [
+    "agent[67] v1:OpenAI 文档给出的评测工作流是两阶段路径：先对个体 trace 打分以明确 failed: agent({schema}): subagent completed without calling StructuredOutput",
+    "parallel[1] failed: agent({schema}): subagent completed without calling StructuredOutput"
+  ],
+  "agentCount": 105,
+  "totalToolCalls": 690,
+  "durationMs": 3370816,
+  "usage": {
+    "agents": 105,
+    "toolCalls": 690,
+    "durationMs": 3370816
+  },
+  "transcriptDir": "/Users/allengaller/Documents/GitHub/ai-guru-global/agent-up/.qoder/sessions/87222844-c2e9-4585-af6f-f57cc67f7fba/workflows/runs/wf_801e7c47-f99",
+  "scriptPath": "/Users/allengaller/Documents/GitHub/ai-guru-global/agent-up/.qoder/sessions/87222844-c2e9-4585-af6f-f57cc67f7fba/workflows/scripts/deep-research-wf_801e7c47-f99.js"
+}

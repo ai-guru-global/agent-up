@@ -15,6 +15,7 @@ import {
   Table,
 } from "../architecture/_components/ui";
 import { ConnectivityProbe } from "./connectivity-probe";
+import { AgentUsageBlock } from "./usage-block";
 
 const modelRoutingChart = `flowchart LR
   A["工单进入"] --> B{"qwen-turbo\\n意图分类"}
@@ -33,7 +34,7 @@ export default function MaasPage() {
       <PageHeader
         title="模型服务（MaaS 集成）"
         badge="MOCK"
-        subtitle="展示 agent-up 与阿里云大模型产品的结合方式：MaaS 提供模型引擎，agent-up 管 Agent 的配置·评估·发布·回滚生命周期。公共云走百炼 / DashScope，专有云走 Apsara Stack 私有化推理——同一套改进闭环，两种部署形态。产品矩阵与用量为 mock；顶部连通性测试为真实调用（MiMo）。"
+        subtitle="展示 agent-up 与阿里云大模型产品的结合方式：MaaS 提供模型引擎，agent-up 管 Agent 的配置·评估·发布·回滚生命周期。公共云走百炼 / DashScope，专有云走 Apsara Stack 私有化推理——同一套改进闭环，两种部署形态。产品矩阵与路由策略为 mock；顶部连通性测试与②用量块（有试聊数据时）为真实数据。"
       />
 
       <div className="mt-8">
@@ -45,7 +46,7 @@ export default function MaasPage() {
         <strong className="font-semibold text-[var(--muted)]">②</strong> 再看每个 Agent 的模型消费，判断改进值不值；
         <strong className="font-semibold text-[var(--muted)]">③</strong> 路由图说明「质量 / 成本 / 时延」怎么通过配置而非代码来平衡；
         <strong className="font-semibold text-[var(--muted)]">④</strong> 最后对齐四分区各自的 MaaS 接入点与当前进度。
-        除顶部连通性测试外，本页数据均为 mock，可安全用于客户现场讲解。
+        除顶部连通性测试与②用量块（有试聊数据时）外，本页数据均为 mock，可安全用于客户现场讲解。
       </p>
 
       <Section
@@ -72,22 +73,10 @@ export default function MaasPage() {
       </Section>
 
       <Section
-        title="② 每 Agent 模型用量（近 30 天 · mock）"
-        description="把模型消费挂到每个 Agent 上：成本、时延、解决率是跟客户对齐「这次改进值不值」的三个抓手。"
+        title="② 每 Agent 模型用量"
+        description="把模型消费挂到每个 Agent 上：成本、时延、解决率是跟客户对齐「这次改进值不值」的三个抓手。有试聊数据时本块显示真实聚合（LIVE），无试聊数据时回退 mock 演示口径。"
       >
-        <Table
-          caption="每个 Agent 近 30 天的模型消费与效果指标，含主模型、兜底模型、调用量、token 量、预估成本、平均时延与解决率"
-          head={["Agent", "主模型", "兜底", "调用次数", "Tokens", "预估成本", "平均时延", "解决率"]}
-          rows={[
-            ["ECS 工单助手", <span><strong>qwen-max</strong>（百炼）</span>, "qwen-plus", "12,480", "186M", "¥3,720", "2.8s", <Pill tone="good">78%</Pill>],
-            ["RDS 工单助手", <span><strong>qwen-plus</strong>（百炼）</span>, "qwen-turbo", "5,214", "64M", "¥860", "1.9s", <Pill tone="warn">71%</Pill>],
-          ]}
-        />
-        <p className="mt-2 text-[11px] leading-relaxed text-[var(--subtle)]">
-          注：专有云口径下同一配置切换为 Apsara Stack 私有化推理端点，指标口径一致；成本按公共云 DashScope 刊例价估算。均为 mock。
-          表中「解决率」指工单在不转人工的情况下被 Agent 闭环解决的比例，是判断配置改动是否奏效的核心指标；
-          「平均时延」为端到端往返耗时，含检索与工具调用；「兜底」是主模型不可用或成本降级时实际接手的模型。
-        </p>
+        <AgentUsageBlock />
       </Section>
 
       <Section

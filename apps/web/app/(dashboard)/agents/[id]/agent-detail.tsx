@@ -23,6 +23,7 @@ import {
   metaOf,
 } from "@/components/ui";
 import { EvalCasePanel } from "./eval-case-panel";
+import { EvidenceChainPanel } from "./evidence-chain-panel";
 
 interface AgentDetail {
   id: string;
@@ -443,6 +444,8 @@ export default function AgentDetailPage() {
       <ChatPlayground agentId={id} />
 
       <EvalCasePanel agentId={id} />
+
+      <EvidenceChainPanel agentId={id} />
 
       <VersionHistory agentId={id} activePartition={activeTab} onRollbackDone={fetchConfig} />
     </div>

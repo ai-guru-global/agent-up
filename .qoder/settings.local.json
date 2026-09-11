@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(git status --short && echo \"---diff-stat---\" && git diff --stat | tail -5)",
+      "WebFetch(*)"
     ]
   }
 }

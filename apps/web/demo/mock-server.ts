@@ -143,6 +143,186 @@ function withEffectiveness(version: AnyRec): AnyRec {
   return { ...version, effectivenessReport: computeEffectivenessReport(version) };
 }
 
+// ----- maas usage（镜像 maas-usage-service：聚合试聊 trace 的每 Agent 真实用量） -----
+
+function maasUsageReport(): AnyRec {
+  const nameOf = new Map(
+    state.agents
+      .filter((a) => typeof a.id === "string")
+      .map((a) => [
+        String(a.id),
+        typeof a.name === "string" ? (a.name as string) : null,
+      ]),
+  );
+  const groups = new Map<string, AnyRec[]>();
+  for (const t of state.traces) {
+    const agentId = String(t.agentId ?? "");
+    if (!agentId) continue;
+    const list = groups.get(agentId) ?? [];
+    list.push(t);
+    groups.set(agentId, list);
+  }
+  const agents: AnyRec[] = [];
+  for (const [agentId, list] of groups) {
+    const sorted = [...list].sort((a, b) =>
+      String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")),
+    );
+    const last = sorted[sorted.length - 1];
+    const usageOf = (t: AnyRec) => (t.usage ?? {}) as AnyRec;
+    const sum = (pick: (t: AnyRec) => unknown) =>
+      list.reduce((acc, t) => acc + (Number(pick(t)) || 0), 0);
+    agents.push({
+      agentId,
+      agentName: nameOf.get(agentId) ?? null,
+      model: typeof last?.model === "string" ? last.model : null,
+      calls: list.length,
+      promptTokens: sum((t) => usageOf(t).promptTokens),
+      completionTokens: sum((t) => usageOf(t).completionTokens),
+      totalTokens: sum((t) => usageOf(t).totalTokens),
+      avgLatencyMs: Math.round(sum((t) => t.latencyMs) / list.length),
+      ratingsUp: list.filter((t) => t.rating === "UP").length,
+      ratingsDown: list.filter((t) => t.rating === "DOWN").length,
+      unrated: list.filter((t) => t.rating !== "UP" && t.rating !== "DOWN").length,
+      lastCallAt: typeof last?.createdAt === "string" ? last.createdAt : null,
+    });
+  }
+  agents.sort(
+    (a, b) =>
+      (b.calls as number) - (a.calls as number) ||
+      String(a.agentId).localeCompare(String(b.agentId)),
+  );
+  return { hasData: agents.length > 0, computedAt: now(), agents };
+}
+
+// ----- 证据链（镜像 evidence-chain-service：只读聚合，无新存储） -----
+
+function evidenceChain(agentId: string): AnyRec {
+  const a = state.agents.find((x) => x.id === agentId);
+  if (!a) throw new MockError(404, "Agent 不存在");
+
+  const nodes: AnyRec[] = [];
+
+  for (const fb of state.feedback) {
+    if (fb.agentId !== agentId) continue;
+    nodes.push({
+      type: "FEEDBACK",
+      id: fb.id,
+      at: String(fb.submittedAt ?? ""),
+      title: String(fb.title ?? "（无标题反馈）"),
+      status: (fb.status as string) ?? null,
+      detail: {
+        severity: fb.severity ?? null,
+        rating: fb.rating ?? null,
+        targetPartition: fb.targetPartition ?? null,
+      },
+    });
+  }
+
+  const evalCaseByTrace = new Map<string, string>();
+  for (const ec of state.evalCases) {
+    if (typeof ec.sourceTraceId === "string" && typeof ec.id === "string")
+      evalCaseByTrace.set(ec.sourceTraceId, ec.id);
+  }
+  for (const tr of state.traces) {
+    if (tr.agentId !== agentId) continue;
+    nodes.push({
+      type: "TRACE",
+      id: tr.id,
+      at: String(tr.createdAt ?? ""),
+      title: String(tr.message ?? ""),
+      status: (tr.rating as string) ?? null,
+      detail: {
+        ratedAt: tr.ratedAt ?? null,
+        note: tr.note ?? null,
+        evalCaseId: evalCaseByTrace.get(String(tr.id)) ?? null,
+      },
+    });
+  }
+
+  for (const rel of state.releases) {
+    if (rel.agentId !== agentId) continue;
+    // 回滚单由 ROLLBACK 审计节点表达，避免重复计节点
+    if (rel.isRollback === true) continue;
+    const aiReview = rel.aiReview as AnyRec | null | undefined;
+    nodes.push({
+      type: "RELEASE",
+      id: rel.id,
+      at: String(rel.submittedAt ?? ""),
+      title: String(rel.changeNote ?? "（无变更说明）"),
+      status: (rel.status as string) ?? null,
+      detail: {
+        changedPartitions: rel.changedPartitions ?? null,
+        aiReviewStatus: (aiReview?.status as string) ?? null,
+      },
+    });
+  }
+
+  for (const ver of state.versions) {
+    if (ver.agentId !== agentId) continue;
+    nodes.push({
+      type: "VERSION",
+      id: ver.id,
+      at: String(ver.publishedAt ?? ""),
+      title: `Version ${String(ver.version ?? "?")}`,
+      status: null,
+      detail: {
+        version: ver.version ?? null,
+        hasEffectivenessReport: ver.effectivenessReport != null,
+        releaseId: ver.releaseId ?? null,
+      },
+    });
+  }
+
+  for (const log of state.auditLogs) {
+    if (log.resourceId !== agentId) continue;
+    if (log.action === "agent.rollback") {
+      nodes.push({
+        type: "ROLLBACK",
+        id: log.id,
+        at: String(log.createdAt ?? ""),
+        title: "整版本回滚",
+        status: null,
+        detail: {
+          scope: "VERSION",
+          rollbackFromVersion: (log.details as AnyRec | null)?.rollbackFromVersion ?? null,
+          newVersion: (log.details as AnyRec | null)?.newVersion ?? null,
+        },
+      });
+    } else if (log.action === "agent.config.update") {
+      const d = (log.details ?? {}) as AnyRec;
+      const partition = typeof d.partition === "string" ? d.partition : null;
+      const restored =
+        typeof d.changeNote === "string"
+          ? /回滚到 Version\s+(\S+)/.exec(d.changeNote)
+          : null;
+      if (partition && restored) {
+        nodes.push({
+          type: "ROLLBACK",
+          id: log.id,
+          at: String(log.createdAt ?? ""),
+          title: "分区回滚",
+          status: null,
+          detail: { scope: "PARTITION", partition, restoredFromVersion: restored[1] },
+        });
+      }
+    }
+  }
+
+  nodes.sort(
+    (x, y) =>
+      String(y.at).localeCompare(String(x.at)) ||
+      String(x.id).localeCompare(String(y.id)),
+  );
+
+  return {
+    agentId,
+    agentName: (a.name as string) ?? null,
+    nodes,
+    computedAt: now(),
+    declaration: "证据链呈现记录到的关联，非因果改进证明",
+  };
+}
+
 // ---------- SemVer（镜像 lib/versioning.bumpVersion） ----------
 
 function compareSemVer(a: string, b: string): number {
@@ -486,6 +666,11 @@ function route(
     });
   }
 
+  // ----- maas -----
+  if (head === "maas" && second === "usage") {
+    if (M === "GET") return ok(maasUsageReport());
+  }
+
   // ----- maas probe -----
   if (head === "maas" && second === "probe") {
     if (M === "GET")
@@ -658,6 +843,11 @@ function route(
         },
         delayMs: 700,
       };
+    }
+
+    // /api/agents/:id/evidence-chain（只读聚合，镜像 evidence-chain-service）
+    if (third === "evidence-chain" && M === "GET") {
+      return ok(evidenceChain(String(second)));
     }
 
     // /api/agents/:id/eval-cases（列表 + 从 trace 沉淀）

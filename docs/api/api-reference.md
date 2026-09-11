@@ -1,6 +1,6 @@
 # API 接口说明（api-reference）
 
-> 维护日期：2026-09-05 · 覆盖 `apps/web/app/api/` 全部 **34 个 route 文件**
+> 维护日期：2026-09-10 · 覆盖 `apps/web/app/api/` 全部 **36 个 route 文件**
 > 实现约定以 `lib/utils.ts`（响应/校验）与 `lib/errors.ts`（错误体系）为准。
 
 ## 一、通用约定
@@ -36,7 +36,7 @@
 
 ---
 
-## 二、Agent 域（11 route）
+## 二、Agent 域（12 route）
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
@@ -50,9 +50,10 @@
 | GET / POST / DELETE | `/api/agents/[id]/skills` | Skill 绑定列表 / 绑定 / 解绑 |
 | POST / PUT | `/api/agents/[id]/release` | 提交发布（自动 diff + 真 SemVer）/ 更新待审 Release |
 | GET / POST | `/api/agents/[id]/eval-cases` | 评测用例库：列表（按沉淀时间倒序）/ 从试聊 trace 沉淀（自动校验 trace 归属） |
+| GET | `/api/agents/[id]/evidence-chain` | **任务证据链**（只读聚合，无新存储）：反馈 → 试聊 trace（含打分/沉淀用例）→ Release（AI 评测结论）→ Version（效果报告）→ 回滚审计，按时间倒序；响应固定携带 `declaration`（非因果改进证明） |
 | POST | `/api/agents/[id]/chat` | **Agent 试聊（真实 LLM）**，见第四节 |
 
-## 三、发布 / Trace / Eval / 反馈 / Skills / Wiki / Settings / 其他（23 route，含 4 个 LLM 端点详见第四节）
+## 三、发布 / Trace / Eval / 反馈 / Skills / Wiki / Settings / 其他（24 route，含 4 个 LLM 端点详见第四节）
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
@@ -73,6 +74,7 @@
 | GET / POST | `/api/settings/product-groups` | 产品组管理 |
 | GET | `/api/settings/audit-logs` | 审计日志（append-only，只读） |
 | GET | `/api/dashboard` | 工作台聚合统计 |
+| GET | `/api/maas/usage` | **MaaS 每 Agent 真实用量**（只读聚合）：按 traces 汇总调用次数/tokens/平均时延/👍👎，按调用次数降序；`hasData=false` 时页面回退 mock 口径（仅覆盖试聊 Playground trace，非生产分布） |
 | POST | `/api/auth/login` | **MOCK 登录**（未接入真实认证；演示账号 `allengaller` / `123`） |
 
 ## 四、LLM 端点（真实调用小米 MiMo，5 个）
@@ -96,5 +98,5 @@
 
 ## 五、测试口径
 
-全部 API 有 Vitest 集成测试（`app/api/__tests__/`，8 个文件，含 trace-eval-ai-review）：验证 status / body / 审计副作用；
+全部 API 有 Vitest 集成测试（`app/api/__tests__/`，10 个文件，含 trace-eval-ai-review / maas-usage / evidence-chain）：验证 status / body / 审计副作用；
 LLM 端点统一 mock `global.fetch`，测试**绝不发真实请求、不消耗 tokens**。

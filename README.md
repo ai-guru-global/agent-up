@@ -2,7 +2,7 @@
 
 > better agent, better life
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-260_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-268_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
 
 基于三层 Loop 设计理念的 Agent 持续改进管理平台。面向专有云工单场景，支持各产品组维护改进各自的 Agent 配置（Prompt / 知识库 / 工具 / 路由），通过审批流程发布新版本。
 
@@ -67,7 +67,7 @@
 - **语言**: TypeScript (strict mode)
 - **样式**: Tailwind CSS 4
 - **校验**: Zod（26 个 schema 覆盖所有 API 入参）
-- **测试**: Vitest 3 + v8 coverage（260 个测试）
+- **测试**: Vitest 3 + v8 coverage（268 个测试）
 - **LLM**: 小米 MiMo（mimo-v2.5-pro，OpenAI 兼容协议 Token Plan）——已真实接入 5 个集成点
 - **数据库**: PostgreSQL 16 + Prisma ORM（schema 已就绪，运行时暂用 JSON 文件）
 - **对象存储**: MinIO (S3 兼容)
@@ -90,7 +90,7 @@ agent-up/
 │       │   │   ├── skills/         # Skills 管理
 │       │   │   ├── wiki/           # 知识库管理
 │       │   │   └── settings/       # 设置（角色/权限/审计日志）
-│       │   ├── api/                # API 路由（34 个 route 文件，含 5 个真实 LLM 端点）
+│       │   ├── api/                # API 路由（36 个 route 文件，含 5 个真实 LLM 端点）
 │       │   └── components/         # 共享组件（含 mermaid 渲染器）
 │       ├── demo/                   # 演示模式：内存 mock API + fetch 拦截（静态 Demo 用）
 │       ├── demo-deploy/dist/       # 静态导出产物（pnpm build:demo，gitignored）
@@ -113,6 +113,8 @@ agent-up/
 │       │       ├── trace-service          # 试聊 trace 落盘 + 打分
 │       │       ├── eval-case-service      # 评测用例库（试聊沉淀）
 │       │       ├── ai-review-service      # 发布前 AI 评测（快照 replay + 确定性断言 + 判官）
+│       │       ├── maas-usage-service      # MaaS 每 Agent 真实用量聚合（traces 汇总）
+│       │       ├── evidence-chain-service  # 任务证据链（只读时间线聚合）
 │       │       ├── llm-service            # LLM 网关（MiMo，env 凭据，零硬编码）
 │       │       └── audit-service          # 审计日志（append-only）
 │       └── data/                   # 种子数据（JSON 文件，mock）
@@ -124,7 +126,7 @@ agent-up/
 │   ├── superpowers/specs/          # 设计规格书（带状态/版本标记）
 │   ├── evaluation/                 # 项目评估 + Harness/Loop 参考
 │   ├── reports/                    # 阶段性交付报告（命名规范见目录 README）
-│   ├── api/                        # API 接口完整说明（34 route）
+│   ├── api/                        # API 接口完整说明（36 route）
 │   └── guides/                     # 部署指南 + 故障排查手册
 ├── GTM/                            # Go-To-Market 物料库（索引与口径见 GTM/README.md）
 ├── chrome-extension/               # Chrome 插件 PoC（反馈收集器，零主仓库改动）
@@ -139,7 +141,7 @@ Prisma（schema 就绪）与 MinIO 为下一阶段持久化预留，业务代码
 
 ```mermaid
 flowchart LR
-    P["浏览器 · App Router 页面<br/>（见页面导航）"] --> A["API 路由层 · 34 个 route<br/>Zod 校验 · 结构化错误 · Actor 上下文"]
+    P["浏览器 · App Router 页面<br/>（见页面导航）"] --> A["API 路由层 · 36 个 route<br/>Zod 校验 · 结构化错误 · Actor 上下文"]
     A --> S["服务层 lib/services<br/>agent / release / feedback / skill / wiki<br/>trace / eval-case / ai-review / effectiveness / audit"]
     S --> D["JSON 文件存储<br/>apps/web/data/"]
     S --> L["LLM 网关 llm-service<br/>env 凭据 · 统一超时"]
@@ -189,10 +191,10 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 ### 测试
 
-**260 个测试，22 个测试文件：**
+**268 个测试，24 个测试文件：**
 
 - **单元测试**（`lib/__tests__/`，14 个文件）：versioning、errors、schemas、diff、store、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、retrieval-service、utils、llm-service（mock fetch）
-- **API 集成测试**（`app/api/__tests__/`，8 个文件）：agents、releases（含审批流 + diff）、feedback、skills、wiki、versions/rollback、effectiveness 全链路、trace/eval 闭环（trace-eval-ai-review）+ LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
+- **API 集成测试**（`app/api/__tests__/`，10 个文件）：agents、releases（含审批流 + diff）、feedback、skills、wiki、versions/rollback、effectiveness 全链路、trace/eval 闭环（trace-eval-ai-review）、MaaS 用量聚合（maas-usage）、证据链（evidence-chain）+ LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
 - **隔离**：每个测试用临时数据目录（`_setDataDir`），绝不污染仓库种子数据
 
 ## 演示双轨（本地全栈 / 静态导出 Demo）
@@ -409,7 +411,7 @@ flowchart TB
 |------|------|
 | `docs/README.md` | 文档体系总索引 |
 | `GTM/README.md` | Go-To-Market 物料库（One-Pager / 面试话术 / 产品首页 / 海报 + 事实口径表） |
-| `docs/api/api-reference.md` | API 接口完整说明（34 route + 错误码 + LLM 端点细节） |
+| `docs/api/api-reference.md` | API 接口完整说明（36 route + 错误码 + LLM 端点细节） |
 | `docs/guides/deployment.md` | 部署指南（含演示前检查清单） |
 | `docs/guides/troubleshooting.md` | 故障排查手册（15 个已知问题） |
 | `docs/superpowers/specs/2026-07-06-agent-improvement-platform-mvp-design.md` | MVP 设计（三层 Loop 理念源头，已落地） |
@@ -475,7 +477,7 @@ A：`allengaller` / `123`（MOCK 登录，登录后即管理员角色，详见 [
 
 本仓库当前为演示 / 面试形态项目；欢迎讨论与复用。提交或评审改动时遵循以下约定：
 
-1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（260 个测试）
+1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（268 个测试）
 2. 新增 mock 能力时遵循全站统一的 MOCK 标注规范（徽标 + 代码注释，见 [MOCK 声明](#mock-声明与演示用途)）
 3. 新增文档按 `YYYY-MM-DD-主题.md` 命名放入 `docs/` 对应目录（规范见 [文档索引](#文档索引)）
 4. commit message 用 Conventional Commits 风格：`feat|fix|docs|chore(scope): 中文摘要`，如 `fix(web): 修复 lint 扫描构建产物`

@@ -1,6 +1,6 @@
 # docs — 文档体系总索引
 
-> 维护日期：2026-09-09
+> 维护日期：2026-09-10
 > 本目录是 agent-up 全部项目文档的入口。文档按「设计 → 评估 → 交付 → 使用」四层组织，
 > 时间戳即版本：同主题新一轮产出以新日期另建文件，不覆盖旧文档。
 > 外部导入的知识文献另见 [knowledge-base/](./knowledge-base/README.md)。
@@ -23,7 +23,7 @@
 | 2026-07-06 | [扩展设计](./superpowers/specs/2026-07-06-agent-improvement-platform-extended-design.md) | Approved → Partially Implemented | L1/L2/L3 完整架构与 Harness 对齐；Prisma 持久化仍为规划 |
 | 2026-08-21 | [MaaS 集成 mock 层](./superpowers/specs/2026-08-21-maas-integration-mock-design.md) | Approved → Implemented | `/maas` 页 + 种子数据 MaaS 口径（公共云+专有云双形态） |
 | 2026-08-25 | [MiMo 真实 LLM 接入](./superpowers/specs/2026-08-25-mimo-llm-integration-design.md) | Approved → Implemented | LLM 网关 + 4 个真实集成点 |
-| 2026-09-09 | [评测确定性断言与发布门禁增强](./superpowers/specs/2026-09-09-eval-assertion-gate-design.md) | Approved → Partially Implemented（R1/R2 已交付） | R1 断言判分器 + R2 门禁留痕已交付；R3 真实用量 + R4 证据链视图下一轮（源自 Better Harness 文章研究） |
+| 2026-09-09 | [评测确定性断言与发布门禁增强](./superpowers/specs/2026-09-09-eval-assertion-gate-design.md) | Implemented（R1–R4 已交付） | R1 断言判分器 + R2 门禁留痕 + R3 真实用量聚合 + R4 任务证据链视图均已交付；R5 组织级指标代理为 Backlog（源自 Better Harness 文章研究） |
 
 状态语义：`Draft`（起草）→ `Approved`（用户批准）→ `Implemented`（已交付）/ `Partially Implemented`（部分落地）。
 
@@ -48,7 +48,7 @@
 
 | 文档 | 受众 | 内容 |
 |------|------|------|
-| [API 接口说明](./api/api-reference.md) | 前端 / 集成方 | 34 个 route 的端点清单、响应约定、错误码、LLM 端点细节 |
+| [API 接口说明](./api/api-reference.md) | 前端 / 集成方 | 36 个 route 的端点清单、响应约定、错误码、LLM 端点细节 |
 | [部署指南](./guides/deployment.md) | 部署 / 演示准备 | 本地启动、环境变量、生产构建、演示前检查清单 |
 | [故障排查手册](./guides/troubleshooting.md) | 开发者 | 已知问题与修复模式（env 加载、LLM 错误、测试时间炸弹等） |
 
