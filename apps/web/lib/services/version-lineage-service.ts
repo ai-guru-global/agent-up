@@ -17,7 +17,12 @@ import { store } from "@/lib/data/store";
 import { computeJsonDiff } from "@/lib/diff";
 
 const PARTITIONS = ["PROMPT", "KNOWLEDGE", "TOOLS", "ROUTING"] as const;
-const SNAPSHOT_KEY: Record<(typeof PARTITIONS)[number], string> = {
+type SnapshotKey =
+  | "promptSnapshot"
+  | "knowledgeSnapshot"
+  | "toolsSnapshot"
+  | "routingSnapshot";
+const SNAPSHOT_KEY: Record<(typeof PARTITIONS)[number], SnapshotKey> = {
   PROMPT: "promptSnapshot",
   KNOWLEDGE: "knowledgeSnapshot",
   TOOLS: "toolsSnapshot",
