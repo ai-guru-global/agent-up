@@ -7,9 +7,7 @@ import {
   type AuditLogEntry,
 } from "@/lib/services/audit-service";
 import { withActor } from "@/lib/context";
-import { store } from "@/lib/data/store";
 import { _resetDb } from "@/lib/data/test-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 beforeEach(_resetDb);
 
@@ -55,20 +53,6 @@ describe("recordAudit", () => {
     const entry = recordAudit("agent.create", "agent", "a2");
     await flushAudit();
     expect(await prisma.auditLog.count({ where: { id: entry.id } })).toBe(1);
-  });
-
-  it("桥接期同步镜像写 audit-logs.json（批5 移除）", async () => {
-    useTempDataDir();
-    try {
-      const entry = recordAudit("mirror.test", "test", "m1");
-      const logs = store.readArray<Record<string, unknown>>(
-        "settings",
-        "audit-logs.json"
-      );
-      expect(logs.some((l) => l.id === entry.id)).toBe(true);
-    } finally {
-      restoreDataDir();
-    }
   });
 });
 

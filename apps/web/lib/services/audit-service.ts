@@ -1,13 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@agent-up/db";
-import { store } from "@/lib/data/store";
 import { getActor } from "@/lib/context";
 
 /**
  * 审计日志服务（append-only）。
- *
- * 批1 起 Prisma 是事实源；批2-4 迁移期内同步镜像写 audit-logs.json，
- * 供尚未迁移的测试套件断言（批5 删 store 时一并移除镜像）。
  *
  * 与 agent-service.recordConfigChange 的区别：
  * - recordConfigChange 写配置级 diff 明细（批3 迁移）
@@ -27,8 +23,6 @@ export interface AuditLogEntry {
   details?: Record<string, unknown>;
 }
 
-const AUDIT_FILE = ["settings", "audit-logs.json"] as const;
-
 const pendingWrites = new Set<Promise<unknown>>();
 
 function track<T>(p: Promise<T>): Promise<T> {
@@ -40,16 +34,6 @@ function track<T>(p: Promise<T>): Promise<T> {
 /** 测试专用：等待所有 fire-and-forget 审计写入收口 */
 export async function flushAudit(): Promise<void> {
   await Promise.allSettled([...pendingWrites]);
-}
-
-function appendJsonMirror(entry: AuditLogEntry): void {
-  try {
-    const all = store.readArray<AuditLogEntry>(...AUDIT_FILE);
-    all.push(entry);
-    store.writeArray(all, ...AUDIT_FILE);
-  } catch {
-    // 镜像失败可忽略：Prisma 才是事实源
-  }
 }
 
 /**
@@ -97,8 +81,6 @@ export function recordAudit(
         }
       })
   );
-
-  appendJsonMirror(entry);
   return entry;
 }
 

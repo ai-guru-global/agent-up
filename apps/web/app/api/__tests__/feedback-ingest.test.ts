@@ -1,12 +1,8 @@
-import { readdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as ingestFeedback } from "@/app/api/feedback/ingest/route";
 import { prisma } from "@agent-up/db";
-import { store, _getDataDir } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { listAudit, flushAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
@@ -32,25 +28,10 @@ function ingest(body: unknown) {
   );
 }
 
-/** useTempDataDir 会拷贝运行时 data/，清空 feedback 与审计日志（含「 2」重名副本等旁支文件）保证断言确定性 */
-function clearRuntimeData() {
-  const dir = join(_getDataDir(), "feedback");
-  for (const name of readdirSync(dir)) {
-    if (name.endsWith(".json")) unlinkSync(join(dir, name));
-  }
-  store.write([], "settings", "audit-logs.json");
-}
-
-// 批1 起审计以 Prisma 为事实源：清 worker 测试库保证 listAudit 断言确定性
+// 批5 起存储全量在 PG：清 worker 测试库保证 listAudit 断言确定性
 beforeEach(async () => {
   resetActor();
   await _resetDb();
-  useTempDataDir();
-  clearRuntimeData();
-});
-
-afterEach(() => {
-  restoreDataDir();
 });
 
 describe("POST /api/feedback/ingest（多渠道工单适配器）", () => {

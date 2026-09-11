@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import {
   GET as listFeedback,
@@ -7,9 +7,8 @@ import {
 } from "@/app/api/feedback/route";
 import { GET as listSkills, POST as createSkill } from "@/app/api/skills/route";
 import { GET as listVaults, POST as createVault } from "@/app/api/wiki/vaults/route";
-import { store } from "@/lib/data/store";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
+import { flushAudit, listAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
 
 const AGENT_ID = "ecs-assistant";
@@ -22,13 +21,11 @@ function makeRequest(method: string, body?: unknown): NextRequest {
   });
 }
 
-// 批2 起 feedback 以 Prisma 为事实源：agent 需在 PG 建档，POST /api/feedback 才能通过存在性校验
+// 批5 起存储全量在 PG：agent 需在 PG 建档，POST /api/feedback 才能通过存在性校验
 beforeEach(async () => {
   await _resetDb();
   await seedAgent(AGENT_ID);
-  useTempDataDir();
 });
-afterEach(restoreDataDir);
 
 describe("feedback API", () => {
   it("POST creates feedback (201) + audit", async () => {
@@ -43,8 +40,9 @@ describe("feedback API", () => {
     expect(res.status).toBe(201);
     const json = await res.json();
     expect(json.data.status).toBe("NEW");
-    const logs = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
-    expect(logs.some((l) => l.action === "feedback.create")).toBe(true);
+    await flushAudit();
+    const logs = await listAudit({ action: "feedback.create" });
+    expect(logs.length).toBeGreaterThan(0);
   });
 
   it("POST returns 404 for missing agent", async () => {
