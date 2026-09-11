@@ -139,22 +139,20 @@ describe("POST /api/releases/[id]/summary", () => {
 });
 
 describe("POST /api/agents/[id]/chat", () => {
-  beforeEach(() => {
-    store.write(
-      {
-        id: "a1",
-        name: "测试助手",
-        status: "ACTIVE",
-        promptConfig: {
-          systemPrompt: "你是 ECS 助手",
-          roleDefinition: null,
-          constraints: ["不回答无关问题"],
-          outputFormat: null,
-        },
+  // 批3 起 chat 路由以 Prisma 为事实源：建档走 PG（断言结构不动）
+  beforeEach(async () => {
+    await _resetDb();
+    await prisma.productGroup.create({ data: { id: "g-a1", name: "g-a1", displayName: "A1 产品组" } });
+    await prisma.agent.create({ data: { id: "a1", name: "测试助手", productGroupId: "g-a1", createdBy: "seed" } });
+    await prisma.promptConfig.create({
+      data: {
+        agentId: "a1",
+        systemPrompt: "你是 ECS 助手",
+        roleDefinition: null,
+        constraints: ["不回答无关问题"],
+        outputFormat: null,
       },
-      "agents",
-      "a1.json",
-    );
+    });
   });
 
   it("uses agent prompt config as system prompt and returns reply", async () => {

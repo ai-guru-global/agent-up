@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { POST as agentChat } from "@/app/api/agents/[id]/chat/route";
 import { POST as rateTrace } from "@/app/api/traces/[id]/rate/route";
 import {
@@ -10,6 +11,7 @@ import { DELETE as removeEvalCase } from "@/app/api/eval-cases/[id]/route";
 import { POST as runAiReview } from "@/app/api/releases/[id]/ai-review/route";
 import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
@@ -56,9 +58,10 @@ function stubLlmWithJudge() {
   );
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   resetActor();
   useTempDataDir();
+  await _resetDb();
   process.env.MIMO_API_KEY = "tp-test";
   stubLlmWithJudge();
 });
@@ -69,7 +72,23 @@ afterEach(() => {
   delete process.env.MIMO_API_KEY;
 });
 
-function writeAgent(id: string) {
+/** JSON 夹具保留（trace/eval-case/release 路由本批仍读 JSON）；PG 建档供 chat/eval-cases 路由 */
+async function writeAgent(id: string) {
+  await prisma.productGroup.create({
+    data: { id: `g-${id}`, name: `g-${id}`, displayName: `${id} 产品组` },
+  });
+  await prisma.agent.create({
+    data: { id, name: `助手-${id}`, productGroupId: `g-${id}`, createdBy: "seed" },
+  });
+  await prisma.promptConfig.create({
+    data: {
+      agentId: id,
+      systemPrompt: `你是助手 ${id}`,
+      roleDefinition: null,
+      constraints: ["不回答无关问题"],
+      outputFormat: null,
+    },
+  });
   store.write(
     {
       id,
@@ -102,7 +121,7 @@ async function chatOnce(agentId: string, message: string): Promise<{ traceId: st
 
 describe("试聊 trace 闭环", () => {
   it("chat 成功后落盘 trace 并返回 traceId", async () => {
-    writeAgent("a1");
+    await writeAgent("a1");
     const { traceId, reply } = await chatOnce("a1", "ECS 挂了怎么办");
     expect(reply).toBe("LLM-MOCK-CONTENT");
     expect(traceId).toBeTruthy();
@@ -118,7 +137,7 @@ describe("试聊 trace 闭环", () => {
   });
 
   it("打分写入 trace（UP → DOWN 覆盖），非法 rating 422，不存在 404", async () => {
-    writeAgent("a2");
+    await writeAgent("a2");
     const { traceId } = await chatOnce("a2", "磁盘扩容了没变化");
 
     const up = await rateTrace(
@@ -164,7 +183,7 @@ describe("试聊 trace 闭环", () => {
 
 describe("评测用例沉淀", () => {
   it("打分后可沉淀为用例，列表可见，期望行为写入", async () => {
-    writeAgent("b1");
+    await writeAgent("b1");
     const { traceId } = await chatOnce("b1", "实例无法 SSH 连接怎么排查");
 
     const create = await createEvalCase(
@@ -194,8 +213,8 @@ describe("评测用例沉淀", () => {
   });
 
   it("trace 不存在 404；trace 属于其他 Agent 422", async () => {
-    writeAgent("c1");
-    writeAgent("c2");
+    await writeAgent("c1");
+    await writeAgent("c2");
     const { traceId } = await chatOnce("c1", "问点什么");
 
     const missing = await createEvalCase(
@@ -218,7 +237,7 @@ describe("评测用例沉淀", () => {
   });
 
   it("可删除用例；重复删除 404", async () => {
-    writeAgent("d1");
+    await writeAgent("d1");
     const { traceId } = await chatOnce("d1", "删除我这条");
     const create = await createEvalCase(
       new NextRequest("http://localhost", {
@@ -286,7 +305,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
   }
 
   it("replay 使用 release 快照 prompt 并写回 PASSED 结果", async () => {
-    writeAgent("e1");
+    await writeAgent("e1");
     writePendingRelease("e1", "rel-e1");
     writeEvalCase("e1", "case-e1");
 
@@ -348,7 +367,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
         );
       }),
     );
-    writeAgent("f1");
+    await writeAgent("f1");
     writePendingRelease("f1", "rel-f1");
     writeEvalCase("f1", "case-f1");
 
@@ -362,7 +381,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
   });
 
   it("无评测用例 → SKIPPED", async () => {
-    writeAgent("g1");
+    await writeAgent("g1");
     writePendingRelease("g1", "rel-g1");
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-g1" }),
@@ -374,7 +393,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
 
   it("LLM 未配置 → SKIPPED", async () => {
     delete process.env.MIMO_API_KEY;
-    writeAgent("h1");
+    await writeAgent("h1");
     writePendingRelease("h1", "rel-h1");
     writeEvalCase("h1", "case-h1");
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
@@ -387,7 +406,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
   });
 
   it("已处理的 release 再评测 → 409；release 不存在 → 404", async () => {
-    writeAgent("i1");
+    await writeAgent("i1");
     store.write(
       {
         id: "rel-done",
@@ -460,7 +479,7 @@ describe("确定性断言（code-based 判分器）", () => {
   }
 
   it("沉淀请求可携带断言并写入用例", async () => {
-    writeAgent("j1");
+    await writeAgent("j1");
     const { traceId } = await chatOnce("j1", "实例无法 SSH 连接怎么排查");
 
     const create = await createEvalCase(
@@ -486,7 +505,7 @@ describe("确定性断言（code-based 判分器）", () => {
   });
 
   it("非法断言（无效 regex / 未知 type / 空 value / 超 5 条）→ 422", async () => {
-    writeAgent("k1");
+    await writeAgent("k1");
     const { traceId } = await chatOnce("k1", "问点什么");
     const bad = async (assertions: unknown[]) =>
       createEvalCase(
@@ -509,7 +528,7 @@ describe("确定性断言（code-based 判分器）", () => {
   });
 
   it("断言未命中 → 该用例 FAIL 且不调用判官（reason 含断言明细）", async () => {
-    writeAgent("l1");
+    await writeAgent("l1");
     writePendingRelease("l1", "rel-l1");
     writeEvalCaseWithAssertions("l1", "case-l1", [{ type: "contains", value: "快照" }]);
 
@@ -539,7 +558,7 @@ describe("确定性断言（code-based 判分器）", () => {
   });
 
   it("断言全过 → 走判官流程，结果携带断言明细", async () => {
-    writeAgent("m1");
+    await writeAgent("m1");
     writePendingRelease("m1", "rel-m1");
     writeEvalCaseWithAssertions("m1", "case-m1", [{ type: "contains", value: "LLM" }]);
 
@@ -564,7 +583,7 @@ describe("确定性断言（code-based 判分器）", () => {
   });
 
   it("not_contains 与 regex 断言语义正确（全跑不短路，任一失败即 FAIL）", async () => {
-    writeAgent("n1");
+    await writeAgent("n1");
     writePendingRelease("n1", "rel-n1");
     writeEvalCaseWithAssertions("n1", "case-n1", [
       { type: "not_contains", value: "禁词" },

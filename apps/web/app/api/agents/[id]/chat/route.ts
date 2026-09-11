@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { success, handleApiError, validateBody } from "@/lib/utils";
-import { store } from "@/lib/data/store";
 import { NotFoundError } from "@/lib/errors";
 import { agentChatSchema } from "@/lib/schemas";
 import { chatCompletion } from "@/lib/services/llm-service";
@@ -21,7 +21,10 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
-    const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
+    const agent = await prisma.agent.findUnique({
+      where: { id },
+      include: { promptConfig: true },
+    });
     if (!agent) throw new NotFoundError("Agent 不存在");
 
     const validated = await validateBody(request, agentChatSchema);
@@ -29,7 +32,14 @@ export async function POST(
     const { message, history = [] } = validated.data;
 
     const systemPrompt = buildSystemPrompt(
-      (agent.promptConfig ?? {}) as Record<string, unknown>,
+      agent.promptConfig
+        ? {
+            systemPrompt: agent.promptConfig.systemPrompt,
+            roleDefinition: agent.promptConfig.roleDefinition,
+            constraints: agent.promptConfig.constraints,
+            outputFormat: agent.promptConfig.outputFormat,
+          }
+        : null,
     );
 
     const result = await chatCompletion({

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { success, handleApiError, validateBody } from "@/lib/utils";
 import { NotFoundError } from "@/lib/errors";
-import { store } from "@/lib/data/store";
 import { createEvalCaseSchema } from "@/lib/schemas";
 import {
   listEvalCases,
@@ -22,7 +22,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const agent = store.read("agents", `${id}.json`);
+    const agent = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
     if (!agent) throw new NotFoundError("Agent 不存在");
     return success({ items: listEvalCases(id) });
   } catch (err) {
@@ -36,7 +36,7 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
-    const agent = store.read("agents", `${id}.json`);
+    const agent = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
     if (!agent) throw new NotFoundError("Agent 不存在");
 
     const validated = await validateBody(request, createEvalCaseSchema);

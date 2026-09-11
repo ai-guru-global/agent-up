@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { GET as getVersions } from "@/app/api/agents/[id]/versions/route";
 import { POST as rollback } from "@/app/api/agents/[id]/config/[partition]/rollback/route";
 import { GET as getConfig } from "@/app/api/agents/[id]/config/[partition]/route";
 import { store } from "@/lib/data/store";
+import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
+import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 const AGENT_ID = "ecs-assistant";
@@ -16,7 +20,17 @@ function makeRequest(method: string, body?: unknown): NextRequest {
   });
 }
 
-beforeEach(useTempDataDir);
+// 回滚的版本查找仍读 JSON 夹具（批4 切 PG）；配置更新与留痕已走 PG，故需 PG 建档。
+// ver-001 的 knowledgeSnapshot 带 wikiVaultId: "ecs-wiki"，PG 需有对应 vault 行才不触发 FK 违例
+beforeEach(async () => {
+  resetActor();
+  useTempDataDir();
+  await _resetDb();
+  await seedAgent(AGENT_ID);
+  await prisma.wikiVault.create({
+    data: { id: "ecs-wiki", name: "ECS 知识库", agentId: AGENT_ID },
+  });
+});
 afterEach(restoreDataDir);
 
 describe("GET /api/agents/[id]/versions", () => {
@@ -93,12 +107,12 @@ describe("POST /api/agents/[id]/config/[partition]/rollback", () => {
       makeRequest("POST", { versionId: "ver-001" }),
       { params: Promise.resolve({ id: AGENT_ID, partition: "knowledge" }) },
     );
-    const changes = store.list<Record<string, unknown>>("config-changes");
-    const rollbackChange = changes.find((c) =>
-      String(c.partition).includes("ROLLBACK"),
-    );
-    expect(rollbackChange).toBeTruthy();
-    expect(rollbackChange!.changeNote).toMatch(/回滚/);
+    // 批3 起 config-changes 落 PG
+    const change = await prisma.configChange.findFirst({
+      where: { agentId: AGENT_ID, partition: { contains: "ROLLBACK" } },
+    });
+    expect(change).toBeTruthy();
+    expect(change?.changeNote).toMatch(/回滚/);
   });
 
   it("returns 404 for missing version", async () => {
