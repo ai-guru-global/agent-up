@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
+import { prisma } from "@agent-up/db";
 import {
   createSkill,
   getSkill,
@@ -10,18 +11,19 @@ import {
   toggleSkillBinding,
   listSkills,
 } from "@/lib/services/skill-service";
-import { store } from "@/lib/data/store";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ConflictError } from "@/lib/errors";
 import { resetActor } from "@/lib/context";
-import { useTempDataDir, restoreDataDir } from "./helpers/mock-store";
+import { _resetDb } from "@/lib/data/test-db";
+import { seedAgent } from "./helpers/seed-db";
+import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetActor();
-  useTempDataDir();
+  await _resetDb();
+  await seedAgent(AGENT_ID);
 });
-afterEach(restoreDataDir);
 
 async function seedSkill(): Promise<string> {
   const skill = (await createSkill({
@@ -45,12 +47,26 @@ describe("createSkill", () => {
     expect(s.version).toBe("1.0.0");
     expect(s.category).toBe("GENERAL");
     expect(s.runtime).toBe("HTTP");
+    expect(s._count).toEqual({ bindings: 0, versions: 0 });
+    expect(typeof s.createdAt).toBe("string");
   });
 
-  it("writes audit", async () => {
+  it("rejects duplicate name (409)", async () => {
     await seedSkill();
-    const logs = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
-    expect(logs.some((l) => l.action === "skill.create")).toBe(true);
+    await expect(
+      createSkill({ name: "test-skill", displayName: "重复", description: "d" }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("writes audit (PG 事实源)", async () => {
+    const s = (await createSkill({
+      name: "audit-skill",
+      displayName: "审计",
+      description: "d",
+    })) as Record<string, unknown>;
+    await flushAudit();
+    const audits = await listAudit({ action: "skill.create", resourceId: s.id as string });
+    expect(audits.length).toBeGreaterThan(0);
   });
 });
 
@@ -59,12 +75,19 @@ describe("getSkill", () => {
     expect(await getSkill("ghost")).toBeNull();
   });
 
-  it("returns skill with bindings + versions", async () => {
-    const id = await seedSkill();
-    const s = (await getSkill(id)) as Record<string, unknown>;
+  it("returns skill with bindings (agent+skill snapshot) + _count", async () => {
+    const sid = await seedSkill();
+    await bindSkill(AGENT_ID, sid, { p: 1 });
+    const s = (await getSkill(sid)) as Record<string, unknown>;
     expect(s).not.toBeNull();
     expect(Array.isArray(s.bindings)).toBe(true);
-    expect(s._count).toBeDefined();
+    const binding = (s.bindings as Record<string, unknown>[])[0];
+    expect(binding.agent).toEqual({ id: AGENT_ID, name: "ECS 助手" });
+    expect((binding.skill as Record<string, unknown>).name).toBe("test-skill");
+    expect(binding.config).toEqual({ p: 1 });
+    // boundAt 映射到旧契约键 createdAt
+    expect(typeof binding.createdAt).toBe("string");
+    expect(s._count).toEqual({ bindings: 1, versions: 0 });
   });
 });
 
@@ -105,14 +128,17 @@ describe("bindSkill / unbindSkill", () => {
     >;
     expect(binding.skillId).toBe(sid);
     expect(binding.enabled).toBe(true);
+    expect(binding.agentId).toBe(AGENT_ID);
 
-    // 再 bind 同一个 = 更新（不重复）
+    // 再 bind 同一个 = 幂等 upsert（合并 config、不重复建行）
     await bindSkill(AGENT_ID, sid, { p: 2 });
     const bindings = await getAgentSkillBindings(AGENT_ID);
     expect(bindings.filter((b) => b.skillId === sid)).toHaveLength(1);
+    expect((bindings[0] as Record<string, unknown>).config).toEqual({ p: 2 });
 
-    // 解绑
-    await unbindSkill(AGENT_ID, sid);
+    // 解绑：静默成功
+    const r = await unbindSkill(AGENT_ID, sid);
+    expect(r).toEqual({ deleted: true });
     const after = await getAgentSkillBindings(AGENT_ID);
     expect(after.filter((b) => b.skillId === sid)).toHaveLength(0);
   });
@@ -125,6 +151,23 @@ describe("bindSkill / unbindSkill", () => {
 
   it("getAgentSkillBindings returns [] for missing agent", async () => {
     expect(await getAgentSkillBindings("ghost")).toEqual([]);
+  });
+
+  it("getAgentSkillBindings orders by priority desc", async () => {
+    const sidA = await seedSkill();
+    const sidB = (await createSkill({
+      name: "low-prio",
+      displayName: "低优先",
+      description: "d",
+    })) as Record<string, unknown>;
+    await bindSkill(AGENT_ID, sidA);
+    await bindSkill(AGENT_ID, sidB.id as string);
+    await prisma.agentSkillBinding.update({
+      where: { agentId_skillId: { agentId: AGENT_ID, skillId: sidB.id as string } },
+      data: { priority: 5 },
+    });
+    const bindings = await getAgentSkillBindings(AGENT_ID);
+    expect((bindings[0] as Record<string, unknown>).skillId).toBe(sidB.id);
   });
 });
 
@@ -146,5 +189,11 @@ describe("listSkills", () => {
       search: "test",
     });
     expect(searched.items.length).toBeGreaterThan(0);
+  });
+
+  it("ALL 豁免过滤", async () => {
+    await seedSkill();
+    const all = await listSkills({ skip: 0, take: 100, category: "ALL" });
+    expect(all.items.length).toBeGreaterThan(0);
   });
 });

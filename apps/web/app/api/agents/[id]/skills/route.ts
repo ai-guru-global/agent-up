@@ -37,8 +37,10 @@ export async function DELETE(request: NextRequest) {
   const skillId = searchParams.get("skillId");
   if (!agentId || !skillId) return error("agentId 和 skillId 必填");
   try {
-    await unbindSkill(agentId, skillId);
-    return success({ message: "已解绑" });
+    const result = await withActor(resolveActor(request.headers), () =>
+      unbindSkill(agentId, skillId),
+    );
+    return success(result);
   } catch (err) {
     return handleApiError(err);
   }
