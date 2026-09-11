@@ -9,6 +9,8 @@
  * 不再散落硬编码 "system"。
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
+
 export interface Actor {
   id: string;
   name: string;
@@ -21,9 +23,10 @@ const SYSTEM_ACTOR: Actor = {
   role: "platform_admin",
 };
 
-// 同步 AsyncLocalStorage 太重，这里用一个简单的「当前请求 actor」栈即可。
-// Next.js Route Handler 是单线程串行处理一次请求的，模块级栈足够。
-let currentActor: Actor = SYSTEM_ACTOR;
+// AsyncLocalStorage 让 actor 贯穿 await 之后的异步续体。
+// 批1 起 route handler 闭包内是 async Prisma 调用，模块级同步栈会在
+// 第一个 await 后丢上下文（审计署名错乱），故必须用 ALS。
+const actorStorage = new AsyncLocalStorage<Actor>();
 
 /** 从请求头解析 actor（缺省 system） */
 export function resolveActor(headers: Headers): Actor {
@@ -38,23 +41,18 @@ export function resolveActor(headers: Headers): Actor {
   };
 }
 
-/** 在请求作用域内设置 actor，执行完恢复。供 route handler 包裹 service 调用。 */
+/** 在请求作用域内设置 actor，执行完（含异步续体）自动恢复。 */
 export function withActor<T>(actor: Actor, fn: () => T): T {
-  const prev = currentActor;
-  currentActor = actor;
-  try {
-    return fn();
-  } finally {
-    currentActor = prev;
-  }
+  return actorStorage.run(actor, fn);
 }
 
 /** service 层取当前 actor */
 export function getActor(): Actor {
-  return currentActor;
+  return actorStorage.getStore() ?? SYSTEM_ACTOR;
 }
 
-/** 测试用：重置回 system */
-export function resetActor(): void {
-  currentActor = SYSTEM_ACTOR;
-}
+/**
+ * 旧测试套件在 afterEach 调用。AsyncLocalStorage 上下文随作用域自动结束，
+ * 无全局可重置状态，保留为安全空操作以兼容既有测试。
+ */
+export function resetActor(): void {}
