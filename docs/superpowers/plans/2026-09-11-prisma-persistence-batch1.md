@@ -1617,3 +1617,42 @@ git commit -m "docs(plans): 批1 终审记录回写"
 
 - 批2（feedback+skills+wiki+retrieval）开工时：迁移各套件审计断言到 Prisma（`flushAudit` + `prisma.auditLog`），逐步缩小 JSON 镜像的消费者集合；批5 删镜像。
 - 批4 需裁决：Trace/EvalCase→Agent 外键 ON DELETE RESTRICT vs 运行时无约束（批0 裁决②，本批不涉及）。
+
+---
+
+## 终审记录（2026-09-11 执行完毕）
+
+### 结果
+
+- 全量测试：32 files / 315 tests 全绿；lint 通过；`pnpm build` 5/5 任务成功。
+- `AuditLog.userId` 落库验证：`information_schema` 确认 `is_nullable = YES`（迁移 `20260911084030_audit_log_decouple_user`）。
+- 双写共存验证：settings-roles（PG 断言）与 agents（JSON 审计断言）同套件并行通过。
+
+### 提交清单（批1）
+
+| commit | 内容 |
+| --- | --- |
+| a268d83 | context.ts AsyncLocalStorage 重写 + context.test.ts（7 用例） |
+| b69e7d6 | per-worker 测试库基建（globalSetup/setupFiles/VITEST_POOL_ID + 冒烟测试） |
+| 8a323b8 | AuditLog.userId 解耦 User（schema + 迁移） |
+| 74eeb51 | audit-service Prisma 重写 + flushAudit + seed-db 助手 + audit-service.test.ts（10 用例） |
+| 7c19fec | roles 路由重写 + settings-roles.test.ts（9 用例） |
+| ee96576 | permissions / product-groups 路由重写 + 测试（8 用例，真实 `_count`） |
+| 5221b5c | audit-logs 路由重写 + settings-audit-logs.test.ts（7 用例） |
+| 0e685fc | 批1 计划文档 |
+
+### 执行期修复（终审确认）
+
+1. **AsyncLocalStorage 替换同步 actor 栈**：Prisma 异步闭包在首个 await 后丢失模块级 actor，导致审计署名错乱；`withActor`/`getActor` 语义不变，`resetActor` 保留为兼容空操作（14 个测试文件零改动）。
+2. **HTTP 头 Latin-1 限制**：测试里 `x-actor-name` 不能用中文（ByteString TypeError），改 ASCII（"tester"/"wang-wu"）。
+3. **Next.js 16 route handler 直调**：`[id]` 路由需 `{ params: Promise.resolve({ id }) }` 上下文。
+4. **feedback-ingest.test.ts**（并行会话文件，经用户授权修复）：`listAudit` 补 `await`、beforeEach 补 `await _resetDb()`、断言前 `await flushAudit()` —— 4/4 通过。该修复随并行会话自身提交落库。
+5. **提交污染事故与恢复**：一次 `git commit` 卷入并行会话已暂存的 11 个文件；以 `git reset --soft HEAD~1` + pathspec 重新提交无损恢复（ee96576 仅含本批 3 文件）。**协议：批内所有后续提交一律 pathspec 形式。**
+6. **version-lineage-service.ts TS 修复**（并行会话 WIP 文件，工作区级修复，不代提交）：`SNAPSHOT_KEY` 的 value 类型收窄为显式 `SnapshotKey` 联合，否则 build 的 `payloadOf` 参数类型报错。批2 前该文件需由其作者提交。
+
+### 行为变化（有意，对 UI 透明）
+
+- settings 列表的 `_count`（role.members / permission.roles / group.agents / group.members）从运行时虚构常量（1/5/8）变为真实统计（无关联时为 0）。
+- 新建实体 id 由 `randomUUID` 变为 Prisma `cuid()`。
+- permissions / product-groups 新增重复创建 409（原为静默成功或未定义）。
+- `pnpm test` 从纯 JSON 文件硬依赖变为可达 PostgreSQL（每 worker 独立库 `agentup_test_w1..4`，globalSetup 自动建库+迁移）。
