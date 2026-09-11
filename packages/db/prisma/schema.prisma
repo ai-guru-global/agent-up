@@ -222,7 +222,9 @@ model Feedback {
   id              String           @id @default(cuid())
   agentId         String
   agent           Agent            @relation(fields: [agentId], references: [id])
-  source          FeedbackSource   @default(MANUAL)
+  // 运行时把渠道名（generic/ticket-webhook）直接存 source 并原样回显，渠道集合开放
+  // （新渠道 = 加适配器不改存储），枚举建模不成立，改文本列
+  source          String           @default("MANUAL")
   title           String
   content         String
   sessionData     Json?
@@ -238,6 +240,9 @@ model Feedback {
   releaseId       String?
   ingestJobId     String?
   targetPartition ConfigPartition?
+  // 多渠道工单接入的外部单号（幂等键）；响应层重组为 externalRef: {id, url}
+  externalRefId   String?
+  externalRefUrl  String?
   submittedBy     String
   submittedAt     DateTime         @default(now())
   verifiedAt      DateTime?
@@ -247,13 +252,6 @@ model Feedback {
   @@index([agentId, status])
   @@index([submittedAt])
   @@index([severity, status])
-}
-
-enum FeedbackSource {
-  MANUAL
-  API
-  SESSION_IMPORT
-  SYSTEM
 }
 
 enum FeedbackRating {
@@ -434,7 +432,8 @@ model AgentSkillBinding {
   config        Json?
   enabled       Boolean  @default(true)
   priority      Int      @default(0)
-  allowedScopes String[]
+  // 运行时 binding 无该字段，空数组默认
+  allowedScopes String[] @default([])
   boundAt       DateTime @default(now())
   boundBy       String
 
@@ -474,14 +473,16 @@ model WikiVault {
 model WikiPage {
   id             String        @id @default(cuid())
   vaultId        String
-  vault          WikiVault     @relation(fields: [vaultId], references: [id])
+  // 运行时 deleteVault 语义 = 整库连页面一起消失（fs 递归删目录），级联才能成立
+  vault          WikiVault     @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   title          String
   slug           String
   content        String
   summary        String?
+  // 运行时 zod schema 的枚举值即公开契约（UI 按此收发），三枚举对齐运行时
   provenance     Provenance    @default(EXTRACTED)
   lifecycle      PageLifecycle @default(DRAFT)
-  tier           PageTier      @default(SUPPORTING)
+  tier           PageTier      @default(SPECIALIZED)
   baseConfidence Float         @default(0.5)
   sourceRefs     Json
   wikilinks      String[]
@@ -501,11 +502,16 @@ model WikiPage {
   @@index([vaultId, tier])
 }
 
+// 运行时存在两套并存的值域：UI 字典与种子数据用旧值（REVIEWED/SUPPORTING/INFERRED 等），
+// 路由 zod schema 用新值（IN_REVIEW/SPECIALIZED/EDGE_CASE 等）。枚举取并集，两套都能落库。
 enum Provenance {
   EXTRACTED
   INFERRED
   AMBIGUOUS
   SYNTHESIZED
+  AUTHORED
+  DISTILLED
+  IMPORTED
 }
 
 enum PageLifecycle {
@@ -514,18 +520,23 @@ enum PageLifecycle {
   VERIFIED
   DISPUTED
   ARCHIVED
+  IN_REVIEW
+  STALE
+  DEPRECATED
 }
 
 enum PageTier {
   CORE
   SUPPORTING
   PERIPHERAL
+  SPECIALIZED
+  EDGE_CASE
 }
 
 model WikiIngestJob {
   id               String      @id @default(cuid())
   vaultId          String
-  vault            WikiVault   @relation(fields: [vaultId], references: [id])
+  vault            WikiVault   @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   jobType          WikiJobType
   sourceType       String
   sourceId         String?
