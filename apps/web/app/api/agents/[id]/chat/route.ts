@@ -51,7 +51,7 @@ export async function POST(
     });
 
     // 成功回复后落盘为 trace；落盘失败不打断主流程（recordTrace 内部已兜底）
-    const trace = recordTrace({
+    const trace = await recordTrace({
       agentId: id,
       systemPrompt,
       history: history.map((m) => ({ role: m.role, content: m.content })),

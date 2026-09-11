@@ -20,7 +20,7 @@ export async function POST(
     if (!validated.ok) return validated.response;
     const { rating, note } = validated.data;
 
-    const trace = rateTrace(id, rating, note);
+    const trace = await rateTrace(id, rating, note);
     recordAudit("trace.rate", "trace", id, {
       agentId: trace.agentId,
       rating,

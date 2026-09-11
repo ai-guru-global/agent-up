@@ -7,12 +7,14 @@
  *
  * 设计取舍：
  * - recordTrace 失败不抛错、返回 null —— 试聊主流程的回复已经拿到，
- *   落盘只是附加价值，文件系统故障不应让一次成功的对话变成 500。
+ *   落盘只是附加价值，存储故障不应让一次成功的对话变成 500。
  * - rating 支持 UP/DOWN + 可选 note，作为用户对单条回复的显式反馈，
  *   与 Feedback（工单级缺陷上报）互补：前者发生在 Playground 内联，
  *   后者走完整的状态机流转。
+ * - Trace.agentId 为 FK（RESTRICT）：调用方（chat 路由）已先校验 agent
+ *   存在；deleteAgent 仅软归档，不会触发约束。
  */
-import { store } from "@/lib/data/store";
+import { prisma, type Prisma } from "@agent-up/db";
 import { NotFoundError } from "@/lib/errors";
 import type { LlmUsage } from "@/lib/services/llm-service";
 
@@ -37,8 +39,28 @@ export interface TraceRecord {
   note: string | null;
 }
 
+type TraceRow = Prisma.TraceGetPayload<Record<string, never>>;
+
+function toTraceRecord(row: TraceRow): TraceRecord {
+  return {
+    id: row.id,
+    agentId: row.agentId,
+    systemPrompt: row.systemPrompt,
+    history: row.history as unknown as TraceRecord["history"],
+    message: row.message,
+    reply: row.reply,
+    model: row.model,
+    usage: row.usage as unknown as LlmUsage,
+    latencyMs: row.latencyMs,
+    createdAt: row.createdAt.toISOString(),
+    rating: (row.rating as TraceRating | null) ?? null,
+    ratedAt: row.ratedAt ? row.ratedAt.toISOString() : null,
+    note: row.note,
+  };
+}
+
 /** 记录一次试聊。写入失败返回 null（不打断主流程），成功返回完整 trace。 */
-export function recordTrace(input: {
+export async function recordTrace(input: {
   agentId: string;
   systemPrompt: string;
   history: TraceRecord["history"];
@@ -47,37 +69,46 @@ export function recordTrace(input: {
   model: string;
   usage: LlmUsage;
   latencyMs: number;
-}): TraceRecord | null {
+}): Promise<TraceRecord | null> {
   try {
-    const trace: TraceRecord = {
-      id: store.generateId(),
-      ...input,
-      createdAt: store.now(),
-      rating: null,
-      ratedAt: null,
-      note: null,
-    };
-    store.write(trace, "traces", `${trace.id}.json`);
-    return trace;
+    const row = await prisma.trace.create({
+      data: {
+        agentId: input.agentId,
+        systemPrompt: input.systemPrompt,
+        history: input.history as unknown as Prisma.InputJsonValue,
+        message: input.message,
+        reply: input.reply,
+        model: input.model,
+        usage: input.usage as unknown as Prisma.InputJsonValue,
+        latencyMs: input.latencyMs,
+      },
+    });
+    return toTraceRecord(row);
   } catch {
     return null;
   }
 }
 
-export function getTrace(id: string): TraceRecord | null {
-  return store.read<TraceRecord>("traces", `${id}.json`);
+export async function getTrace(id: string): Promise<TraceRecord | null> {
+  const row = await prisma.trace.findUnique({ where: { id } });
+  return row ? toTraceRecord(row) : null;
 }
 
 /** 给一条 trace 打 👍 / 👎（可附简短说明），供沉淀为评测用例或复盘时定位。 */
-export function rateTrace(id: string, rating: TraceRating, note?: string): TraceRecord {
-  const trace = getTrace(id);
-  if (!trace) throw new NotFoundError("Trace 不存在");
-  const updated: TraceRecord = {
-    ...trace,
-    rating,
-    ratedAt: store.now(),
-    note: note?.trim() ? note.trim() : null,
-  };
-  store.write(updated, "traces", `${id}.json`);
-  return updated;
+export async function rateTrace(
+  id: string,
+  rating: TraceRating,
+  note?: string,
+): Promise<TraceRecord> {
+  const row = await prisma.trace.findUnique({ where: { id } });
+  if (!row) throw new NotFoundError("Trace 不存在");
+  const updated = await prisma.trace.update({
+    where: { id },
+    data: {
+      rating,
+      ratedAt: new Date(),
+      note: note?.trim() ? note.trim() : null,
+    },
+  });
+  return toTraceRecord(updated);
 }

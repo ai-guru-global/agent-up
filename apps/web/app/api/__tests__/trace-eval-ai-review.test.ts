@@ -125,7 +125,7 @@ describe("试聊 trace 闭环", () => {
     const { traceId, reply } = await chatOnce("a1", "ECS 挂了怎么办");
     expect(reply).toBe("LLM-MOCK-CONTENT");
     expect(traceId).toBeTruthy();
-    const trace = store.read("traces", `${traceId}.json`);
+    const trace = await prisma.trace.findUnique({ where: { id: traceId } });
     expect(trace).not.toBeNull();
     expect(trace?.agentId).toBe("a1");
     expect(trace?.message).toBe("ECS 挂了怎么办");
@@ -150,7 +150,7 @@ describe("试聊 trace 闭环", () => {
     const upJson = await up.json();
     expect(up.status).toBe(200);
     expect(upJson.data.rating).toBe("UP");
-    expect(store.read("traces", `${traceId}.json`)?.ratedAt).toBeTruthy();
+    expect((await prisma.trace.findUnique({ where: { id: traceId } }))?.ratedAt).toBeTruthy();
 
     const down = await rateTrace(
       new NextRequest("http://localhost", {

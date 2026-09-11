@@ -9,7 +9,7 @@
  * EvalCase 是「回归评测」的语料库，两者都锚定 agentId，但生命周期不同
  * （case 可被删除/归档，feedback 有流转状态）。沉淀动作同时写审计日志。
  */
-import { store } from "@/lib/data/store";
+import { prisma, type Prisma } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
@@ -51,44 +51,67 @@ function summarizeTitle(message: string): string {
   return firstLine.length > 32 ? `${firstLine.slice(0, 32)}…` : firstLine;
 }
 
-export function listEvalCases(agentId: string): EvalCase[] {
-  return store
-    .list<EvalCase>("eval-cases")
-    .filter((c) => c.agentId === agentId)
-    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+type EvalCaseRow = Prisma.EvalCaseGetPayload<Record<string, never>>;
+
+function toEvalCase(row: EvalCaseRow): EvalCase {
+  return {
+    id: row.id,
+    agentId: row.agentId,
+    sourceTraceId: row.sourceTraceId,
+    title: row.title,
+    expectation: row.expectation,
+    ...(row.assertions
+      ? { assertions: row.assertions as unknown as EvalAssertion[] }
+      : {}),
+    systemPrompt: row.systemPrompt,
+    history: row.history as unknown as TraceRecord["history"],
+    message: row.message,
+    referenceReply: row.referenceReply,
+    status: "ACTIVE",
+    createdAt: row.createdAt.toISOString(),
+    createdBy: row.createdBy,
+  };
+}
+
+export async function listEvalCases(agentId: string): Promise<EvalCase[]> {
+  const rows = await prisma.evalCase.findMany({
+    where: { agentId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  return rows.map(toEvalCase);
 }
 
 /** 从一条 trace 沉淀为评测用例。trace 必须属于该 agent，否则拒绝。 */
-export function createEvalCaseFromTrace(
+export async function createEvalCaseFromTrace(
   agentId: string,
   traceId: string,
   expectation?: string,
   assertions?: EvalAssertion[],
-): EvalCase {
-  const trace = getTrace(traceId);
+): Promise<EvalCase> {
+  const trace = await getTrace(traceId);
   if (!trace) throw new NotFoundError("Trace 不存在，无法沉淀");
   if (trace.agentId !== agentId) {
     throw new ValidationError("该 Trace 不属于此 Agent，无法沉淀为它的评测用例");
   }
 
-  const id = store.generateId();
-  const evalCase: EvalCase = {
-    id,
-    agentId,
-    sourceTraceId: traceId,
-    title: summarizeTitle(trace.message),
-    expectation: expectation?.trim() || DEFAULT_EXPECTATION,
-    ...(assertions && assertions.length > 0 ? { assertions } : {}),
-    systemPrompt: trace.systemPrompt,
-    history: trace.history,
-    message: trace.message,
-    referenceReply: trace.reply,
-    status: "ACTIVE",
-    createdAt: store.now(),
-    createdBy: getActor().id,
-  };
-  store.write(evalCase, "eval-cases", `${id}.json`);
-  recordAudit("eval_case.create", "eval_case", id, {
+  const row = await prisma.evalCase.create({
+    data: {
+      agentId,
+      sourceTraceId: traceId,
+      title: summarizeTitle(trace.message),
+      expectation: expectation?.trim() || DEFAULT_EXPECTATION,
+      ...(assertions && assertions.length > 0
+        ? { assertions: assertions as unknown as Prisma.InputJsonValue }
+        : {}),
+      systemPrompt: trace.systemPrompt,
+      history: trace.history as unknown as Prisma.InputJsonValue,
+      message: trace.message,
+      referenceReply: trace.reply,
+      createdBy: getActor().id,
+    },
+  });
+  const evalCase = toEvalCase(row);
+  recordAudit("eval_case.create", "eval_case", evalCase.id, {
     agentId,
     sourceTraceId: traceId,
     title: evalCase.title,
@@ -96,9 +119,9 @@ export function createEvalCaseFromTrace(
   return evalCase;
 }
 
-export function deleteEvalCase(id: string): void {
-  if (!store.delete("eval-cases", `${id}.json`)) {
-    throw new NotFoundError("评测用例不存在");
-  }
+export async function deleteEvalCase(id: string): Promise<void> {
+  const row = await prisma.evalCase.findUnique({ where: { id }, select: { id: true } });
+  if (!row) throw new NotFoundError("评测用例不存在");
+  await prisma.evalCase.delete({ where: { id } });
   recordAudit("eval_case.delete", "eval_case", id, {});
 }

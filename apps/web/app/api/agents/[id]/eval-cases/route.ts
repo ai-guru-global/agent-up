@@ -24,7 +24,7 @@ export async function GET(
   try {
     const agent = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
     if (!agent) throw new NotFoundError("Agent 不存在");
-    return success({ items: listEvalCases(id) });
+    return success({ items: await listEvalCases(id) });
   } catch (err) {
     return handleApiError(err);
   }
@@ -43,7 +43,7 @@ export async function POST(
     if (!validated.ok) return validated.response;
     const { traceId, expectation, assertions } = validated.data;
 
-    const evalCase = createEvalCaseFromTrace(id, traceId, expectation, assertions);
+    const evalCase = await createEvalCaseFromTrace(id, traceId, expectation, assertions);
     return success(evalCase, 201);
   } catch (err) {
     return handleApiError(err);

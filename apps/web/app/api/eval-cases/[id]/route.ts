@@ -14,7 +14,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    deleteEvalCase(id);
+    await deleteEvalCase(id);
     return success({ deleted: true });
   } catch (err) {
     return handleApiError(err);
