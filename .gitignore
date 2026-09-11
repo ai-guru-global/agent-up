@@ -49,3 +49,7 @@ apps/web/prisma/migrations/
 
 # 外部导入知识库（ai-guru-database 快照，仅供本地检索参考，不入版本库）
 docs/knowledge-base/
+
+# Qoder CLI 会话运行时（journal/snapshot/工作流运行工件，纯本地状态不入库）
+.qoder/sessions/
+.qoder/workflows/
