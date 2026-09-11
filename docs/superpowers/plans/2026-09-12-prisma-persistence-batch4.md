@@ -77,3 +77,42 @@
 - versions-rollback 旧夹具 knowledgeSnapshot 带 wikiVaultId 会触发 FK 违例——本批夹具自控快照内容，不带 wikiVaultId，撤销 vault 前置种子。
 - releases.test 门禁夹具的 configSnapshot 内嵌 null 是合法 Json 值，与列级 JsonNull 无关。
 - 并行会话并发提交：所有 commit 用 pathspec 形式（`git commit -m ... -- <paths>`）。
+
+## 终审记录（批4 执行完毕，2026-09-11 回写）
+
+### 门禁结果
+
+| 门禁 | 结果 |
+| --- | --- |
+| `tsc --noEmit`（vitest 不做类型检查） | 通过 |
+| 全量 vitest | 33 文件 / 347 测试全绿 |
+| eslint | 通过 |
+| `next build` | 通过 |
+| 服务层 residue grep（`lib/data/store`） | 非测试代码仅剩 audit-service 镜像 + dashboard 路由（均为批5 计划内） |
+
+### 提交表
+
+| 任务 | 提交 | 内容 |
+| --- | --- | --- |
+| T1 | a0dece2 | Release 回滚三列迁移（isRollback / rollbackFromVersion / rollbackToVersionId） |
+| T2+T3 | f9c00da | trace / eval-case 服务与路由切 Prisma（recordTrace 保留 null 兜底契约） |
+| T4 | baded5d | release 域整体切 Prisma：release / ai-review / effectiveness 服务 + 6 条路由 + 8 个测试套件 + seedReleaseWithVersion |
+| T5 | 4742a3a | version-lineage 切 Prisma（异步化 + payloadOf 收 unknown + 测试夹具走 seed） |
+| T6 | e2fe1ec + 2b77aec | evidence-chain / maas-usage 切 Prisma。注意：主体被并行会话的 `update` 提交（e2fe1ec）连带收走（含 audit-logs.json 镜像噪声），2b77aec 只含测试断言适配——内容完整，提交归属被拆分 |
+
+### 执行中的裁决与教训
+
+1. **(agentId, version) 唯一约束**：JSON 时代允许多版本同名字符串，PG 会炸夹具。effectiveness.test 的 seedVersion 增加 semver 参数（old=0.1.0 / new=0.2.0）。
+2. **FK 使「悬空引用」不可表达**：JSON 时代 version.releaseId 可指向不存在的文件，PG 下 seed 必建真实 Release 行 → evidence-chain 夹具多出一个 RELEASE 节点（5→6），断言按 id 映射重写并注明原因。
+3. **JsonValue 行进宽接口**：effectiveness 的 VersionLike.effectivenessReport 放宽为 unknown，PG 行直接可传，函数内窄化为 EffectivenessReport；纯函数测试不受影响。
+4. **fire-and-forget 审计断言**：凡测试内直接 `listAudit()` 前必须 `await flushAudit()`（recordAudit 是 floating promise）。
+5. **并行会话扫库提交**：pathspec commit 保护了我的提交不夹带他人文件，但反向不成立——并行会话的 `git add -A` 式提交会把我未提交的 WIP 一并收走。T6 主体因此落在 e2fe1ec。批5 需继续警惕。
+6. **D8/D9 落地确认**：evidence-chain 审计源切 `prisma.auditLog`（resourceId 过滤 + details JsonValue 读保护）；maas-usage 保持 JS 聚合，agentName=null 分支保留但注明 FK 下不可达，测试改为断言非空。
+
+### 批5 移交清单（本批核实过的残留）
+
+- `lib/services/audit-service.ts`：JSON 镜像拆除（flushAudit 的 pendingWrites 机制保留）。
+- `app/api/dashboard/route.ts`：最后一个读 store 的路由。
+- 读/清审计镜像的测试：`feedback-skills-wiki.test.ts:46`（readArray 断言）、`feedback-ingest.test.ts:41`（镜像清空）——批5 需切 prisma.auditLog。
+- `app/(dashboard)/architecture/roadmap/page.tsx:244`：内容字符串提及 store 路径（非代码依赖，随 docs sync 一并处理）。
+- `db:seed` 全局种子、删除 store.ts / _setDataDir / data/ 目录、README 与蒸馏文档同步。
