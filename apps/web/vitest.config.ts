@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
+import { TEST_WORKER_DBS } from "./lib/__tests__/setup/worker-count";
 
 export default defineConfig({
   test: {
@@ -13,10 +14,10 @@ export default defineConfig({
         inline: ["@agent-up/db"],
       },
     },
-    // 限制并发 worker：每个 worker 的 PrismaClient 独立建连接池，批1 起
-    // 测试文件全部连 PG，不限制会耗尽 PG 默认 100 连接（maxWorkers 对
-    // forks/threads 两种 pool 都生效；Vitest 3 默认 pool 是 forks）
-    maxWorkers: 4,
+    // worker 数 = 独立测试库数（见 lib/__tests__/setup/prepare-worker-dbs.ts）
+    maxWorkers: TEST_WORKER_DBS,
+    globalSetup: ["./lib/__tests__/setup/prepare-worker-dbs.ts"],
+    setupFiles: ["./lib/__tests__/setup/worker-db-env.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "html"],
