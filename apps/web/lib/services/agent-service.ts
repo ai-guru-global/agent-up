@@ -543,9 +543,9 @@ export async function recordConfigChange(
     data: {
       agentId,
       partition,
-      before: before == null ? Prisma.JsonNull : (before as Prisma.InputJsonValue),
-      after: after as Prisma.InputJsonValue,
-      diff: diff as Prisma.InputJsonValue,
+      before: before == null ? Prisma.JsonNull : (before as unknown as Prisma.InputJsonValue),
+      after: after as unknown as Prisma.InputJsonValue,
+      diff: diff as unknown as Prisma.InputJsonValue,
       changedBy: actor.id,
       changeNote: changeNote ?? null,
     },
