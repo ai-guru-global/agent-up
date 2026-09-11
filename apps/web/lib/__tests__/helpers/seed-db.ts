@@ -2,7 +2,7 @@ import { prisma, Prisma } from "@agent-up/db";
 
 /**
  * 批1 PG 测试的最小种子（全局 db:seed 是批5 的活）。
- * id 沿用运行时种子命名，便于与 data/settings/*.json 对照。
+ * id 沿用全局种子（packages/db/prisma/seed-data.mjs）命名，便于对照。
  */
 export async function seedSettings(): Promise<void> {
   await prisma.permission.createMany({

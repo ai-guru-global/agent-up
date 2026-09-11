@@ -174,8 +174,8 @@ export default function SkillsPage() {
         >
           {error}
           <span className="mt-1 block text-xs">
-            列表数据来自 /api/skills，它读取 apps/web/data/skills/ 下的 JSON 文件。
-            请确认这些文件存在且格式合法，然后重试。
+            列表数据来自 /api/skills，由服务端从 PostgreSQL 实时读取。
+            请确认本地数据库可用，然后重试。
           </span>
         </Alert>
       )}

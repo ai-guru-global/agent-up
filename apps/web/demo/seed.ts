@@ -1,29 +1,25 @@
-import ecsAssistant from "../data/agents/ecs-assistant.json";
-import rdsAssistant from "../data/agents/rds-assistant.json";
-import fb001 from "../data/feedback/fb-001.json";
-import fb002 from "../data/feedback/fb-002.json";
-import fb003 from "../data/feedback/fb-003.json";
-import rel001 from "../data/releases/rel-001.json";
-import rel002 from "../data/releases/rel-002.json";
-import evalEcs001 from "../data/eval-cases/eval-ecs-001.json";
-import evalEcs002 from "../data/eval-cases/eval-ecs-002.json";
-import ver001 from "../data/versions/ver-001.json";
-import ver002 from "../data/versions/ver-002.json";
-import verRds001 from "../data/versions/ver-rds-001.json";
-import skillTicketLookup from "../data/skills/skill-ticket-lookup.json";
-import skillWikiSearch from "../data/skills/skill-wiki-search.json";
-import auditLogs from "../data/settings/audit-logs.json";
-import permissions from "../data/settings/permissions.json";
-import productGroups from "../data/settings/product-groups.json";
-import roles from "../data/settings/roles.json";
-import wikiVaultEcs from "../data/wiki-vaults/ecs-wiki.json";
-import wikiVaultRds from "../data/wiki-vaults/rds-wiki.json";
-import pageEcsDisk from "../data/wiki-vaults/ecs-wiki/pages/page-ecs-disk.json";
-import pageEcsSg from "../data/wiki-vaults/ecs-wiki/pages/page-ecs-sg.json";
-import pageEcsSsh from "../data/wiki-vaults/ecs-wiki/pages/page-ecs-ssh.json";
-import pageRdsConn from "../data/wiki-vaults/rds-wiki/pages/page-rds-conn.json";
+import { seedData } from "@agent-up/db/prisma/seed-data.mjs";
 
 export type AnyRec = Record<string, unknown>;
+
+/**
+ * 演示数据集单一事实源在 packages/db/prisma/seed-data.mjs（批5 起 data/ 目录已删除）：
+ * db:seed 写 PostgreSQL，演示模式用同一份数据初始化内存态。
+ */
+const ds = seedData as {
+  agents: AnyRec[];
+  feedback: AnyRec[];
+  releases: AnyRec[];
+  versions: AnyRec[];
+  skills: AnyRec[];
+  productGroups: AnyRec[];
+  roles: AnyRec[];
+  permissions: AnyRec[];
+  auditLogs: AnyRec[];
+  wikiVaults: AnyRec[];
+  wikiPages: AnyRec[];
+  evalCases: AnyRec[];
+};
 
 /**
  * 新建 Agent 时从预留 id 池分配：这些 id 的详情页已在构建期预渲染，
@@ -61,23 +57,26 @@ export interface DemoState {
 
 /** 深拷贝种子数据，得到一份全新可变状态（刷新页面即重置）。 */
 export function createInitialState(): DemoState {
+  const wikiPagesByVault: Record<string, AnyRec[]> = {};
+  for (const page of ds.wikiPages) {
+    const vaultId = page.vaultId as string;
+    (wikiPagesByVault[vaultId] ??= []).push(page);
+  }
+
   const seed = {
-    agents: [ecsAssistant, rdsAssistant],
-    feedback: [fb001, fb002, fb003],
-    releases: [rel001, rel002],
-    versions: [ver001, ver002, verRds001],
-    skills: [skillTicketLookup, skillWikiSearch],
-    productGroups,
-    roles,
-    permissions,
-    auditLogs,
-    wikiVaults: [wikiVaultEcs, wikiVaultRds],
-    wikiPages: {
-      "ecs-wiki": [pageEcsDisk, pageEcsSg, pageEcsSsh],
-      "rds-wiki": [pageRdsConn],
-    },
+    agents: ds.agents,
+    feedback: ds.feedback,
+    releases: ds.releases,
+    versions: ds.versions,
+    skills: ds.skills,
+    productGroups: ds.productGroups,
+    roles: ds.roles,
+    permissions: ds.permissions,
+    auditLogs: ds.auditLogs,
+    wikiVaults: ds.wikiVaults,
+    wikiPages: wikiPagesByVault,
     traces: [],
-    evalCases: [evalEcs001, evalEcs002],
+    evalCases: ds.evalCases,
   };
   const clone = JSON.parse(JSON.stringify(seed)) as Omit<
     DemoState,

@@ -195,7 +195,7 @@ export default function AgentDetailPage() {
         >
           {agentError}
           <span className="mt-1 block text-xs">
-            若反复失败，可回到列表页确认这条记录是否仍在，再检查 apps/web/data/agents/ 下对应 JSON 是否为合法格式。
+            若反复失败，可回到列表页确认这条记录是否仍在，再确认本地 PostgreSQL 可用后重试。
           </span>
         </Alert>
       </div>
@@ -222,7 +222,7 @@ export default function AgentDetailPage() {
             返回 Agent 列表
           </Link>
         }
-        hint="Agent 数据存放在 apps/web/data/agents/ 目录下，每个 Agent 一个 JSON 文件。"
+        hint="Agent 数据持久化在 PostgreSQL（Prisma），四分区配置与版本快照均存于数据库。"
       />
     );
   }

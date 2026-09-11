@@ -56,8 +56,8 @@ export default function DashboardError({
         <p className="text-xs font-semibold text-[var(--foreground)]">常见原因与排查顺序</p>
         <ol className="mt-2 space-y-1.5 text-xs leading-relaxed text-[var(--muted)]">
           <li>
-            1. 本地数据文件被改坏：检查 apps/web/data/ 下对应的 JSON 是否仍是合法格式，
-            字段是否符合 lib/schemas.ts 的定义。
+            1. 数据库不可用：确认本地 PostgreSQL 已启动，且已执行迁移与种子
+            （pnpm db:migrate、pnpm db:seed）。
           </li>
           <li>
             2. 请求的记录不存在：例如直接输入了一个已删除的 Agent 详情地址，

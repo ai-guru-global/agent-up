@@ -209,8 +209,8 @@ export default function FeedbackPage() {
         >
           {error}
           <span className="mt-1 block text-xs">
-            列表数据来自 /api/feedback，它读取 apps/web/data/feedback/ 下的 JSON 文件。
-            请确认这些文件存在且格式合法，然后重试。
+            列表数据来自 /api/feedback，由服务端从 PostgreSQL 实时读取。
+            请确认本地数据库可用，然后重试。
           </span>
         </Alert>
       )}

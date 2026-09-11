@@ -170,10 +170,10 @@ export default function DashboardLayout({
           <MockTag note="当前无真实身份体系，登录后角色固定为 mock 管理员，拥有全部权限" />
         </div>
         <p className="mt-1 text-[10px] leading-relaxed text-[var(--subtle)]">
-          数据源：apps/web/data/ 本地 JSON 种子数据（mock），未接入真实数据库
+          数据源：本地 PostgreSQL（Prisma）中的种子数据
         </p>
         <p className="mt-1 text-[10px] leading-relaxed text-[var(--subtle)]">
-          所有增删改都会写回上述 JSON 文件，重启服务后仍然保留；演示环境可随时修改，不影响任何线上系统
+          所有增删改都会写入数据库，重启服务后仍然保留；演示环境可随时修改，不影响任何线上系统
         </p>
       </div>
     </>
@@ -234,7 +234,7 @@ export default function DashboardLayout({
           >
             AgentUp
           </Link>
-          <MockTag note="演示环境：数据来自 apps/web/data/ 本地 JSON，未接入真实数据库" />
+          <MockTag note="演示环境：数据来自本地 PostgreSQL 的种子数据" />
         </header>
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-x-hidden">
