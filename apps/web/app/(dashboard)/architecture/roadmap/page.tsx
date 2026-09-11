@@ -94,7 +94,7 @@ export default function RoadmapPage() {
 
       <Section
         title="P0 · 可上线基线"
-        description="不做这些就上不了线。属于工程债清理，创意性低但阻塞一切。本轮 P0 稳定层已完成：审计日志、actor 上下文、Zod 全量校验、错误体系、Release diff/semver 修复、反馈状态机、store 加固、全面测试覆盖。鉴权与 Prisma 落地待后续工程。"
+        description="不做这些就上不了线。属于工程债清理，创意性低但阻塞一切。本轮 P0 稳定层已完成：审计日志、actor 上下文、Zod 全量校验、错误体系、Release diff/semver 修复、反馈状态机、全面测试覆盖；Prisma / PostgreSQL 持久化已全量落地（运行时不再读写 JSON）。剩余鉴权与 RBAC 待后续工程。"
       >
         <Table
           head={["改进项", "来源", "落点", "预期收益"]}
@@ -106,15 +106,15 @@ export default function RoadmapPage() {
               "从「任何人可改任何 Agent」到最小权限；为审计提供主体",
             ],
             [
-              <span><strong>Prisma / Postgres 落地</strong></span>,
+              <span><strong>Prisma / Postgres 落地</strong> <Pill tone="good">已完成</Pill></span>,
               <Pill tone="neutral">通用工程</Pill>,
-              "接通已就绪的 626 行 schema + 首个迁移；把 store.ts 的 JSON 读写替换为 Prisma client",
+              "全部 service 与 route 已切换 Prisma client；JSON 存储层（store.ts 与 data/ 种子目录）已删除，种子由 pnpm db:seed 写入",
               "多实例、并发安全、审计基础、为后续所有功能解锁",
             ],
             [
               <span><strong>审计日志真正写入</strong> <Pill tone="good">已完成</Pill></span>,
               <Pill tone="neutral">通用工程</Pill>,
-              "audit-service.ts：所有 service 写操作 append 到 settings/audit-logs.json，actor 从请求头解析（为 NextAuth 留接口）",
+              "audit-service.ts：所有 service 写操作写入 PostgreSQL audit_log 表，actor 从请求头解析（为 NextAuth 留接口）",
               "合规 + 事故溯源；Release 审批的可信基础",
             ],
             [
@@ -230,19 +230,19 @@ export default function RoadmapPage() {
 
       <Section
         title="本轮已完成 · P0 稳定层（2026-07-21）"
-        description="在现有 JSON store 上用工程纪律把质量拉满，不换存储、不引外部依赖，全面测试覆盖。"
+        description="在现有 JSON store 上用工程纪律把质量拉满，不换存储、不引外部依赖，全面测试覆盖。（历史轮次记录：JSON 存储层已在 Prisma 批5 被 PostgreSQL 取代并删除）"
       >
         <Table
           head={["交付项", "文件", "收益"]}
           rows={[
-            [<span><strong>审计日志真正写入</strong></span>, "lib/services/audit-service.ts", "所有写操作 append 到 audit-logs.json；actor 从请求头解析"],
+            [<span><strong>审计日志真正写入</strong></span>, "lib/services/audit-service.ts", "所有写操作 append 到 audit-logs.json；actor 从请求头解析（批2 起改写 PostgreSQL，JSON 镜像已拆除）"],
             [<span><strong>actor 上下文</strong></span>, "lib/context.ts", "为 NextAuth 留接口；消除散落硬编码 \"system\""],
             [<span><strong>结构化错误体系</strong></span>, "lib/errors.ts + utils.handleApiError", "AppError 子类映射精确 status；消除 includes(\"不存在\") 字符串匹配"],
             [<span><strong>Zod 全量校验</strong></span>, "lib/schemas.ts + validateBody", "补齐 skill/wiki/role/permission/product-group 全部 schema；消除内联漂移"],
             [<span><strong>Release diff/semver 修复</strong></span>, "release-service.ts + versioning.ts", "changedPartitions 与上一版本真实 diff；无变更拒绝提交；真 SemVer"],
             [<span><strong>反馈状态机</strong></span>, "feedback-service.ts", "非法状态转移（NEW→RESOLVED）被拒"],
-            [<span><strong>store 加固</strong></span>, "lib/data/store.ts", "crypto.randomUUID；损坏文件抛 AppError；可测的 _setDataDir"],
-            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>315 个测试（Prisma 域测试需本地 PG：docker compose up -d postgres）</strong>，含 137 个 API 集成测试</span>],
+            [<span><strong>store 加固</strong></span>, "lib/data/store.ts", "crypto.randomUUID；损坏文件抛 AppError；可测的 _setDataDir（批5 起随 JSON 存储层一并移除，被 Prisma 取代）"],
+            [<span><strong>全面测试覆盖</strong></span>, "lib/__tests__ + app/api/__tests__", <span><strong>334 个测试（全部经 _resetDb 连本地 PG：docker compose up -d postgres）</strong></span>],
           ]}
         />
       </Section>
@@ -331,7 +331,7 @@ export default function RoadmapPage() {
               主线 1 · 工程债 <Pill tone="good">部分完成</Pill>
             </p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、store 加固、<strong>315 个测试</strong>；v1.5 再落地评测闭环（trace 落盘 → 沉淀用例 → 发布前 AI 评测）；v1.6 评测升级确定性断言（未过不调判官）与 FAILED 批准须留痕的软门禁；v1.7 新增 MaaS 真实用量聚合与任务证据链视图（只读，非因果证明）；v1.8 新增 Harness 资产演进线（版本快照结构化对比）与多渠道工单接入（channel 适配器 + 幂等 409）；Prisma 批0 基建与 CI 门禁（lint/test/build 连 PG）已落地。剩余鉴权与运行时切换 PG 待后续工程。
+              <strong>P0 稳定层已完成</strong>：审计日志真正写入、actor 上下文、Zod 全量校验、结构化错误体系、Release diff/semver 修复、反馈状态机、<strong>334 个测试</strong>；v1.5 再落地评测闭环（trace 落盘 → 沉淀用例 → 发布前 AI 评测）；v1.6 评测升级确定性断言（未过不调判官）与 FAILED 批准须留痕的软门禁；v1.7 新增 MaaS 真实用量聚合与任务证据链视图（只读，非因果证明）；v1.8 新增 Harness 资产演进线（版本快照结构化对比）与多渠道工单接入（channel 适配器 + 幂等 409）；Prisma / PostgreSQL 持久化已全量落地（批0 基建与 CI 门禁，批5 起运行时全面切换，JSON 存储层已删除）。剩余鉴权与 RBAC 待后续工程。
             </p>
           </Card>
           <Card>
