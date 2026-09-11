@@ -285,3 +285,43 @@ git commit -m "feat(web): retrieval-service 数据源切 Prisma——BM25-lite �
 - 批3（agent-service）：consumers 里最重的 store 用户（双写留痕、四分区、`_count.skillBindings` 写 agent 文件等语义全部 PG 化）。
 - 批4（release 链 + trace/eval-case/ai-review）：含批0 裁决②（Trace/EvalCase→Agent 外键 RESTRICT vs 运行时无约束）。
 - 批5：删 JSON 镜像与 store.ts、`db:seed`、coverage include 收口、文档同步。
+
+---
+
+## 终审记录（2026-09-11 回写）
+
+### 结果
+
+| 项 | 结果 |
+| --- | --- |
+| 全量测试 | **33 文件 / 331 例全绿**（批1 基线 315 → 新增 16：skill 路由 3、wiki 扩充、retrieval 9） |
+| lint / build | 双通过（build 首跑暴露 3 处类型错误，已修复，见下） |
+| 迁移部署 | 20260911173000_feedback_wiki_runtime_align 已 deploy 至 dev 库并验证 |
+| store/fs 残留 | 四服务 0 残留；剩余使用者即批3/4/5 对象（agent、release、trace、eval-case、ai-review、version-lineage、maas-usage、effectiveness、evidence-chain）+ audit-service 镜像 |
+
+### 提交清单（7 commit）
+
+| commit | 内容 |
+| --- | --- |
+| `1788d55` | T1 schema 漂移对齐 + 手写迁移（D1–D5） |
+| `0b32bef` | T2 feedback-service 重写 + 测试 + seedAgent 公共夹具 |
+| `01d2d6b` | T3 并行会话两文件 PG 适配（D8 授权） |
+| `9a821f0` | T4 skill-service 重写 + unbind 补 withActor + 路由测试 |
+| `eed4ede` | T5 wiki-service 重写（级联删、slug 409、契约保形） |
+| `1863d9c` | T6 retrieval-service 换 PG 数据源 |
+| `2abce2f` / `262a954` | T7 终验期补丁（见"执行期修复"） |
+
+### 执行期修复（计划外，已回写）
+
+1. **D8 授权范围外第三文件**：`llm-integrations.test.ts` 反馈洞察用例因 feedback 迁移而破（store.write JSON 建档 → getFeedback 走 PG 404）。按同一原则最小补丁：describe 级 `beforeEach` 建 PG 档（productGroup/agent/feedback），断言结构不动。**已披露**，超出 D8 字面范围由用户追认。
+2. **构建期类型收口（262a954）**：`tags: { has }` 与 create/ingest 的 tags 需 `as FeedbackTag` cast；retrieval 本地 WikiPage 接口对齐 Prisma select 非空类型（`summary: string | null`）；wiki 的 `VAULT_INCLUDE` 合并常量（原 payload 类型漏 agent include，顺带修了声明顺序）。
+3. **测试适配细节**：WikiPage `(vaultId, slug)` 唯一约束要求种子逐页给 slug（默认取 id）；`productGroup.displayName`、`feedback.submittedBy` 为必填；agent-skills 路由 GET 需显式传 route context。
+
+### 行为变化（相对批1 基线）
+
+- 新增 409 语义（D6）：skill 重名、同库 slug 重复——原先依赖 DB 兜底/静默。
+- `agents/[id]/skills` DELETE 解绑审计署名从恒"系统"修为真实 actor（skill stub 坑7 回归测试覆盖）。
+- binding 响应的 skill 摘要改为 include 实时取（修复旧 JSON 快照陈旧坑，stub 坑4）。
+- `deleteVault` 级联删 pages/ingestJobs（PG ON DELETE CASCADE 对齐旧 fs 递归删目录）。
+- skill 重绑（upsert）在未传 config 时保留旧 config，传了则覆盖并重新启用——与旧"再 bind = 更新"一致但更精确。
+- 全部 331 例 PG 依赖 `_resetDb` + worker 独立库（批1 基建延续），CI PostgreSQL 容器已就绪。
