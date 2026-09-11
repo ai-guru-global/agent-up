@@ -314,6 +314,11 @@ model Release {
   // AI 评测结果快照（2026-09 断言门禁，运行时为自由形状 AiReviewResult）
   aiReview Json?
 
+  // 整版本回滚单（JSON 时代的动态键上列；普通发布恒为 false/null）
+  isRollback           Boolean @default(false)
+  rollbackFromVersion  String?
+  rollbackToVersionId  String?
+
   // 关联
   version AgentVersion?
 
