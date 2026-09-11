@@ -51,7 +51,6 @@ model User {
 
   roles              UserRole[]
   productGroups      ProductGroupMember[]
-  auditLogs          AuditLog[]
 }
 
 // ============================================================
@@ -615,8 +614,9 @@ model AuditLog {
   resource   String
   resourceId String
   details    Json?
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  // 运行时审计流没有 userId 概念；落 actor.id（"system" 或请求头值），
+  // 仅作查询别名（GET /api/settings/audit-logs?userId= 兼容），不建外键
+  userId     String?
   userName   String
   userRole   String
   ipAddress  String?
