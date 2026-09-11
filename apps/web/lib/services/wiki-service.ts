@@ -2,10 +2,11 @@ import { prisma, type Provenance, type PageLifecycle, type PageTier, type Prisma
 import { NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 
-const VAULT_COUNT_INCLUDE = { _count: { select: { pages: true, ingestJobs: true } } } as const;
 const AGENT_SELECT = { id: true, name: true } as const;
+const VAULT_COUNT_INCLUDE = { _count: { select: { pages: true, ingestJobs: true } } } as const;
+const VAULT_INCLUDE = { ...VAULT_COUNT_INCLUDE, agent: { select: AGENT_SELECT } } as const;
 
-type VaultWithCount = Prisma.WikiVaultGetPayload<{ include: typeof VAULT_COUNT_INCLUDE }>;
+type VaultWithCount = Prisma.WikiVaultGetPayload<{ include: typeof VAULT_INCLUDE }>;
 
 function toVaultResponse(row: VaultWithCount) {
   return {
@@ -68,7 +69,7 @@ export async function listVaults(params: {
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       skip: params.skip,
       take: params.take,
-      include: { ...VAULT_COUNT_INCLUDE, agent: { select: AGENT_SELECT } },
+      include: VAULT_INCLUDE,
     }),
     prisma.wikiVault.count({ where }),
   ]);

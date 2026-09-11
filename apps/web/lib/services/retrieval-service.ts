@@ -90,12 +90,12 @@ function countToken(token: string, text: string): number {
 interface WikiPage {
   id: string;
   vaultId: string;
-  title?: string;
-  slug?: string;
-  summary?: string;
-  content?: string;
-  tags?: string[];
-  baseConfidence?: number;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string;
+  tags: string[];
+  baseConfidence: number;
 }
 
 async function loadPages(vaultId: string): Promise<WikiPage[]> {

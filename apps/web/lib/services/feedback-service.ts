@@ -3,6 +3,7 @@ import {
   type FeedbackStatus,
   type FeedbackSeverity,
   type FeedbackRating,
+  type FeedbackTag,
   type Prisma,
 } from "@agent-up/db";
 import { getActor } from "@/lib/context";
@@ -92,7 +93,7 @@ export async function listFeedback(params: {
     ...(params.status && params.status !== "ALL" && { status: params.status as FeedbackStatus }),
     ...(params.severity && params.severity !== "ALL" && { severity: params.severity as FeedbackSeverity }),
     ...(params.rating && params.rating !== "ALL" && { rating: params.rating as FeedbackRating }),
-    ...(params.tag && { tags: { has: params.tag } }),
+    ...(params.tag && { tags: { has: params.tag as FeedbackTag } }),
   };
   const [rows, total] = await Promise.all([
     prisma.feedback.findMany({
@@ -136,7 +137,7 @@ export async function createFeedback(input: {
       title: input.title,
       content: input.content,
       rating: input.rating,
-      tags: input.tags ?? [],
+      tags: (input.tags ?? []) as FeedbackTag[],
       severity: input.severity ?? "MINOR",
       targetPartition: input.targetPartition ?? null,
       sessionData: (input.sessionData ?? null) as never,
@@ -255,7 +256,7 @@ export async function ingestFeedback(
       title: draft.title,
       content: draft.content,
       rating: draft.rating,
-      tags: draft.tags ?? [],
+      tags: (draft.tags ?? []) as FeedbackTag[],
       severity: draft.severity ?? "MINOR",
       externalRefId: draft.externalRef.id,
       externalRefUrl: draft.externalRef.url,
