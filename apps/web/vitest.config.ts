@@ -8,6 +8,14 @@ export default defineConfig({
       "lib/__tests__/**/*.test.ts",
       "app/api/__tests__/**/*.test.ts",
     ],
+    server: {
+      deps: {
+        inline: ["@agent-up/db"],
+      },
+    },
+    poolOptions: {
+      threads: { maxThreads: 4 },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "html"],
