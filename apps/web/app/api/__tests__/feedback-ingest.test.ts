@@ -3,9 +3,11 @@ import { join } from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as ingestFeedback } from "@/app/api/feedback/ingest/route";
+import { prisma } from "@agent-up/db";
 import { store, _getDataDir } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
+import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { listAudit, flushAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
 
@@ -16,8 +18,9 @@ import { _resetDb } from "@/lib/data/test-db";
  * 记录来源渠道与外部单号，同单号幂等（重复接入 409）。
  */
 
-function writeAgent(id: string) {
-  store.write({ id, name: `助手-${id}`, status: "ACTIVE" }, "agents", `${id}.json`);
+// 批2 起 feedback 以 Prisma 为事实源：agent 需在 PG 建档，service 才能通过存在性校验
+async function writeAgent(id: string) {
+  await seedAgent(id, `助手-${id}`);
 }
 
 function ingest(body: unknown) {
@@ -52,7 +55,7 @@ afterEach(() => {
 
 describe("POST /api/feedback/ingest（多渠道工单适配器）", () => {
   it("generic 渠道：字段直映射，rating 缺省 NEGATIVE，记来源与外部单号，写审计", async () => {
-    writeAgent("agent-g");
+    await writeAgent("agent-g");
     const res = await ingest({
       channel: "generic",
       agentId: "agent-g",
@@ -76,7 +79,7 @@ describe("POST /api/feedback/ingest（多渠道工单适配器）", () => {
   });
 
   it("ticket-webhook 渠道：subject/description/priority 适配（P0→CRITICAL，P2→MINOR），单号入 externalRef", async () => {
-    writeAgent("agent-t");
+    await writeAgent("agent-t");
     const res = await ingest({
       channel: "ticket-webhook",
       agentId: "agent-t",
@@ -107,7 +110,7 @@ describe("POST /api/feedback/ingest（多渠道工单适配器）", () => {
   });
 
   it("同渠道同外部单号重复接入 → 409，不产生第二条反馈", async () => {
-    writeAgent("agent-d");
+    await writeAgent("agent-d");
     const body = {
       channel: "ticket-webhook",
       agentId: "agent-d",
@@ -118,15 +121,13 @@ describe("POST /api/feedback/ingest（多渠道工单适配器）", () => {
 
     const second = await ingest({ ...body, ticket: { ...body.ticket, subject: "重发" } });
     expect(second.status).toBe(409);
-    const all = store.list<Record<string, unknown>>("feedback").filter(
-      (f) => (f.externalRef as Record<string, unknown> | null)?.id === "DUP-1",
-    );
-    expect(all).toHaveLength(1);
-    expect((all[0].title as string)).toBe("第一次");
+    // 批2 起反馈以 Prisma 为事实源，幂等断言改查 PG
+    const dup = await prisma.feedback.findFirst({ where: { externalRefId: "DUP-1" } });
+    expect(dup?.title).toBe("第一次");
   });
 
   it("未知渠道 → 422；缺 ticket.subject → 422；agent 不存在 → 404", async () => {
-    writeAgent("agent-v");
+    await writeAgent("agent-v");
     const bad = await ingest({ channel: "email", agentId: "agent-v", title: "t", content: "c" });
     expect(bad.status).toBe(422);
 

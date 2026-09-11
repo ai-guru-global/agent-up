@@ -9,6 +9,8 @@ import { GET as listSkills, POST as createSkill } from "@/app/api/skills/route";
 import { GET as listVaults, POST as createVault } from "@/app/api/wiki/vaults/route";
 import { store } from "@/lib/data/store";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
+import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
+import { _resetDb } from "@/lib/data/test-db";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -20,7 +22,12 @@ function makeRequest(method: string, body?: unknown): NextRequest {
   });
 }
 
-beforeEach(useTempDataDir);
+// 批2 起 feedback 以 Prisma 为事实源：agent 需在 PG 建档，POST /api/feedback 才能通过存在性校验
+beforeEach(async () => {
+  await _resetDb();
+  await seedAgent(AGENT_ID);
+  useTempDataDir();
+});
 afterEach(restoreDataDir);
 
 describe("feedback API", () => {
