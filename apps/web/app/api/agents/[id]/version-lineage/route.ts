@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    return success(getVersionLineage(id));
+    return success(await getVersionLineage(id));
   } catch (err) {
     return handleApiError(err);
   }

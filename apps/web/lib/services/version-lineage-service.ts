@@ -12,8 +12,8 @@
  *
  * 不动现有 GET /api/agents/[id]/versions 的响应形状（向后兼容，决策 D6）。
  */
+import { prisma } from "@agent-up/db";
 import { NotFoundError } from "@/lib/errors";
-import { store } from "@/lib/data/store";
 import { computeJsonDiff } from "@/lib/diff";
 
 const PARTITIONS = ["PROMPT", "KNOWLEDGE", "TOOLS", "ROUTING"] as const;
@@ -54,22 +54,10 @@ export interface VersionLineage {
   lineage: VersionLineageEntry[];
 }
 
-interface VersionSnapshotLike {
-  id: string;
-  agentId: string;
-  version?: string;
-  publishedAt?: string;
-  changeNote?: string | null;
-  promptSnapshot?: Record<string, unknown> | null;
-  knowledgeSnapshot?: Record<string, unknown> | null;
-  toolsSnapshot?: Record<string, unknown> | null;
-  routingSnapshot?: Record<string, unknown> | null;
-}
-
-/** 剥离快照里的元数据键，只比较真实配置内容 */
-function payloadOf(snapshot: Record<string, unknown> | null | undefined): Record<string, unknown> {
-  if (!snapshot || typeof snapshot !== "object") return {};
-  const { version: _v, lastModifiedAt: _l, ...payload } = snapshot;
+/** 剥离快照里的元数据键，只比较真实配置内容（JsonValue 行直接传入） */
+function payloadOf(snapshot: unknown): Record<string, unknown> {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return {};
+  const { version: _v, lastModifiedAt: _l, ...payload } = snapshot as Record<string, unknown>;
   void _v;
   void _l;
   return payload;
@@ -84,27 +72,23 @@ function countDiff(before: Record<string, unknown>, after: Record<string, unknow
   };
 }
 
-export function getVersionLineage(agentId: string): VersionLineage {
-  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+export async function getVersionLineage(agentId: string): Promise<VersionLineage> {
+  const agent = await prisma.agent.findUnique({ where: { id: agentId } });
   if (!agent) throw new NotFoundError("Agent 不存在");
 
-  const versions = store
-    .list<VersionSnapshotLike>("versions")
-    .filter((v) => v?.agentId === agentId)
-    .sort(
-      (a, b) =>
-        String(a.publishedAt ?? "").localeCompare(String(b.publishedAt ?? "")) ||
-        a.id.localeCompare(b.id),
-    );
+  const rows = await prisma.agentVersion.findMany({
+    where: { agentId },
+    orderBy: [{ publishedAt: "asc" }, { id: "asc" }],
+  });
 
   const lineage: VersionLineageEntry[] = [];
-  let previous: VersionSnapshotLike | null = null;
-  for (const v of versions) {
+  let previous: (typeof rows)[number] | null = null;
+  for (const v of rows) {
     if (!previous) {
       lineage.push({
         versionId: v.id,
-        version: String(v.version ?? "?"),
-        publishedAt: String(v.publishedAt ?? ""),
+        version: v.version,
+        publishedAt: v.publishedAt.toISOString(),
         changeNote: v.changeNote ?? null,
         changedPartitions: null,
         diffSummary: null,
@@ -120,8 +104,8 @@ export function getVersionLineage(agentId: string): VersionLineage {
       }
       lineage.push({
         versionId: v.id,
-        version: String(v.version ?? "?"),
-        publishedAt: String(v.publishedAt ?? ""),
+        version: v.version,
+        publishedAt: v.publishedAt.toISOString(),
         changeNote: v.changeNote ?? null,
         changedPartitions,
         diffSummary,
@@ -132,8 +116,8 @@ export function getVersionLineage(agentId: string): VersionLineage {
 
   return {
     agentId,
-    agentName: typeof agent.name === "string" ? agent.name : null,
-    computedAt: store.now(),
+    agentName: agent.name,
+    computedAt: new Date().toISOString(),
     lineage,
   };
 }
