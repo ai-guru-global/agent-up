@@ -1,8 +1,56 @@
-import { store } from "@/lib/data/store";
-import { existsSync, readdirSync, rmSync, readFileSync } from "fs";
-import { join } from "path";
-import { NotFoundError } from "@/lib/errors";
+import { prisma, type Provenance, type PageLifecycle, type PageTier, type Prisma } from "@agent-up/db";
+import { NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
+
+const VAULT_COUNT_INCLUDE = { _count: { select: { pages: true, ingestJobs: true } } } as const;
+const AGENT_SELECT = { id: true, name: true } as const;
+
+type VaultWithCount = Prisma.WikiVaultGetPayload<{ include: typeof VAULT_COUNT_INCLUDE }>;
+
+function toVaultResponse(row: VaultWithCount) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    agentId: row.agentId,
+    isShared: row.isShared,
+    gitRepoUrl: row.gitRepoUrl,
+    gitBranch: row.gitBranch,
+    pageCount: row.pageCount,
+    avgConfidence: row.avgConfidence,
+    orphanCount: row.orphanCount,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    _count: { pages: row._count.pages, ingestJobs: row._count.ingestJobs },
+    agent: row.agent ? { id: row.agent.id, name: row.agent.name } : null,
+  };
+}
+
+/** 旧 JSON 契约：sourceRefs 为数组、inbound/outboundLinks 为数组（PG 模型存计数，公开响应保持旧形态） */
+function toPageResponse(row: Prisma.WikiPageGetPayload<Record<string, never>>) {
+  return {
+    id: row.id,
+    vaultId: row.vaultId,
+    title: row.title,
+    slug: row.slug,
+    content: row.content,
+    summary: row.summary,
+    provenance: row.provenance,
+    lifecycle: row.lifecycle,
+    tier: row.tier,
+    baseConfidence: row.baseConfidence,
+    tags: [...row.tags],
+    categories: [...row.categories],
+    wikilinks: [...row.wikilinks],
+    filePath: row.filePath,
+    sourceRefs: Array.isArray(row.sourceRefs) ? row.sourceRefs : [],
+    inboundLinks: [] as unknown[],
+    outboundLinks: [] as unknown[],
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
+  };
+}
 
 export async function listVaults(params: {
   skip: number;
@@ -10,20 +58,29 @@ export async function listVaults(params: {
   agentId?: string;
   shared?: boolean;
 }) {
-  return store.queryList<Record<string, unknown>>(
-    ["wiki-vaults"],
-    {
-      ...(params.agentId && { agentId: (v) => v.agentId === params.agentId }),
-      ...(params.shared !== undefined && { shared: (v) => v.isShared === params.shared }),
-    },
-    (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)),
-    params.skip,
-    params.take,
-  );
+  const where: Prisma.WikiVaultWhereInput = {
+    ...(params.agentId && { agentId: params.agentId }),
+    ...(params.shared !== undefined && { isShared: params.shared }),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.wikiVault.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip: params.skip,
+      take: params.take,
+      include: { ...VAULT_COUNT_INCLUDE, agent: { select: AGENT_SELECT } },
+    }),
+    prisma.wikiVault.count({ where }),
+  ]);
+  return { items: rows.map(toVaultResponse), total };
 }
 
 export async function getVault(id: string) {
-  return store.read<Record<string, unknown>>("wiki-vaults", `${id}.json`);
+  const vault = await prisma.wikiVault.findUnique({
+    where: { id },
+    include: { ...VAULT_COUNT_INCLUDE, agent: { select: AGENT_SELECT } },
+  });
+  return vault ? toVaultResponse(vault) : null;
 }
 
 export async function createVault(data: {
@@ -34,52 +91,41 @@ export async function createVault(data: {
   gitBranch?: string;
   isShared?: boolean;
 }) {
-  const id = store.generateId();
-  const ts = store.now();
-  const vault = {
-    id,
-    name: data.name,
-    description: data.description ?? null,
-    agentId: data.agentId ?? null,
-    isShared: data.isShared ?? false,
-    gitRepoUrl: data.gitRepoUrl || null,
-    gitBranch: data.gitBranch ?? "main",
-    pageCount: 0,
-    avgConfidence: 0,
-    orphanCount: 0,
-    createdAt: ts,
-    updatedAt: ts,
-    _count: { pages: 0, ingestJobs: 0 },
-    agent: null,
-  };
+  const created = await prisma.wikiVault.create({
+    data: {
+      name: data.name,
+      description: data.description ?? null,
+      agentId: data.agentId ?? null,
+      gitRepoUrl: data.gitRepoUrl || null,
+      gitBranch: data.gitBranch ?? "main",
+      isShared: data.isShared ?? false,
+    },
+    include: { ...VAULT_COUNT_INCLUDE, agent: { select: AGENT_SELECT } },
+  });
 
-  store.write(vault, "wiki-vaults", `${id}.json`);
-  store.ensureDir("wiki-vaults", id, "pages");
-  recordAudit("wiki.vault.create", "wiki-vault", id, { name: data.name });
-  return vault;
+  recordAudit("wiki.vault.create", "wiki-vault", created.id, { name: data.name });
+  return toVaultResponse(created);
 }
 
 export async function updateVault(id: string, data: Record<string, unknown>) {
-  const vault = store.read<Record<string, unknown>>("wiki-vaults", `${id}.json`);
-  if (!vault) throw new NotFoundError("Vault 不存在");
+  const existing = await prisma.wikiVault.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new NotFoundError("Vault 不存在");
 
-  const updated = { ...vault, ...data, updatedAt: store.now() };
-  store.write(updated, "wiki-vaults", `${id}.json`);
+  const updated = await prisma.wikiVault.update({
+    where: { id },
+    data: data as Prisma.WikiVaultUpdateInput,
+    include: { ...VAULT_COUNT_INCLUDE, agent: { select: AGENT_SELECT } },
+  });
   recordAudit("wiki.vault.update", "wiki-vault", id);
-  return updated;
+  return toVaultResponse(updated);
 }
 
 export async function deleteVault(id: string) {
-  const vault = store.read("wiki-vaults", `${id}.json`);
-  if (!vault) throw new NotFoundError("Vault 不存在");
+  const existing = await prisma.wikiVault.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new NotFoundError("Vault 不存在");
 
-  const pagesDir = join(process.cwd(), "data", "wiki-vaults", id, "pages");
-  if (existsSync(pagesDir)) rmSync(pagesDir, { recursive: true });
-
-  const vaultDir = join(process.cwd(), "data", "wiki-vaults", id);
-  if (existsSync(vaultDir)) rmSync(vaultDir, { recursive: true });
-
-  store.delete("wiki-vaults", `${id}.json`);
+  // FK ON DELETE CASCADE：pages + ingestJobs 随库一起消失（对齐旧 fs 递归删目录语义）
+  await prisma.wikiVault.delete({ where: { id } });
   recordAudit("wiki.vault.delete", "wiki-vault", id);
   return { deleted: true };
 }
@@ -93,52 +139,41 @@ export async function listPages(params: {
   tag?: string;
   search?: string;
 }) {
-  const pagesDir = join(process.cwd(), "data", "wiki-vaults", params.vaultId, "pages");
-  if (!existsSync(pagesDir)) return { items: [], total: 0 };
-
-  let items = readdirSync(pagesDir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => {
-      const content = readFileSync(join(pagesDir, f), "utf-8");
-      try {
-        return JSON.parse(content) as Record<string, unknown>;
-      } catch {
-        throw new Error(`数据文件损坏：wiki-vaults/${params.vaultId}/pages/${f}`);
-      }
-    });
-
-  if (params.lifecycle && params.lifecycle !== "ALL") {
-    items = items.filter((p) => p.lifecycle === params.lifecycle);
-  }
-  if (params.tier && params.tier !== "ALL") {
-    items = items.filter((p) => p.tier === params.tier);
-  }
-  if (params.tag) {
-    items = items.filter((p) => Array.isArray(p.tags) && (p.tags as string[]).includes(params.tag!));
-  }
-  if (params.search) {
-    const q = params.search.toLowerCase();
-    items = items.filter((p) =>
-      String(p.title ?? "").toLowerCase().includes(q) ||
-      String(p.content ?? "").toLowerCase().includes(q)
-    );
-  }
-
-  items.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-  const total = items.length;
-  items = items.slice(params.skip, params.skip + params.take);
-  return { items, total };
+  const where: Prisma.WikiPageWhereInput = {
+    vaultId: params.vaultId,
+    ...(params.lifecycle && params.lifecycle !== "ALL" && { lifecycle: params.lifecycle as PageLifecycle }),
+    ...(params.tier && params.tier !== "ALL" && { tier: params.tier as PageTier }),
+    ...(params.tag && { tags: { has: params.tag } }),
+    ...(params.search && {
+      OR: [
+        { title: { contains: params.search, mode: "insensitive" } },
+        { content: { contains: params.search, mode: "insensitive" } },
+      ],
+    }),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.wikiPage.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip: params.skip,
+      take: params.take,
+    }),
+    prisma.wikiPage.count({ where }),
+  ]);
+  return { items: rows.map(toPageResponse), total };
 }
 
 export async function getPage(id: string) {
-  const vaults = store.list<Record<string, unknown>>("wiki-vaults");
-  for (const vault of vaults) {
-    const page = store.read<Record<string, unknown>>("wiki-vaults", String(vault.id), "pages", `${id}.json`);
-    if (page) {
-      return { ...page, vault: { id: vault.id, name: vault.name } };
-    }
-  }
-  return null;
+  const page = await prisma.wikiPage.findUnique({
+    where: { id },
+    include: { vault: { select: AGENT_SELECT } },
+  });
+  if (!page) return null;
+
+  return {
+    ...toPageResponse(page),
+    vault: { id: page.vault.id, name: page.vault.name },
+  };
 }
 
 export async function createPage(data: {
@@ -155,68 +190,67 @@ export async function createPage(data: {
   categories?: string[];
   wikilinks?: string[];
 }) {
-  const vault = store.read("wiki-vaults", `${data.vaultId}.json`);
+  const vault = await prisma.wikiVault.findUnique({ where: { id: data.vaultId }, select: { id: true } });
   if (!vault) throw new NotFoundError("Vault 不存在");
 
-  const id = store.generateId();
-  const ts = store.now();
-  const page = {
-    id,
-    vaultId: data.vaultId,
-    title: data.title,
-    slug: data.slug,
-    content: data.content,
-    summary: data.summary ?? null,
-    provenance: data.provenance ?? "EXTRACTED",
-    lifecycle: data.lifecycle ?? "DRAFT",
-    tier: data.tier ?? "SPECIALIZED",
-    baseConfidence: data.baseConfidence ?? 0.5,
-    tags: data.tags ?? [],
-    categories: data.categories ?? [],
-    wikilinks: data.wikilinks ?? [],
-    filePath: `${data.slug}.md`,
-    sourceRefs: [],
-    inboundLinks: [],
-    outboundLinks: [],
-    createdAt: ts,
-    updatedAt: ts,
-    reviewedAt: null,
-  };
+  const slugDup = await prisma.wikiPage.findUnique({
+    where: { vaultId_slug: { vaultId: data.vaultId, slug: data.slug } },
+    select: { id: true },
+  });
+  if (slugDup) throw new ConflictError("同库下已存在相同 slug 的页面");
 
-  store.write(page, "wiki-vaults", data.vaultId, "pages", `${id}.json`);
-  recordAudit("wiki.page.create", "wiki-page", id, {
+  const created = await prisma.wikiPage.create({
+    data: {
+      vaultId: data.vaultId,
+      title: data.title,
+      slug: data.slug,
+      content: data.content,
+      summary: data.summary ?? null,
+      provenance: (data.provenance ?? "EXTRACTED") as Provenance,
+      lifecycle: (data.lifecycle ?? "DRAFT") as PageLifecycle,
+      tier: (data.tier ?? "SPECIALIZED") as PageTier,
+      baseConfidence: data.baseConfidence ?? 0.5,
+      tags: data.tags ?? [],
+      categories: data.categories ?? [],
+      wikilinks: data.wikilinks ?? [],
+      filePath: `${data.slug}.md`,
+      sourceRefs: [],
+    },
+  });
+
+  recordAudit("wiki.page.create", "wiki-page", created.id, {
     vaultId: data.vaultId,
     title: data.title,
   });
-  return page;
+  return toPageResponse(created);
 }
 
 export async function updatePage(id: string, data: Record<string, unknown>) {
-  const vaults = store.list<Record<string, unknown>>("wiki-vaults");
-  for (const vault of vaults) {
-    const page = store.read<Record<string, unknown>>("wiki-vaults", String(vault.id), "pages", `${id}.json`);
-    if (page) {
-      const updated: Record<string, unknown> = { ...page, ...data, updatedAt: store.now() };
-      store.write(updated, "wiki-vaults", String(vault.id), "pages", `${id}.json`);
-      recordAudit("wiki.page.update", "wiki-page", id, {
-        vaultId: vault.id,
-        title: updated.title,
-      });
-      return updated;
-    }
-  }
-  throw new NotFoundError("Page 不存在");
+  const existing = await prisma.wikiPage.findUnique({
+    where: { id },
+    select: { id: true, vaultId: true, title: true },
+  });
+  if (!existing) throw new NotFoundError("Page 不存在");
+
+  const updated = await prisma.wikiPage.update({
+    where: { id },
+    data: data as Prisma.WikiPageUpdateInput,
+  });
+  recordAudit("wiki.page.update", "wiki-page", id, {
+    vaultId: existing.vaultId,
+    title: updated.title,
+  });
+  return toPageResponse(updated);
 }
 
 export async function deletePage(id: string) {
-  const vaults = store.list<Record<string, unknown>>("wiki-vaults");
-  for (const vault of vaults) {
-    const page = store.read<Record<string, unknown>>("wiki-vaults", String(vault.id), "pages", `${id}.json`);
-    if (page) {
-      store.delete("wiki-vaults", String(vault.id), "pages", `${id}.json`);
-      recordAudit("wiki.page.delete", "wiki-page", id, { vaultId: vault.id });
-      return { deleted: true };
-    }
-  }
-  throw new NotFoundError("Page 不存在");
+  const existing = await prisma.wikiPage.findUnique({
+    where: { id },
+    select: { id: true, vaultId: true },
+  });
+  if (!existing) throw new NotFoundError("Page 不存在");
+
+  await prisma.wikiPage.delete({ where: { id } });
+  recordAudit("wiki.page.delete", "wiki-page", id, { vaultId: existing.vaultId });
+  return { deleted: true };
 }
