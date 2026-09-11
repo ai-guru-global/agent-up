@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { success, handleApiError } from "@/lib/utils";
-import { store } from "@/lib/data/store";
 import { NotFoundError } from "@/lib/errors";
 import { chatCompletion } from "@/lib/services/llm-service";
 
@@ -17,25 +17,21 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
-    const release = store.read<Record<string, unknown>>("releases", `${id}.json`);
+    const release = await prisma.release.findUnique({
+      where: { id },
+      include: {
+        agent: { select: { id: true, name: true } },
+        version: true,
+      },
+    });
     if (!release) throw new NotFoundError("Release 不存在");
 
-    const agent = store.read<{ id: string; name: string }>(
-      "agents",
-      `${release.agentId}.json`,
-    );
-
     // baseline = release 对应 version 的前一个版本；无则最新已发布版本
-    const agentId = release.agentId as string;
-    const versions = store
-      .list<Record<string, unknown>>("versions")
-      .filter((v) => v.agentId === agentId)
-      .sort((a, b) =>
-        String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")),
-      );
-    const releaseVersionId = release.version
-      ? (release.version as Record<string, unknown>).id
-      : null;
+    const versions = await prisma.agentVersion.findMany({
+      where: { agentId: release.agentId },
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    });
+    const releaseVersionId = release.version?.id ?? null;
     const baselineIdx = versions.findIndex((v) => v.id === releaseVersionId);
     const baseline =
       baselineIdx >= 0 && baselineIdx + 1 < versions.length
@@ -72,7 +68,7 @@ export async function POST(
         {
           role: "user",
           content:
-            `Agent：${agent?.name ?? agentId}\n` +
+            `Agent：${release.agent.name}\n` +
             `变更说明：${release.changeNote ?? "（无）"}\n\n${changeDetail || "（无可对比的变更）"}`,
         },
       ],

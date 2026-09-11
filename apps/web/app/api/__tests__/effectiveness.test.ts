@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma, Prisma, type ConfigPartition } from "@agent-up/db";
 import {
   computeEffectivenessReport,
   getOrComputeEffectivenessReport,
@@ -8,64 +9,67 @@ import {
 } from "@/lib/services/effectiveness-service";
 import { GET as listVersions } from "@/app/api/agents/[id]/versions/route";
 import { GET as getVersion } from "@/app/api/agents/[id]/versions/[versionId]/route";
-import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
+import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
-import { rmSync, mkdirSync } from "fs";
-import { join } from "path";
-import { _getDataDir } from "@/lib/data/store";
+import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
 
-interface VersionFixture {
-  id: string;
-  agentId: string;
-  publishedAt: string;
-  /**
-   * 与服务层 VersionLike 保持同一类型。原先写成 unknown 会让本夹具无法作为
-   * VersionLike 传入被测函数（unknown 不兼容 EffectivenessReport | null），
-   * 只能靠调用点强转绕过，等于把类型检查关掉了。
-   */
-  effectivenessReport?: EffectivenessReport | null;
+/**
+ * 批4 起版本/反馈事实源在 PG。VersionLike 的 refetch 直接查 PG，
+ * 夹具必须落库（AgentVersion 需要 Release FK → 统一走 seedReleaseWithVersion）。
+ */
+async function seedVersion(id: string, publishedAt: string | Date, semver = "0.1.0") {
+  await seedReleaseWithVersion({
+    agentId: AGENT_ID,
+    versionId: id,
+    version: semver,
+    changeNote: "seed",
+    publishedAt: publishedAt instanceof Date ? publishedAt : new Date(publishedAt),
+  });
 }
 
-interface FeedbackFixture {
-  id?: string;
-  agentId: string;
+async function seedVersionWithReport(id: string, publishedAt: string, report: EffectivenessReport) {
+  await seedVersion(id, publishedAt);
+  await prisma.agentVersion.update({
+    where: { id },
+    data: { effectivenessReport: report as unknown as Prisma.InputJsonValue },
+  });
+}
+
+async function writeFeedback(f: {
+  agentId?: string;
   rating: string;
   severity: string;
   targetPartition: string | null;
   submittedAt: string;
-  status?: string;
+}) {
+  await prisma.feedback.create({
+    data: {
+      agentId: f.agentId ?? AGENT_ID,
+      title: "fb",
+      content: "fb content",
+      rating: f.rating as never,
+      severity: f.severity as never,
+      targetPartition: f.targetPartition as ConfigPartition | null,
+      submittedAt: new Date(f.submittedAt),
+      submittedBy: "test",
+    },
+  });
 }
 
-/** store.write 是全泛型的，夹具对象可直接写入，不需要断言成 Record */
-function writeVersion(v: VersionFixture) {
-  store.write(v, "versions", `${v.id}.json`);
-}
-
-function writeFeedback(f: FeedbackFixture) {
-  const id = f.id ?? `fb-${Math.random().toString(36).slice(2, 10)}`;
-  store.write(
-    { id, ...f } as Record<string, unknown>,
-    "feedback",
-    `${id}.json`,
-  );
-}
-
-beforeEach(() => {
+beforeEach(async () => {
   resetActor();
   useTempDataDir();
-  // 清空 versions 目录（仅保留 test fixture 自己写）
-  const versionsDir = join(_getDataDir(), "versions");
-  rmSync(versionsDir, { recursive: true, force: true });
-  mkdirSync(versionsDir, { recursive: true });
-  // 清空 feedback 目录
-  const feedbackDir = join(_getDataDir(), "feedback");
-  rmSync(feedbackDir, { recursive: true, force: true });
-  mkdirSync(feedbackDir, { recursive: true });
+  await _resetDb();
+  await seedAgent(AGENT_ID);
 });
-afterEach(restoreDataDir);
+afterEach(async () => {
+  await flushAudit();
+  restoreDataDir();
+});
 
 describe("computeEffectivenessReport (pure)", () => {
   const ver = { id: "v1", agentId: "a1", publishedAt: "2026-01-01T00:00:00.000Z" };
@@ -86,7 +90,7 @@ describe("computeEffectivenessReport (pure)", () => {
       { agentId: "a1", rating: "NEGATIVE", severity: "MAJOR", targetPartition: "KNOWLEDGE", submittedAt: "2026-01-02T00:00:00.000Z" }, // in
       { agentId: "a1", rating: "NEUTRAL", severity: "CRITICAL", targetPartition: "TOOLS", submittedAt: "2026-01-08T00:00:00.000Z" }, // in (day 7 boundary inclusive)
       { agentId: "a1", rating: "POSITIVE", severity: "SUGGESTION", targetPartition: "ROUTING", submittedAt: "2026-01-09T00:00:00.000Z" }, // after
-    ] as FeedbackFixture[];
+    ];
     const r = computeEffectivenessReport(ver, fbs, { now: new Date("2026-02-01") });
     expect(r.totalFeedbacks).toBe(2);
     expect(r.byRating).toEqual({ POSITIVE: 0, NEGATIVE: 1, NEUTRAL: 1 });
@@ -98,7 +102,7 @@ describe("computeEffectivenessReport (pure)", () => {
     const fbs = [
       { agentId: "a1", rating: "POSITIVE", severity: "MINOR", targetPartition: "PROMPT", submittedAt: "2026-01-02" },
       { agentId: "a2", rating: "NEGATIVE", severity: "MAJOR", targetPartition: "KNOWLEDGE", submittedAt: "2026-01-02" },
-    ] as FeedbackFixture[];
+    ];
     const r = computeEffectivenessReport(ver, fbs, { now: new Date("2026-02-01") });
     expect(r.totalFeedbacks).toBe(1);
   });
@@ -106,7 +110,7 @@ describe("computeEffectivenessReport (pure)", () => {
   it("handles missing targetPartition gracefully (does not crash, does not count)", () => {
     const fbs = [
       { agentId: "a1", rating: "POSITIVE", severity: "MINOR", targetPartition: null, submittedAt: "2026-01-02" },
-    ] as FeedbackFixture[];
+    ];
     const r = computeEffectivenessReport(ver, fbs, { now: new Date("2026-02-01") });
     expect(r.totalFeedbacks).toBe(1);
     expect(r.byPartition.PROMPT).toBe(0);
@@ -114,48 +118,58 @@ describe("computeEffectivenessReport (pure)", () => {
 });
 
 describe("getOrComputeEffectivenessReport (lazy fill)", () => {
-  it("returns null when version is younger than window", () => {
-    writeVersion({ id: "young", agentId: AGENT_ID, publishedAt: "2026-08-04T00:00:00.000Z" });
-    const v = store.read<VersionFixture>("versions", "young.json")!;
-    const r = getOrComputeEffectivenessReport(v, { now: new Date("2026-08-05") });
+  it("returns null when version is younger than window", async () => {
+    await seedVersion("young", "2026-08-04T00:00:00.000Z");
+    const r = await getOrComputeEffectivenessReport(
+      { id: "young", agentId: AGENT_ID, publishedAt: "2026-08-04T00:00:00.000Z" },
+      { now: new Date("2026-08-05") },
+    );
     expect(r).toBeNull();
   });
 
-  it("computes and persists when version is older than window", () => {
-    writeVersion({ id: "old", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" });
-    writeFeedback({ agentId: AGENT_ID, rating: "NEGATIVE", severity: "MAJOR", targetPartition: "PROMPT", submittedAt: "2026-07-03T00:00:00.000Z" });
-    writeFeedback({ agentId: AGENT_ID, rating: "POSITIVE", severity: "MINOR", targetPartition: null, submittedAt: "2026-07-05T00:00:00.000Z" });
+  it("computes and persists when version is older than window", async () => {
+    await seedVersion("old", "2026-07-01T00:00:00.000Z");
+    await writeFeedback({ rating: "NEGATIVE", severity: "MAJOR", targetPartition: "PROMPT", submittedAt: "2026-07-03T00:00:00.000Z" });
+    await writeFeedback({ rating: "POSITIVE", severity: "MINOR", targetPartition: null, submittedAt: "2026-07-05T00:00:00.000Z" });
 
-    const v = store.read<VersionFixture>("versions", "old.json")!;
-    const r = getOrComputeEffectivenessReport(v, { now: new Date("2026-08-05") });
+    const r = await getOrComputeEffectivenessReport(
+      { id: "old", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" },
+      { now: new Date("2026-08-05") },
+    );
     expect(r).not.toBeNull();
     expect(r!.totalFeedbacks).toBe(2);
     expect(r!.byRating).toEqual({ POSITIVE: 1, NEGATIVE: 1, NEUTRAL: 0 });
 
     // 持久化验证
-    const onDisk = store.read<VersionFixture>("versions", "old.json")!;
-    expect(onDisk.effectivenessReport).toBeDefined();
-    expect((onDisk.effectivenessReport as { totalFeedbacks: number }).totalFeedbacks).toBe(2);
+    const onDisk = await prisma.agentVersion.findUnique({ where: { id: "old" } });
+    expect(onDisk?.effectivenessReport).toBeDefined();
+    expect((onDisk?.effectivenessReport as { totalFeedbacks: number }).totalFeedbacks).toBe(2);
   });
 
-  it("is idempotent: second call returns same report, no new audit", () => {
-    writeVersion({ id: "old2", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" });
-    writeFeedback({ agentId: AGENT_ID, rating: "POSITIVE", severity: "MINOR", targetPartition: null, submittedAt: "2026-07-03" });
+  it("is idempotent: second call returns same report, no new audit", async () => {
+    await seedVersion("old2", "2026-07-01T00:00:00.000Z");
+    await writeFeedback({ rating: "POSITIVE", severity: "MINOR", targetPartition: null, submittedAt: "2026-07-03" });
 
-    const v = store.read<VersionFixture>("versions", "old2.json")!;
-    const r1 = getOrComputeEffectivenessReport(v, { now: new Date("2026-08-05") });
-    const r2 = getOrComputeEffectivenessReport(v, { now: new Date("2026-08-05") });
+    const r1 = await getOrComputeEffectivenessReport(
+      { id: "old2", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" },
+      { now: new Date("2026-08-05") },
+    );
+    const r2 = await getOrComputeEffectivenessReport(
+      { id: "old2", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" },
+      { now: new Date("2026-08-05") },
+    );
 
     expect(r1).toEqual(r2);
 
     // 审计只写一次
-    const logs = store.readArray<{ action: string }>("settings", "audit-logs.json");
+    await flushAudit();
+    const logs = await listAudit();
     const effLogs = logs.filter((l) => l.action === "version.effectiveness.computed");
     expect(effLogs.length).toBe(1);
   });
 
-  it("returns existing report without recomputing", () => {
-    const existing = {
+  it("returns existing report without recomputing", async () => {
+    const existing: EffectivenessReport = {
       totalFeedbacks: 999,
       byRating: { POSITIVE: 0, NEGATIVE: 0, NEUTRAL: 0 },
       bySeverity: { CRITICAL: 0, MAJOR: 0, MINOR: 0, SUGGESTION: 0 },
@@ -164,29 +178,26 @@ describe("getOrComputeEffectivenessReport (lazy fill)", () => {
       versionPublishedAt: "2026-07-01T00:00:00.000Z",
       windowDays: 7,
     };
-    writeVersion({
-      id: "prefilled",
-      agentId: AGENT_ID,
-      publishedAt: "2026-07-01T00:00:00.000Z",
-      effectivenessReport: existing,
-    });
-    const v = store.read<VersionFixture>("versions", "prefilled.json")!;
-    const r = getOrComputeEffectivenessReport(v, { now: new Date("2026-08-05") });
+    await seedVersionWithReport("prefilled", "2026-07-01T00:00:00.000Z", existing);
+    const r = await getOrComputeEffectivenessReport(
+      { id: "prefilled", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" },
+      { now: new Date("2026-08-05") },
+    );
     expect(r!.totalFeedbacks).toBe(999); // 用了已存的
   });
 });
 
 describe("API: GET /api/agents/[id]/versions (lazy fill integration)", () => {
   // 相对日期：避免硬编码"近期"日期随真实时间推移越过 7 天窗口（时间炸弹）
-  const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86400000);
 
   it("auto-fills effectivenessReport for old versions, leaves new versions without", async () => {
     // 老版本(35 天前发布 → 35 天 > 7 天窗口)
-    writeVersion({ id: "old", agentId: AGENT_ID, publishedAt: daysAgo(35) });
-    writeFeedback({ agentId: AGENT_ID, rating: "NEGATIVE", severity: "MAJOR", targetPartition: "PROMPT", submittedAt: daysAgo(33) });
+    await seedVersion("old", daysAgo(35));
+    await writeFeedback({ rating: "NEGATIVE", severity: "MAJOR", targetPartition: "PROMPT", submittedAt: daysAgo(33).toISOString() });
 
     // 新版本(刚发布,1 天前,仍在 7 天窗口内)
-    writeVersion({ id: "new", agentId: AGENT_ID, publishedAt: daysAgo(1) });
+    await seedVersion("new", daysAgo(1), "0.2.0");
 
     const res = await listVersions(new NextRequest("http://localhost"), {
       params: Promise.resolve({ id: AGENT_ID }),
@@ -198,15 +209,15 @@ describe("API: GET /api/agents/[id]/versions (lazy fill integration)", () => {
     const newV = json.data.items.find((v: { id: string }) => v.id === "new");
     expect(old.effectivenessReport).toBeDefined();
     expect(old.effectivenessReport.totalFeedbacks).toBe(1);
-    // 新版本未到窗口,不返回 report 字段(由 getOrCompute 返回 null,我们没塞回去)
+    // 新版本未到窗口,不返回 report 键(由 getOrCompute 返回 null,我们没塞回去)
     expect(newV.effectivenessReport).toBeUndefined();
   });
 });
 
 describe("API: GET /api/agents/[id]/versions/[versionId]", () => {
   it("returns single version with lazy-filled report for old version", async () => {
-    writeVersion({ id: "single", agentId: AGENT_ID, publishedAt: "2026-07-01T00:00:00.000Z" });
-    writeFeedback({ agentId: AGENT_ID, rating: "POSITIVE", severity: "MINOR", targetPartition: null, submittedAt: "2026-07-03" });
+    await seedVersion("single", "2026-07-01T00:00:00.000Z");
+    await writeFeedback({ rating: "POSITIVE", severity: "MINOR", targetPartition: null, submittedAt: "2026-07-03" });
 
     const res = await getVersion(new NextRequest("http://localhost"), {
       params: Promise.resolve({ id: AGENT_ID, versionId: "single" }),
@@ -225,7 +236,14 @@ describe("API: GET /api/agents/[id]/versions/[versionId]", () => {
   });
 
   it("returns 422 when version belongs to different agent", async () => {
-    writeVersion({ id: "x", agentId: "rds-assistant", publishedAt: "2026-07-01T00:00:00.000Z" });
+    await seedAgent("rds-assistant", "RDS 助手");
+    await seedReleaseWithVersion({
+      agentId: "rds-assistant",
+      versionId: "x",
+      version: "0.1.0",
+      changeNote: "seed",
+      publishedAt: new Date("2026-07-01T00:00:00.000Z"),
+    });
     const res = await getVersion(new NextRequest("http://localhost"), {
       params: Promise.resolve({ id: AGENT_ID, versionId: "x" }),
     });

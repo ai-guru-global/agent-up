@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { success, handleApiError } from "@/lib/utils";
-import { store } from "@/lib/data/store";
 import { getOrComputeEffectivenessReport } from "@/lib/services/effectiveness-service";
+import { toVersionResponse } from "@/lib/services/agent-service";
 
 /**
  * GET /api/agents/[id]/versions — 某 Agent 的版本历史（含不可变快照）
@@ -19,22 +20,25 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const versions = store
-      .list<Record<string, unknown>>("versions")
-      .filter((v) => v.agentId === id)
-      .sort((a, b) =>
-        String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")),
-      );
+    const versions = await prisma.agentVersion.findMany({
+      where: { agentId: id },
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    });
 
     if (versions.length === 0) {
       return success({ items: [], total: 0 });
     }
 
     // lazy fill：若 effectivenessReport 缺失 + 已过窗口，则算 + 写回
-    const items = versions.map((v) => {
-      const report = getOrComputeEffectivenessReport(v as never);
-      return report ? { ...v, effectivenessReport: report } : v;
-    });
+    const items = [];
+    for (const v of versions) {
+      const report = await getOrComputeEffectivenessReport(v);
+      items.push(
+        report
+          ? { ...toVersionResponse(v), effectivenessReport: report }
+          : toVersionResponse(v),
+      );
+    }
 
     return success({ items, total: items.length });
   } catch (err) {

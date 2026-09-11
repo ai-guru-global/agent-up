@@ -70,7 +70,7 @@ function toBindingResponse(row: BindingRow) {
   };
 }
 
-function toPromptConfigResponse(row: PromptConfig) {
+export function toPromptConfigResponse(row: PromptConfig) {
   return {
     systemPrompt: row.systemPrompt,
     roleDefinition: row.roleDefinition,
@@ -81,7 +81,7 @@ function toPromptConfigResponse(row: PromptConfig) {
   };
 }
 
-function toKnowledgeConfigResponse(row: KnowledgeConfig) {
+export function toKnowledgeConfigResponse(row: KnowledgeConfig) {
   return {
     wikiVaultId: row.wikiVaultId,
     searchStrategy: row.searchStrategy,
@@ -93,7 +93,7 @@ function toKnowledgeConfigResponse(row: KnowledgeConfig) {
   };
 }
 
-function toToolsConfigResponse(row: ToolsConfig) {
+export function toToolsConfigResponse(row: ToolsConfig) {
   return {
     mcpTools: row.mcpTools,
     wikiQueryTools: row.wikiQueryTools,
@@ -105,7 +105,7 @@ function toToolsConfigResponse(row: ToolsConfig) {
   };
 }
 
-function toRoutingConfigResponse(row: RoutingConfig) {
+export function toRoutingConfigResponse(row: RoutingConfig) {
   return {
     rules: row.rules,
     escalationPolicy: row.escalationPolicy ?? null,
@@ -147,7 +147,7 @@ function toAgentResponse(row: AgentRow | AgentListRow) {
   };
 }
 
-function toReleaseResponse(row: Release) {
+export function toReleaseResponse(row: Release & { version?: AgentVersion | null }) {
   return {
     id: row.id,
     agentId: row.agentId,
@@ -161,10 +161,25 @@ function toReleaseResponse(row: Release) {
     reviewComment: row.reviewComment,
     configSnapshot: row.configSnapshot ?? null,
     aiReview: row.aiReview ?? null,
+    // JSON 契约：PENDING 时 version 为 null 键；回滚单带条件键组
+    version: row.version
+      ? {
+          id: row.version.id,
+          version: row.version.version,
+          publishedAt: row.version.publishedAt.toISOString(),
+        }
+      : null,
+    ...(row.isRollback
+      ? {
+          isRollback: true,
+          rollbackFromVersion: row.rollbackFromVersion,
+          rollbackToVersionId: row.rollbackToVersionId,
+        }
+      : {}),
   };
 }
 
-function toVersionResponse(row: AgentVersion) {
+export function toVersionResponse(row: AgentVersion) {
   return {
     id: row.id,
     agentId: row.agentId,
@@ -181,7 +196,8 @@ function toVersionResponse(row: AgentVersion) {
     publishedAt: row.publishedAt.toISOString(),
     publishedBy: row.publishedBy,
     changeNote: row.changeNote,
-    effectivenessReport: row.effectivenessReport ?? null,
+    // JSON 契约：report 未计算时键不出现（lazy fill 后才存在）
+    ...(row.effectivenessReport ? { effectivenessReport: row.effectivenessReport } : {}),
   };
 }
 
@@ -221,6 +237,7 @@ export async function getAgent(id: string) {
     prisma.release.findMany({
       where: { agentId: id, status: "PENDING" },
       orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+      include: { version: true },
     }),
     prisma.agentVersion.findMany({
       where: { agentId: id },

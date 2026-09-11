@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma, Prisma } from "@agent-up/db";
 import { POST as submitRelease, PUT as reviewReleaseLegacy } from "@/app/api/agents/[id]/release/route";
 import { PUT as reviewRelease } from "@/app/api/releases/[id]/review/route";
 import { GET as listReleases } from "@/app/api/releases/route";
 import { GET as getRelease } from "@/app/api/releases/[id]/route";
-import { store, _getDataDir } from "@/lib/data/store";
+import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
+import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
-import { rmSync, mkdirSync } from "fs";
-import { join } from "path";
+import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -23,14 +25,20 @@ function makeRequest(
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  resetActor();
   useTempDataDir();
-  // 清空 versions，让 release 流程从干净状态开始
-  const versionsDir = join(_getDataDir(), "versions");
-  rmSync(versionsDir, { recursive: true, force: true });
-  mkdirSync(versionsDir, { recursive: true });
+  await _resetDb();
+  await seedAgent(AGENT_ID);
+  // 提交链路需要可 diff 的配置分区
+  await prisma.promptConfig.create({
+    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: ["不乱答"], version: 1 },
+  });
 });
-afterEach(restoreDataDir);
+afterEach(async () => {
+  await flushAudit();
+  restoreDataDir();
+});
 
 describe("POST /api/agents/[id]/release", () => {
   it("submits a release (201) with actor + audit", async () => {
@@ -48,8 +56,9 @@ describe("POST /api/agents/[id]/release", () => {
     expect(json.data.status).toBe("PENDING");
     expect(json.data.submittedBy).toBe("user-1"); // 从 x-actor-id 解析
 
-    // 审计写入
-    const logs = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
+    // 审计写入（批2 起 PG 为事实源）
+    await flushAudit();
+    const logs = await listAudit();
     expect(logs.some((l) => l.action === "release.submit")).toBe(true);
   });
 
@@ -107,7 +116,8 @@ describe("PUT /api/releases/[id]/review", () => {
     expect(json.data.status).toBe("APPROVED");
     expect(json.data.version).toBeTruthy();
     // 审计
-    const logs = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
+    await flushAudit();
+    const logs = await listAudit();
     expect(logs.some((l) => l.action === "release.approve")).toBe(true);
   });
 
@@ -166,51 +176,46 @@ describe("发布门禁：AI 评测 FAILED 后批准须留痕（软门禁）", ()
     results: [],
   };
 
-  function seedPendingWithReview(
+  async function seedPendingWithReview(
     releaseId: string,
     aiReview: Record<string, unknown> | null,
   ) {
-    store.write(
-      {
+    await prisma.release.create({
+      data: {
         id: releaseId,
         agentId: AGENT_ID,
         changeNote: "带评测结论的提交",
         changedPartitions: ["PROMPT"],
         status: "PENDING",
         submittedBy: "tester",
-        submittedAt: "2026-09-01T00:00:00.000Z",
-        approvedBy: null,
-        approvedAt: null,
-        reviewComment: null,
         configSnapshot: {
           prompt: { systemPrompt: "带门禁测试的提示词" },
           knowledge: null,
           tools: null,
           routing: null,
           snapshotAt: "2026-09-01T00:00:00.000Z",
-        },
-        version: null,
-        ...(aiReview ? { aiReview } : {}),
+        } as unknown as Prisma.InputJsonValue,
+        ...(aiReview ? { aiReview: aiReview as unknown as Prisma.InputJsonValue } : {}),
       },
-      "releases",
-      `${releaseId}.json`,
-    );
+    });
   }
 
   it("FAILED + 无意见 APPROVED → 422，release 保持 PENDING", async () => {
-    seedPendingWithReview("rel-gate1", failedReview);
+    await seedPendingWithReview("rel-gate1", failedReview);
     const res = await reviewRelease(
       makeRequest("PUT", { releaseId: "rel-gate1", action: "APPROVED" }),
       { params: Promise.resolve({ id: "rel-gate1" }) },
     );
     expect(res.status).toBe(422);
-    expect(
-      store.read<{ status?: string }>("releases", "rel-gate1.json")?.status,
-    ).toBe("PENDING");
+    const row = await prisma.release.findUnique({
+      where: { id: "rel-gate1" },
+      select: { status: true },
+    });
+    expect(row?.status).toBe("PENDING");
   });
 
   it("FAILED + 有意见 APPROVED → 200，审计含 aiReviewStatus=FAILED", async () => {
-    seedPendingWithReview("rel-gate2", failedReview);
+    await seedPendingWithReview("rel-gate2", failedReview);
     const res = await reviewRelease(
       makeRequest("PUT", {
         releaseId: "rel-gate2",
@@ -223,7 +228,8 @@ describe("发布门禁：AI 评测 FAILED 后批准须留痕（软门禁）", ()
     const json = await res.json();
     expect(json.data.status).toBe("APPROVED");
     expect(json.data.version).toBeTruthy();
-    const logs = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
+    await flushAudit();
+    const logs = await listAudit();
     const approve = logs.find(
       (l) => l.action === "release.approve" && l.resourceId === "rel-gate2",
     );
@@ -234,7 +240,7 @@ describe("发布门禁：AI 评测 FAILED 后批准须留痕（软门禁）", ()
   });
 
   it("PASSED + 无意见 APPROVED → 200（门禁不触发）", async () => {
-    seedPendingWithReview("rel-gate3", {
+    await seedPendingWithReview("rel-gate3", {
       ...failedReview,
       status: "PASSED",
       passed: 2,
@@ -249,7 +255,7 @@ describe("发布门禁：AI 评测 FAILED 后批准须留痕（软门禁）", ()
   });
 
   it("无 aiReview + 无意见 APPROVED → 200（存量行为不变）", async () => {
-    seedPendingWithReview("rel-gate4", null);
+    await seedPendingWithReview("rel-gate4", null);
     const res = await reviewRelease(
       makeRequest("PUT", { releaseId: "rel-gate4", action: "APPROVED" }),
       { params: Promise.resolve({ id: "rel-gate4" }) },
@@ -303,14 +309,27 @@ describe("GET /api/releases/[id] (single release + diff baseline)", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns release with configSnapshot + baseline for seed release", async () => {
+  it("returns release with configSnapshot + baseline for approved release", async () => {
+    // 两个已发布版本：rel-ver-002 的 baseline 是 ver-001 的快照
+    await seedReleaseWithVersion({
+      agentId: AGENT_ID,
+      versionId: "ver-001",
+      version: "0.1.0",
+      changeNote: "初始发布",
+    });
+    await seedReleaseWithVersion({
+      agentId: AGENT_ID,
+      versionId: "ver-002",
+      version: "0.2.0",
+      changeNote: "第二次发布",
+    });
     const res = await getRelease(
       new NextRequest("http://localhost"),
-      { params: Promise.resolve({ id: "rel-002" }) },
+      { params: Promise.resolve({ id: "rel-ver-002" }) },
     );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.data.id).toBe("rel-002");
+    expect(json.data.id).toBe("rel-ver-002");
     expect(json.data.agent).toBeTruthy();
     expect(json.data.baseline).toBeDefined();
     // baseline 应有四个分区字段
@@ -319,7 +338,7 @@ describe("GET /api/releases/[id] (single release + diff baseline)", () => {
   });
 
   it("returns configSnapshot for a newly submitted release", async () => {
-    // 提交一个新 release（versions 已清空，所以会有变更）
+    // 提交一个新 release（PG 中没有已发布版本，所以会有变更）
     const submitReq = makeRequest("POST", { changeNote: "for snapshot test" });
     const submitRes = await submitRelease(submitReq, {
       params: Promise.resolve({ id: AGENT_ID }),

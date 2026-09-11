@@ -1,4 +1,4 @@
-import { store } from "@/lib/data/store";
+import { prisma, Prisma } from "@agent-up/db";
 import { recordAudit } from "@/lib/services/audit-service";
 
 /**
@@ -41,8 +41,9 @@ export interface EffectivenessReport {
 interface VersionLike {
   id: string;
   agentId: string;
-  publishedAt: string;
-  effectivenessReport?: EffectivenessReport | null;
+  publishedAt: string | Date;
+  /** 幂等短路用：PG 行是 JsonValue，纯测试传真实对象，这里保持宽类型 */
+  effectivenessReport?: unknown;
 }
 
 interface FeedbackLike {
@@ -50,7 +51,7 @@ interface FeedbackLike {
   rating: string;
   severity: string;
   targetPartition: string | null;
-  submittedAt: string;
+  submittedAt: string | Date;
 }
 
 const ZERO_RATINGS: EffectivenessReport["byRating"] = { POSITIVE: 0, NEGATIVE: 0, NEUTRAL: 0 };
@@ -83,7 +84,9 @@ export function computeEffectivenessReport(
 ): EffectivenessReport {
   const windowDays = options.windowDays ?? DEFAULT_WINDOW_DAYS;
   const now = options.now ?? new Date();
-  const publishedAt = new Date(version.publishedAt);
+  const publishedIso =
+    version.publishedAt instanceof Date ? version.publishedAt.toISOString() : version.publishedAt;
+  const publishedAt = new Date(publishedIso);
   const windowEnd = new Date(publishedAt);
   windowEnd.setDate(windowEnd.getDate() + windowDays);
 
@@ -116,30 +119,35 @@ export function computeEffectivenessReport(
     bySeverity,
     byPartition,
     computedAt: now.toISOString(),
-    versionPublishedAt: version.publishedAt,
+    versionPublishedAt: publishedIso,
     windowDays,
   };
 }
 
 /**
  * 读取 version,若 effectivenessReport 缺失且已过窗口则计算并写回。
- * 幂等:已存在则直接返回;并发场景下先 refetch disk,避免重复算。
+ * 幂等:已存在则直接返回;并发场景下先 refetch PG,避免重复算。
  *
  * @returns EffectivenessReport 或 null（未到窗口 / 缺 version）
  */
-export function getOrComputeEffectivenessReport(
+export async function getOrComputeEffectivenessReport(
   versionIn: VersionLike,
   options: { windowDays?: number; now?: Date } = {},
-): EffectivenessReport | null {
-  // 先 refetch disk 拿到最新 — 解决「同 test 内连续两次调用导致重复算」+ 并发竞态
-  const onDisk = store.read<VersionLike & Record<string, unknown>>(
-    "versions",
-    `${versionIn.id}.json`,
-  );
-  const version: VersionLike = onDisk ?? versionIn;
+): Promise<EffectivenessReport | null> {
+  // 先 refetch PG 拿到最新 — 解决「同 test 内连续两次调用导致重复算」+ 并发竞态
+  const onDisk = await prisma.agentVersion.findUnique({ where: { id: versionIn.id } });
+  const version: VersionLike = onDisk
+    ? {
+        id: onDisk.id,
+        agentId: onDisk.agentId,
+        publishedAt: onDisk.publishedAt,
+        effectivenessReport: onDisk.effectivenessReport ?? null,
+      }
+    : versionIn;
 
   // 已存在 → 直接返回
-  if (version.effectivenessReport) return version.effectivenessReport;
+  const existing = version.effectivenessReport as EffectivenessReport | null | undefined;
+  if (existing) return existing;
 
   const windowDays = options.windowDays ?? DEFAULT_WINDOW_DAYS;
   const now = options.now ?? new Date();
@@ -151,19 +159,18 @@ export function getOrComputeEffectivenessReport(
   if (elapsedMs < windowMs) return null;
 
   // 读该 agent 的所有 feedback
-  const allFeedbacks = store
-    .list<FeedbackLike>("feedback")
-    .filter((f) => f.agentId === version.agentId);
+  const allFeedbacks = await prisma.feedback.findMany({
+    where: { agentId: version.agentId },
+  });
 
   const report = computeEffectivenessReport(version, allFeedbacks, { windowDays, now });
 
   // 写回 version（含 effectivenessReport）,保证下次直接读
   if (onDisk) {
-    store.write(
-      { ...onDisk, effectivenessReport: report },
-      "versions",
-      `${version.id}.json`,
-    );
+    await prisma.agentVersion.update({
+      where: { id: onDisk.id },
+      data: { effectivenessReport: report as unknown as Prisma.InputJsonValue },
+    });
     recordAudit("version.effectiveness.computed", "version", version.id, {
       agentId: version.agentId,
       totalFeedbacks: report.totalFeedbacks,

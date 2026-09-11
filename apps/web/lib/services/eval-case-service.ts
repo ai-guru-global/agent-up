@@ -53,7 +53,7 @@ function summarizeTitle(message: string): string {
 
 type EvalCaseRow = Prisma.EvalCaseGetPayload<Record<string, never>>;
 
-function toEvalCase(row: EvalCaseRow): EvalCase {
+export function toEvalCase(row: EvalCaseRow): EvalCase {
   return {
     id: row.id,
     agentId: row.agentId,

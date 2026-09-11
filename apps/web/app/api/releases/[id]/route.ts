@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { success, handleApiError } from "@/lib/utils";
-import { store } from "@/lib/data/store";
+import { toReleaseResponse } from "@/lib/services/agent-service";
 import { NotFoundError } from "@/lib/errors";
 
 /**
@@ -16,32 +17,22 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const release = store.read<Record<string, unknown>>("releases", `${id}.json`);
+    const release = await prisma.release.findUnique({
+      where: { id },
+      include: {
+        agent: { select: { id: true, name: true } },
+        version: true,
+      },
+    });
     if (!release) throw new NotFoundError("Release 不存在");
 
-    // join agent name
-    const agent = store.read<{ id: string; name: string }>(
-      "agents",
-      `${release.agentId}.json`,
-    );
-
-    // 取上一个已发布 Version 作为 diff baseline（当前 release 之前的最新版本）
-    const agentId = release.agentId as string;
-    const versions = store
-      .list<Record<string, unknown>>("versions")
-      .filter((v) => v.agentId === agentId)
-      .sort((a, b) =>
-        String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")),
-      );
-
-    // baseline = 该 release 对应 version 之前的那个版本；如果没有就用全 null
-    const releaseVersionId = release.version
-      ? (release.version as Record<string, unknown>).id
-      : null;
-    const baselineIdx = versions.findIndex(
-      (v) => v.id === releaseVersionId,
-    );
-    // 如果 release 已批准（有 version），baseline 是它的前一个；否则是最新那个
+    // baseline = 该 release 对应 version 之前的那个版本；如果没有就用最新那个
+    const versions = await prisma.agentVersion.findMany({
+      where: { agentId: release.agentId },
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    });
+    const releaseVersionId = release.version?.id ?? null;
+    const baselineIdx = versions.findIndex((v) => v.id === releaseVersionId);
     const baseline =
       baselineIdx >= 0 && baselineIdx + 1 < versions.length
         ? versions[baselineIdx + 1]
@@ -58,8 +49,8 @@ export async function GET(
       : { prompt: null, knowledge: null, tools: null, routing: null, version: null };
 
     return success({
-      ...release,
-      agent: agent ? { id: agent.id, name: agent.name } : null,
+      ...toReleaseResponse(release),
+      agent: { id: release.agent.id, name: release.agent.name },
       baseline: baselineSnapshots,
     });
   } catch (err) {

@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
+import { prisma, Prisma } from "@agent-up/db";
 import { GET as probeGet, POST as probePost } from "@/app/api/maas/probe/route";
 import { POST as feedbackInsight } from "@/app/api/feedback/[id]/insight/route";
 import { POST as releaseSummary } from "@/app/api/releases/[id]/summary/route";
 import { POST as agentChat } from "@/app/api/agents/[id]/chat/route";
-import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
@@ -105,19 +104,26 @@ describe("POST /api/feedback/[id]/insight", () => {
 });
 
 describe("POST /api/releases/[id]/summary", () => {
+  // 批4 起 release 以 Prisma 为事实源：夹具走 PG
+  beforeEach(async () => {
+    await _resetDb();
+    await prisma.productGroup.create({ data: { id: "g-a1", name: "g-a1", displayName: "A1 产品组" } });
+    await prisma.agent.create({ data: { id: "a1", name: "测试助手", productGroupId: "g-a1", createdBy: "seed" } });
+  });
+
   it("returns LLM summary built from snapshot diff", async () => {
-    store.write(
-      {
+    await prisma.release.create({
+      data: {
         id: "rel-1",
         agentId: "a1",
         changeNote: "收紧价格类回答",
+        changedPartitions: ["PROMPT"],
         status: "PENDING",
-        configSnapshot: { prompt: { systemPrompt: "新版提示词" } },
-        submittedAt: "2026-08-20T00:00:00.000Z",
+        submittedBy: "tester",
+        submittedAt: new Date("2026-08-20T00:00:00.000Z"),
+        configSnapshot: { prompt: { systemPrompt: "新版提示词" } } as unknown as Prisma.InputJsonValue,
       },
-      "releases",
-      "rel-1.json",
-    );
+    });
     const res = await releaseSummary(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-1" }),
     });

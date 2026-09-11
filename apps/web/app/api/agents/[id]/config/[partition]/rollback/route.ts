@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { success, error, validateBody, handleApiError } from "@/lib/utils";
 import { z } from "zod";
-import { store } from "@/lib/data/store";
+import { prisma } from "@agent-up/db";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import {
   getAgentConfig,
@@ -54,18 +54,18 @@ export async function POST(
 
   try {
     return await withActor(resolveActor(request.headers), async () => {
-      // 找到目标 version
-      const version = store.read<Record<string, unknown>>(
-        "versions",
-        `${validated.data.versionId}.json`,
-      );
+      // 找到目标 version（批4 起版本事实源为 PG）
+      const version = await prisma.agentVersion.findUnique({
+        where: { id: validated.data.versionId },
+      });
       if (!version) throw new NotFoundError("Version 不存在");
       if (version.agentId !== id) {
         throw new ValidationError("该 Version 不属于此 Agent");
       }
 
       // 取该分区的 snapshot
-      const snapshotKey = `${partition}Snapshot` as keyof typeof version;
+      const snapshotKey =
+        `${partition}Snapshot` as "promptSnapshot" | "knowledgeSnapshot" | "toolsSnapshot" | "routingSnapshot";
       const snapshot = version[snapshotKey] as Record<string, unknown> | null;
       if (!snapshot) {
         throw new ValidationError(

@@ -32,7 +32,7 @@ beforeEach(async () => {
 async function seedVersion(
   n: number,
   version: string,
-  status: "PENDING" | "APPROVED" | "PUBLISHED",
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CHANGES_REQUESTED",
   publishedAt: Date,
 ) {
   const releaseId = `rel-${n}`;

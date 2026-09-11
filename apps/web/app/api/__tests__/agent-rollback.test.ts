@@ -3,11 +3,11 @@ import { NextRequest } from "next/server";
 import { prisma } from "@agent-up/db";
 import { POST as rollback } from "@/app/api/agents/[id]/rollback/[versionId]/route";
 import { GET as getConfig } from "@/app/api/agents/[id]/config/[partition]/route";
-import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
+import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
+import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -18,19 +18,45 @@ function makeRequest(): NextRequest {
   });
 }
 
-// 回滚的版本查找与 release/version 落盘仍读/写 JSON 夹具（批4 切 PG）；
-// 分区覆盖批3 起走 PG upsert，需 PG 建档；ver-001 的 knowledgeSnapshot 带
-// wikiVaultId: "ecs-wiki"，PG 需有对应 vault 行才不触发 FK 违例
+// 批4 起版本/release 事实源在 PG：夹具自控快照内容（不带 wikiVaultId，无需 vault 前置种子）
 beforeEach(async () => {
   resetActor();
   useTempDataDir();
   await _resetDb();
   await seedAgent(AGENT_ID);
-  await prisma.wikiVault.create({
-    data: { id: "ecs-wiki", name: "ECS 知识库", agentId: AGENT_ID },
+  await seedReleaseWithVersion({
+    agentId: AGENT_ID,
+    versionId: "ver-001",
+    version: "0.1.0",
+    changeNote: "初始发布",
+    snapshots: {
+      prompt: { systemPrompt: "你是一个专业的 ECS 云服务器技术支持助手（回滚目标）" },
+      knowledge: { searchStrategy: "WIKI_FIRST", fallbackToMcp: true, maxWikiResults: 3 },
+      tools: { mcpTools: [], wikiQueryTools: [], maxConcurrentCalls: 3, timeoutMs: 30000 },
+      routing: { rules: [], humanThreshold: 0.3, maxConversationTurns: 10 },
+    },
+  });
+  await seedReleaseWithVersion({
+    agentId: AGENT_ID,
+    versionId: "ver-002",
+    version: "0.2.0",
+    changeNote: "反馈优化发布",
+    snapshots: {
+      prompt: { systemPrompt: "你是一个专业的 ECS 助手（v2，不是回滚目标）" },
+    },
+  });
+  await seedAgent("rds-assistant", "RDS 助手");
+  await seedReleaseWithVersion({
+    agentId: "rds-assistant",
+    versionId: "ver-rds-001",
+    version: "0.1.0",
+    changeNote: "RDS 初始发布",
   });
 });
-afterEach(restoreDataDir);
+afterEach(async () => {
+  await flushAudit();
+  restoreDataDir();
+});
 
 describe("POST /api/agents/[id]/rollback/[versionId]", () => {
   it("rolls back the whole agent to ver-001 (4 partitions at once)", async () => {
@@ -72,12 +98,10 @@ describe("POST /api/agents/[id]/rollback/[versionId]", () => {
     await rollback(makeRequest(), {
       params: Promise.resolve({ id: AGENT_ID, versionId: "ver-001" }),
     });
-    const releases = store.list<Record<string, unknown>>("releases");
-    const rb = releases.find((r) => r.isRollback === true);
+    const rb = await prisma.release.findFirst({ where: { isRollback: true } });
     expect(rb).toBeTruthy();
     expect(rb!.status).toBe("APPROVED");
-    // configSnapshot 在 Record<string, unknown> 下是 unknown，先显式收窄再取字段
-    const snapshot = rb!.configSnapshot as Record<string, unknown>;
+    const snapshot = rb!.configSnapshot as unknown as Record<string, unknown>;
     expect(rb!.configSnapshot).toBeTruthy();
     expect(snapshot.prompt).toBeTruthy();
     expect(snapshot.knowledge).toBeTruthy();
@@ -87,14 +111,11 @@ describe("POST /api/agents/[id]/rollback/[versionId]", () => {
     await rollback(makeRequest(), {
       params: Promise.resolve({ id: AGENT_ID, versionId: "ver-001" }),
     });
-    const logs = store.readArray<Record<string, unknown>>(
-      "settings",
-      "audit-logs.json",
-    );
+    await flushAudit();
+    const logs = await listAudit();
     const rollbackLog = logs.find((l) => l.action === "agent.rollback");
     expect(rollbackLog).toBeTruthy();
     expect(rollbackLog!.resourceId).toBe(AGENT_ID);
-    // details 同理：unknown 不能直接访问属性，先收窄成 Record 再断言内容
     const details = rollbackLog!.details as Record<string, unknown>;
     expect(details.rollbackFromVersion).toBe("0.1.0");
     expect(details.partitions).toEqual([

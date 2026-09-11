@@ -12,12 +12,20 @@
  * - 评测结论是给审批人的参考信号，不硬性阻断审批 —— LLM 判官可能误判，
  *   最终决定权仍在人。
  */
-import { store } from "@/lib/data/store";
+import { prisma, Prisma } from "@agent-up/db";
 import { NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { chatCompletion, isLlmConfigured, LlmUpstreamError, type LlmMessage } from "@/lib/services/llm-service";
 import { buildSystemPrompt } from "@/lib/services/prompt-builder";
-import type { EvalCase, EvalAssertion } from "@/lib/services/eval-case-service";
+import {
+  toEvalCase,
+  type EvalCase,
+  type EvalAssertion,
+} from "@/lib/services/eval-case-service";
+import {
+  toPromptConfigResponse,
+  toReleaseResponse,
+} from "@/lib/services/agent-service";
 
 export type AiReviewStatus = "PASSED" | "FAILED" | "SKIPPED";
 export type CaseVerdict = "PASS" | "FAIL" | "ERROR";
@@ -212,22 +220,37 @@ async function evaluateCase(evalCase: EvalCase, systemPrompt: string): Promise<A
 }
 
 export async function runAiReview(releaseId: string): Promise<Record<string, unknown>> {
-  const release = store.read<Record<string, unknown>>("releases", `${releaseId}.json`);
+  const release = await prisma.release.findUnique({
+    where: { id: releaseId },
+    include: {
+      agent: {
+        include: {
+          promptConfig: true,
+          knowledgeConfig: true,
+          toolsConfig: true,
+          routingConfig: true,
+        },
+      },
+    },
+  });
   if (!release) throw new NotFoundError("Release 不存在");
   if (release.status !== "PENDING") {
     throw new ConflictError(`只有待审批的 Release 可以运行 AI 评测（当前状态：${release.status}）`);
   }
-  const agentId = String(release.agentId ?? "");
-  const agent = store.read<{ id: string; name: string; promptConfig?: Record<string, unknown> | null }>(
-    "agents",
-    `${agentId}.json`,
-  );
-  if (!agent) throw new NotFoundError("Agent 不存在，无法评测");
+  const agentId = release.agentId;
 
-  const ts = store.now();
+  const ts = new Date().toISOString();
   const model = process.env.MIMO_MODEL || "mimo-v2.5-pro";
 
-  const skip = (reason: string): Record<string, unknown> => {
+  const persist = async (aiReview: AiReviewResult): Promise<Record<string, unknown>> => {
+    await prisma.release.update({
+      where: { id: releaseId },
+      data: { aiReview: aiReview as unknown as Prisma.InputJsonValue },
+    });
+    return { ...toReleaseResponse({ ...release, aiReview: aiReview as unknown as Prisma.JsonValue | null }) };
+  };
+
+  const skip = async (reason: string): Promise<Record<string, unknown>> => {
     const aiReview: AiReviewResult = {
       status: "SKIPPED",
       runAt: ts,
@@ -239,25 +262,28 @@ export async function runAiReview(releaseId: string): Promise<Record<string, unk
       summary: reason,
       results: [],
     };
-    store.write({ ...release, aiReview }, "releases", `${releaseId}.json`);
     recordAudit("release.ai_review", "release", releaseId, { agentId, status: "SKIPPED", reason });
-    return { ...release, aiReview };
+    return persist(aiReview);
   };
 
   if (!isLlmConfigured()) {
     return skip("LLM 未配置（缺少 MIMO_API_KEY），跳过 AI 评测");
   }
 
-  const cases = store
-    .list<EvalCase>("eval-cases")
-    .filter((c) => c.agentId === agentId && c.status === "ACTIVE");
-  if (cases.length === 0) {
+  const caseRows = await prisma.evalCase.findMany({
+    where: { agentId, status: "ACTIVE" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  if (caseRows.length === 0) {
     return skip("该 Agent 还没有评测用例（先在 Playground 打分并沉淀），跳过 AI 评测");
   }
+  const cases = caseRows.map(toEvalCase);
 
   // replay 用提交快照的 prompt 分区；快照缺失时退回 Agent 当前配置
   const snapshot = (release.configSnapshot as Record<string, unknown> | null) ?? {};
-  const snapshotPrompt = (snapshot.prompt as Record<string, unknown> | null) ?? agent.promptConfig ?? {};
+  const snapshotPrompt =
+    (snapshot.prompt as Record<string, unknown> | null) ??
+    (release.agent.promptConfig ? toPromptConfigResponse(release.agent.promptConfig) : {});
   const systemPrompt = buildSystemPrompt(snapshotPrompt as Parameters<typeof buildSystemPrompt>[0]);
 
   const results: AiReviewCaseResult[] = [];
@@ -291,7 +317,6 @@ export async function runAiReview(releaseId: string): Promise<Record<string, unk
     summary,
     results,
   };
-  store.write({ ...release, aiReview }, "releases", `${releaseId}.json`);
   recordAudit("release.ai_review", "release", releaseId, {
     agentId,
     status,
@@ -299,5 +324,5 @@ export async function runAiReview(releaseId: string): Promise<Record<string, unk
     failed,
     errorCases,
   });
-  return { ...release, aiReview };
+  return persist(aiReview);
 }

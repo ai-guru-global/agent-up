@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
+import { prisma, Prisma } from "@agent-up/db";
 import { POST as agentChat } from "@/app/api/agents/[id]/chat/route";
 import { POST as rateTrace } from "@/app/api/traces/[id]/rate/route";
 import {
@@ -9,7 +9,6 @@ import {
 } from "@/app/api/agents/[id]/eval-cases/route";
 import { DELETE as removeEvalCase } from "@/app/api/eval-cases/[id]/route";
 import { POST as runAiReview } from "@/app/api/releases/[id]/ai-review/route";
-import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
@@ -72,7 +71,7 @@ afterEach(() => {
   delete process.env.MIMO_API_KEY;
 });
 
-/** JSON 夹具保留（trace/eval-case/release 路由本批仍读 JSON）；PG 建档供 chat/eval-cases 路由 */
+/** 批4 起全部事实源在 PG：建档走 prisma */
 async function writeAgent(id: string) {
   await prisma.productGroup.create({
     data: { id: `g-${id}`, name: `g-${id}`, displayName: `${id} 产品组` },
@@ -89,21 +88,6 @@ async function writeAgent(id: string) {
       outputFormat: null,
     },
   });
-  store.write(
-    {
-      id,
-      name: `助手-${id}`,
-      status: "ACTIVE",
-      promptConfig: {
-        systemPrompt: `你是助手 ${id}`,
-        roleDefinition: null,
-        constraints: ["不回答无关问题"],
-        outputFormat: null,
-      },
-    },
-    "agents",
-    `${id}.json`,
-  );
 }
 
 async function chatOnce(agentId: string, message: string): Promise<{ traceId: string; reply: string }> {
@@ -262,30 +246,26 @@ describe("评测用例沉淀", () => {
 });
 
 describe("发布前 AI 评测（replay + judge）", () => {
-  function writePendingRelease(agentId: string, releaseId: string) {
-    store.write(
-      {
+  async function writePendingRelease(agentId: string, releaseId: string) {
+    await prisma.release.create({
+      data: {
         id: releaseId,
         agentId,
         changeNote: "收紧高危操作提示",
         changedPartitions: ["PROMPT"],
         status: "PENDING",
         submittedBy: "tester",
-        submittedAt: "2026-08-20T00:00:00.000Z",
-        approvedBy: null,
-        approvedAt: null,
-        reviewComment: null,
-        configSnapshot: { prompt: { systemPrompt: "新版提示词：高危操作前提醒快照" } },
-        version: null,
+        submittedAt: new Date("2026-08-20T00:00:00.000Z"),
+        configSnapshot: {
+          prompt: { systemPrompt: "新版提示词：高危操作前提醒快照" },
+        } as unknown as Prisma.InputJsonValue,
       },
-      "releases",
-      `${releaseId}.json`,
-    );
+    });
   }
 
-  function writeEvalCase(agentId: string, caseId: string) {
-    store.write(
-      {
+  async function writeEvalCase(agentId: string, caseId: string) {
+    await prisma.evalCase.create({
+      data: {
         id: caseId,
         agentId,
         sourceTraceId: "t-1",
@@ -295,19 +275,16 @@ describe("发布前 AI 评测（replay + judge）", () => {
         history: [],
         message: "扩容后 df -h 没变化",
         referenceReply: "先做快照再 growpart/resize2fs",
-        status: "ACTIVE",
-        createdAt: "2026-08-01T00:00:00.000Z",
+        createdAt: new Date("2026-08-01T00:00:00.000Z"),
         createdBy: "tester",
       },
-      "eval-cases",
-      `${caseId}.json`,
-    );
+    });
   }
 
   it("replay 使用 release 快照 prompt 并写回 PASSED 结果", async () => {
     await writeAgent("e1");
-    writePendingRelease("e1", "rel-e1");
-    writeEvalCase("e1", "case-e1");
+    await writePendingRelease("e1", "rel-e1");
+    await writeEvalCase("e1", "case-e1");
 
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-e1" }),
@@ -328,9 +305,10 @@ describe("发布前 AI 评测（replay + judge）", () => {
     expect(review.results[0].score).toBe(5);
     expect(review.results[0].reason).toBe("覆盖参考要点");
 
-    // 落盘可见：release 文件已带 aiReview
-    const persisted = store.read("releases", "rel-e1.json");
-    expect(persisted?.aiReview?.status).toBe("PASSED");
+    // 落盘可见：release 行已带 aiReview
+    const persisted = await prisma.release.findUnique({ where: { id: "rel-e1" } });
+    const persistedReview = persisted?.aiReview as { status?: string } | null;
+    expect(persistedReview?.status).toBe("PASSED");
 
     // replay 请求的 system prompt 来自 release 快照（新提示词），而非用例旧提示词
     const calls = vi.mocked(fetch).mock.calls;
@@ -368,8 +346,8 @@ describe("发布前 AI 评测（replay + judge）", () => {
       }),
     );
     await writeAgent("f1");
-    writePendingRelease("f1", "rel-f1");
-    writeEvalCase("f1", "case-f1");
+    await writePendingRelease("f1", "rel-f1");
+    await writeEvalCase("f1", "case-f1");
 
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-f1" }),
@@ -382,7 +360,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
 
   it("无评测用例 → SKIPPED", async () => {
     await writeAgent("g1");
-    writePendingRelease("g1", "rel-g1");
+    await writePendingRelease("g1", "rel-g1");
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-g1" }),
     });
@@ -394,8 +372,8 @@ describe("发布前 AI 评测（replay + judge）", () => {
   it("LLM 未配置 → SKIPPED", async () => {
     delete process.env.MIMO_API_KEY;
     await writeAgent("h1");
-    writePendingRelease("h1", "rel-h1");
-    writeEvalCase("h1", "case-h1");
+    await writePendingRelease("h1", "rel-h1");
+    await writeEvalCase("h1", "case-h1");
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-h1" }),
     });
@@ -407,17 +385,17 @@ describe("发布前 AI 评测（replay + judge）", () => {
 
   it("已处理的 release 再评测 → 409；release 不存在 → 404", async () => {
     await writeAgent("i1");
-    store.write(
-      {
+    await prisma.release.create({
+      data: {
         id: "rel-done",
         agentId: "i1",
         changeNote: "已通过",
+        changedPartitions: ["PROMPT"],
         status: "APPROVED",
-        submittedAt: "2026-08-01T00:00:00.000Z",
+        submittedBy: "tester",
+        submittedAt: new Date("2026-08-01T00:00:00.000Z"),
       },
-      "releases",
-      "rel-done.json",
-    );
+    });
     const done = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-done" }),
     });
@@ -431,34 +409,30 @@ describe("发布前 AI 评测（replay + judge）", () => {
 });
 
 describe("确定性断言（code-based 判分器）", () => {
-  function writePendingRelease(agentId: string, releaseId: string) {
-    store.write(
-      {
+  async function writePendingRelease(agentId: string, releaseId: string) {
+    await prisma.release.create({
+      data: {
         id: releaseId,
         agentId,
         changeNote: "收紧高危操作提示",
         changedPartitions: ["PROMPT"],
         status: "PENDING",
         submittedBy: "tester",
-        submittedAt: "2026-09-08T00:00:00.000Z",
-        approvedBy: null,
-        approvedAt: null,
-        reviewComment: null,
-        configSnapshot: { prompt: { systemPrompt: "新版提示词：高危操作前提醒快照" } },
-        version: null,
+        submittedAt: new Date("2026-09-08T00:00:00.000Z"),
+        configSnapshot: {
+          prompt: { systemPrompt: "新版提示词：高危操作前提醒快照" },
+        } as unknown as Prisma.InputJsonValue,
       },
-      "releases",
-      `${releaseId}.json`,
-    );
+    });
   }
 
-  function writeEvalCaseWithAssertions(
+  async function writeEvalCaseWithAssertions(
     agentId: string,
     caseId: string,
     assertions: unknown[],
   ) {
-    store.write(
-      {
+    await prisma.evalCase.create({
+      data: {
         id: caseId,
         agentId,
         sourceTraceId: "t-x",
@@ -468,14 +442,11 @@ describe("确定性断言（code-based 判分器）", () => {
         history: [],
         message: "扩容后 df -h 没变化",
         referenceReply: "先做快照再 growpart/resize2fs",
-        assertions,
-        status: "ACTIVE",
-        createdAt: "2026-09-01T00:00:00.000Z",
+        assertions: assertions as Prisma.InputJsonValue,
+        createdAt: new Date("2026-09-01T00:00:00.000Z"),
         createdBy: "tester",
       },
-      "eval-cases",
-      `${caseId}.json`,
-    );
+    });
   }
 
   it("沉淀请求可携带断言并写入用例", async () => {
@@ -529,8 +500,8 @@ describe("确定性断言（code-based 判分器）", () => {
 
   it("断言未命中 → 该用例 FAIL 且不调用判官（reason 含断言明细）", async () => {
     await writeAgent("l1");
-    writePendingRelease("l1", "rel-l1");
-    writeEvalCaseWithAssertions("l1", "case-l1", [{ type: "contains", value: "快照" }]);
+    await writePendingRelease("l1", "rel-l1");
+    await writeEvalCaseWithAssertions("l1", "case-l1", [{ type: "contains", value: "快照" }]);
 
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-l1" }),
@@ -559,8 +530,8 @@ describe("确定性断言（code-based 判分器）", () => {
 
   it("断言全过 → 走判官流程，结果携带断言明细", async () => {
     await writeAgent("m1");
-    writePendingRelease("m1", "rel-m1");
-    writeEvalCaseWithAssertions("m1", "case-m1", [{ type: "contains", value: "LLM" }]);
+    await writePendingRelease("m1", "rel-m1");
+    await writeEvalCaseWithAssertions("m1", "case-m1", [{ type: "contains", value: "LLM" }]);
 
     const res = await runAiReview(new NextRequest("http://localhost", { method: "POST" }), {
       params: Promise.resolve({ id: "rel-m1" }),
@@ -584,8 +555,8 @@ describe("确定性断言（code-based 判分器）", () => {
 
   it("not_contains 与 regex 断言语义正确（全跑不短路，任一失败即 FAIL）", async () => {
     await writeAgent("n1");
-    writePendingRelease("n1", "rel-n1");
-    writeEvalCaseWithAssertions("n1", "case-n1", [
+    await writePendingRelease("n1", "rel-n1");
+    await writeEvalCaseWithAssertions("n1", "case-n1", [
       { type: "not_contains", value: "禁词" },
       { type: "regex", value: "快照|snapshot" },
     ]);

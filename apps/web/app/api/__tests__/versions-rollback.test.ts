@@ -4,11 +4,11 @@ import { prisma } from "@agent-up/db";
 import { GET as getVersions } from "@/app/api/agents/[id]/versions/route";
 import { POST as rollback } from "@/app/api/agents/[id]/config/[partition]/rollback/route";
 import { GET as getConfig } from "@/app/api/agents/[id]/config/[partition]/route";
-import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
+import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
+import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -20,18 +20,47 @@ function makeRequest(method: string, body?: unknown): NextRequest {
   });
 }
 
-// 回滚的版本查找仍读 JSON 夹具（批4 切 PG）；配置更新与留痕已走 PG，故需 PG 建档。
-// ver-001 的 knowledgeSnapshot 带 wikiVaultId: "ecs-wiki"，PG 需有对应 vault 行才不触发 FK 违例
+// 批4 起版本事实源在 PG：夹具用 seedReleaseWithVersion 自控快照内容
+// （不带 wikiVaultId，无需 vault 前置种子；PG AgentVersion 的快照列是 Json，不做 FK 校验）
 beforeEach(async () => {
   resetActor();
   useTempDataDir();
   await _resetDb();
   await seedAgent(AGENT_ID);
-  await prisma.wikiVault.create({
-    data: { id: "ecs-wiki", name: "ECS 知识库", agentId: AGENT_ID },
+  await seedAgent("rds-assistant", "RDS 助手");
+  await seedReleaseWithVersion({
+    agentId: AGENT_ID,
+    versionId: "ver-001",
+    version: "0.1.0",
+    changeNote: "初始发布",
+    snapshots: {
+      prompt: { systemPrompt: "你是一个专业的 ECS 助手（v1）", constraints: ["不执行变更"] },
+      knowledge: { searchStrategy: "WIKI_FIRST", maxWikiResults: 3 },
+      tools: { mcpTools: [], wikiQueryTools: [], maxConcurrentCalls: 3 },
+      routing: { rules: [], humanThreshold: 0.3 },
+    },
+  });
+  await seedReleaseWithVersion({
+    agentId: AGENT_ID,
+    versionId: "ver-002",
+    version: "0.2.0",
+    changeNote: "安全组知识优化",
+    snapshots: {
+      prompt: { systemPrompt: "你是一个专业的 ECS 助手（v2）" },
+      knowledge: { searchStrategy: "WIKI_FIRST", maxWikiResults: 5 },
+    },
+  });
+  await seedReleaseWithVersion({
+    agentId: "rds-assistant",
+    versionId: "ver-rds-001",
+    version: "0.1.0",
+    changeNote: "RDS 初始发布",
   });
 });
-afterEach(restoreDataDir);
+afterEach(async () => {
+  await flushAudit();
+  restoreDataDir();
+});
 
 describe("GET /api/agents/[id]/versions", () => {
   it("returns version history for seed agent", async () => {
@@ -60,12 +89,11 @@ describe("GET /api/agents/[id]/versions", () => {
     expect(v).toHaveProperty("routingSnapshot");
   });
 
-  it("returns empty for agent with no versions", async () => {
+  it("returns single version for rds agent", async () => {
     const res = await getVersions(
       new NextRequest("http://localhost"),
       { params: Promise.resolve({ id: "rds-assistant" }) },
     );
-    // rds has ver-rds-001 in seed
     const json = await res.json();
     expect(json.data.items.length).toBe(1);
   });
@@ -83,7 +111,6 @@ describe("GET /api/agents/[id]/versions", () => {
 
 describe("POST /api/agents/[id]/config/[partition]/rollback", () => {
   it("rolls back prompt partition to ver-001", async () => {
-    // 回滚到 ver-001（初始版本，promptConfig 可能不同）
     const res = await rollback(
       makeRequest("POST", { versionId: "ver-001" }),
       { params: Promise.resolve({ id: AGENT_ID, partition: "prompt" }) },
@@ -100,6 +127,7 @@ describe("POST /api/agents/[id]/config/[partition]/rollback", () => {
     );
     const after = (await afterRes.json()).data;
     expect(after.systemPrompt).toBeDefined();
+    expect(after.systemPrompt).toContain("你是一个专业的 ECS 助手（v1）");
   });
 
   it("writes a config-change record with ROLLBACK label", async () => {
@@ -152,10 +180,8 @@ describe("POST /api/agents/[id]/config/[partition]/rollback", () => {
       makeRequest("POST", { versionId: "ver-001" }),
       { params: Promise.resolve({ id: AGENT_ID, partition: "tools" }) },
     );
-    const logs = store.readArray<Record<string, unknown>>(
-      "settings",
-      "audit-logs.json",
-    );
+    await flushAudit();
+    const logs = await listAudit();
     expect(
       logs.some((l) => l.action === "agent.config.update"),
     ).toBe(true);

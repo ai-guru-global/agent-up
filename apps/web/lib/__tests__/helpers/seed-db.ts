@@ -1,4 +1,4 @@
-import { prisma } from "@agent-up/db";
+import { prisma, Prisma } from "@agent-up/db";
 
 /**
  * 批1 PG 测试的最小种子（全局 db:seed 是批5 的活）。
@@ -71,6 +71,65 @@ export async function seedAgent(id = "ecs-assistant", name = "ECS 助手"): Prom
   });
   await prisma.agent.create({
     data: { id, name, productGroupId: `${id}-group`, createdBy: "seed" },
+  });
+}
+
+export interface SeedVersionInput {
+  agentId: string;
+  /** AgentVersion id，如 "ver-001" */
+  versionId: string;
+  /** SemVer 字符串，如 "0.1.0" */
+  version: string;
+  publishedAt?: Date;
+  changeNote?: string;
+  snapshots?: {
+    prompt?: Record<string, unknown>;
+    knowledge?: Record<string, unknown>;
+    tools?: Record<string, unknown>;
+    routing?: Record<string, unknown>;
+  };
+  releaseId?: string;
+  releaseStatus?: "PENDING" | "APPROVED" | "REJECTED" | "CHANGES_REQUESTED";
+}
+
+/**
+ * 批4 起版本表事实源在 PG：AgentVersion.releaseId 是必填 FK，
+ * 夹具先建 Release 行再建 AgentVersion 行。发布链路测试统一用它。
+ */
+export async function seedReleaseWithVersion(input: SeedVersionInput): Promise<void> {
+  const releaseId = input.releaseId ?? `rel-${input.versionId}`;
+  const publishedAt = input.publishedAt ?? new Date("2026-09-01T00:00:00.000Z");
+  const [major, minor, patch] = input.version.split(".").map(Number);
+  await prisma.release.create({
+    data: {
+      id: releaseId,
+      agentId: input.agentId,
+      changeNote: input.changeNote ?? "seed release",
+      changedPartitions: ["PROMPT"],
+      status: input.releaseStatus ?? "APPROVED",
+      submittedBy: "seed",
+      submittedAt: publishedAt,
+      approvedBy: "seed",
+      approvedAt: publishedAt,
+    },
+  });
+  await prisma.agentVersion.create({
+    data: {
+      id: input.versionId,
+      agentId: input.agentId,
+      version: input.version,
+      major: major ?? 0,
+      minor: minor ?? 0,
+      patch: patch ?? 0,
+      promptSnapshot: (input.snapshots?.prompt ?? {}) as unknown as Prisma.InputJsonValue,
+      knowledgeSnapshot: (input.snapshots?.knowledge ?? {}) as unknown as Prisma.InputJsonValue,
+      toolsSnapshot: (input.snapshots?.tools ?? {}) as unknown as Prisma.InputJsonValue,
+      routingSnapshot: (input.snapshots?.routing ?? {}) as unknown as Prisma.InputJsonValue,
+      releaseId,
+      publishedBy: "seed",
+      publishedAt,
+      changeNote: input.changeNote ?? "seed release",
+    },
   });
 }
 

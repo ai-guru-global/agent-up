@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { success, handleApiError } from "@/lib/utils";
-import { store } from "@/lib/data/store";
 import { getOrComputeEffectivenessReport } from "@/lib/services/effectiveness-service";
+import { toVersionResponse } from "@/lib/services/agent-service";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 
 /**
@@ -16,17 +17,16 @@ export async function GET(
 ) {
   const { id, versionId } = await params;
   try {
-    const version = store.read<Record<string, unknown>>(
-      "versions",
-      `${versionId}.json`,
-    );
+    const version = await prisma.agentVersion.findUnique({ where: { id: versionId } });
     if (!version) throw new NotFoundError("Version 不存在");
     if (version.agentId !== id) {
       throw new ValidationError("该 Version 不属于此 Agent");
     }
 
-    const report = getOrComputeEffectivenessReport(version as never);
-    const item = report ? { ...version, effectivenessReport: report } : version;
+    const report = await getOrComputeEffectivenessReport(version);
+    const item = report
+      ? { ...toVersionResponse(version), effectivenessReport: report }
+      : toVersionResponse(version);
 
     return success(item);
   } catch (err) {
