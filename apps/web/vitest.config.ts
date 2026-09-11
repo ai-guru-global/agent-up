@@ -28,7 +28,6 @@ export default defineConfig({
         "lib/diff.ts",
         "lib/schemas.ts",
         "lib/utils.ts",
-        "lib/data/store.ts",
         "lib/services/**/*.ts",
       ],
       exclude: ["lib/__tests__/**", "lib/services/audit-service.ts"],

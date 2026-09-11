@@ -6,7 +6,6 @@ import { GET as getConfig } from "@/app/api/agents/[id]/config/[partition]/route
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
@@ -21,7 +20,6 @@ function makeRequest(): NextRequest {
 // 批4 起版本/release 事实源在 PG：夹具自控快照内容（不带 wikiVaultId，无需 vault 前置种子）
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
   await seedAgent(AGENT_ID);
   await seedReleaseWithVersion({
@@ -55,7 +53,6 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await flushAudit();
-  restoreDataDir();
 });
 
 describe("POST /api/agents/[id]/rollback/[versionId]", () => {

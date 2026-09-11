@@ -8,7 +8,6 @@ import { GET as getRelease } from "@/app/api/releases/[id]/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
@@ -27,7 +26,6 @@ function makeRequest(
 
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
   await seedAgent(AGENT_ID);
   // 提交链路需要可 diff 的配置分区
@@ -37,7 +35,6 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await flushAudit();
-  restoreDataDir();
 });
 
 describe("POST /api/agents/[id]/release", () => {

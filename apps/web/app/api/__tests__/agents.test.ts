@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma } from "@agent-up/db";
 import { GET as listAgents, POST as createAgent } from "@/app/api/agents/route";
@@ -13,7 +13,6 @@ import {
 } from "@/app/api/agents/[id]/config/[partition]/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
@@ -32,7 +31,6 @@ function makeRequest(
 
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
   await prisma.productGroup.create({
     data: { id: "ecs-group", name: "ecs-group", displayName: "ECS 产品组" },
@@ -47,7 +45,6 @@ beforeEach(async () => {
     data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: [] },
   });
 });
-afterEach(restoreDataDir);
 
 describe("GET /api/agents", () => {
   it("returns paginated list", async () => {

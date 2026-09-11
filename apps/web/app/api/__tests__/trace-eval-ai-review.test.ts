@@ -11,7 +11,6 @@ import { DELETE as removeEvalCase } from "@/app/api/eval-cases/[id]/route";
 import { POST as runAiReview } from "@/app/api/releases/[id]/ai-review/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
  * 「试聊 → 打分 → 沉淀评测用例 → 发布 AI 评测」闭环集成测试。
@@ -59,14 +58,12 @@ function stubLlmWithJudge() {
 
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
   process.env.MIMO_API_KEY = "tp-test";
   stubLlmWithJudge();
 });
 
 afterEach(() => {
-  restoreDataDir();
   vi.unstubAllGlobals();
   delete process.env.MIMO_API_KEY;
 });

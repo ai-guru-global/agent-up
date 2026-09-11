@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { prisma, Prisma } from "@agent-up/db";
 import { submitRelease, reviewRelease } from "@/lib/services/release-service";
 import { getAgentConfig, updatePromptConfig } from "@/lib/services/agent-service";
@@ -6,7 +6,6 @@ import { NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "./helpers/mock-store";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -54,7 +53,6 @@ async function seedVersion(input: {
 
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
   await seedAgent(AGENT_ID);
   // 种子 prompt + knowledge 两个分区（tools/routing 无行 → after=null，语义同 JSON 空配置）
@@ -65,7 +63,6 @@ beforeEach(async () => {
     data: { agentId: AGENT_ID, searchStrategy: "WIKI_FIRST", version: 1 },
   });
 });
-afterEach(restoreDataDir);
 
 describe("submitRelease", () => {
   it("throws NotFoundError for missing agent", async () => {

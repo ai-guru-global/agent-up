@@ -7,7 +7,6 @@ import { POST as releaseSummary } from "@/app/api/releases/[id]/summary/route";
 import { POST as agentChat } from "@/app/api/agents/[id]/chat/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
  * LLM 集成点 API 测试：统一 mock global.fetch，绝不发真实请求。
@@ -27,13 +26,11 @@ function stubLlmFetch() {
 
 beforeEach(() => {
   resetActor();
-  useTempDataDir();
   process.env.MIMO_API_KEY = "tp-test";
   stubLlmFetch();
 });
 
 afterEach(() => {
-  restoreDataDir();
   vi.unstubAllGlobals();
   delete process.env.MIMO_API_KEY;
 });

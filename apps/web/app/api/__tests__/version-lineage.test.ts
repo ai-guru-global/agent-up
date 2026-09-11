@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as getVersionLineage } from "@/app/api/agents/[id]/version-lineage/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
  * GET /api/agents/[id]/version-lineage — Harness 资产版本化（R5a）。
@@ -56,12 +55,7 @@ function makeCall(id: string) {
 
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
-});
-
-afterEach(() => {
-  restoreDataDir();
 });
 
 describe("GET /api/agents/[id]/version-lineage（资产演进历史）", () => {

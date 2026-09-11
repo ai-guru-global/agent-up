@@ -1,11 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma, Prisma } from "@agent-up/db";
 import { GET as getEvidenceChain } from "@/app/api/agents/[id]/evidence-chain/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
  * GET /api/agents/[id]/evidence-chain — 任务证据链（只读聚合，无新存储）。
@@ -32,12 +31,7 @@ function makeChain(id: string) {
 
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
-});
-
-afterEach(() => {
-  restoreDataDir();
 });
 
 describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {

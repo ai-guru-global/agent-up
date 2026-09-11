@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import {
   GET as listBindings,
@@ -9,7 +9,6 @@ import { createSkill } from "@/lib/services/skill-service";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -30,11 +29,9 @@ function makeRequest(
 }
 
 beforeEach(async () => {
-  useTempDataDir();
   await _resetDb();
   await seedAgent(AGENT_ID);
 });
-afterEach(restoreDataDir);
 
 describe("agents/[id]/skills 路由", () => {
   it("POST 绑定返回 201 + skill 实时摘要", async () => {

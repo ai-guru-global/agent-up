@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as listRoles, POST as createRole } from "@/app/api/settings/roles/route";
 import {
@@ -9,7 +9,6 @@ import { prisma } from "@agent-up/db";
 import { flushAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedSettings } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 const ACTOR_HEADERS = {
   "Content-Type": "application/json",
@@ -34,9 +33,7 @@ function routeContext(id: string) {
 beforeEach(async () => {
   await _resetDb();
   await seedSettings();
-  useTempDataDir(); // JSON 镜像落 tmp，避免污染真实 data/
 });
-afterEach(restoreDataDir);
 
 describe("GET /api/settings/roles", () => {
   it("返回含 permissions 与真实 _count.members 的角色列表", async () => {

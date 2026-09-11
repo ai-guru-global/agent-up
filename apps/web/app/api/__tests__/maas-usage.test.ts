@@ -1,11 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma, Prisma } from "@agent-up/db";
 import { GET as getUsage } from "@/app/api/maas/usage/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
  * GET /api/maas/usage — 每 Agent 真实模型用量（聚合试聊 trace）。
@@ -58,12 +57,7 @@ function makeRequest(): NextRequest {
 
 beforeEach(async () => {
   resetActor();
-  useTempDataDir();
   await _resetDb();
-});
-
-afterEach(() => {
-  restoreDataDir();
 });
 
 describe("GET /api/maas/usage（每 Agent 真实用量聚合）", () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import {
   GET as listPermissions,
@@ -12,7 +12,6 @@ import { prisma } from "@agent-up/db";
 import { flushAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
 import { seedSettings } from "@/lib/__tests__/helpers/seed-db";
-import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 const ACTOR_HEADERS = {
   "Content-Type": "application/json",
@@ -32,9 +31,7 @@ function makeRequest(method: string, body?: unknown, path = "/api/settings/permi
 beforeEach(async () => {
   await _resetDb();
   await seedSettings();
-  useTempDataDir();
 });
-afterEach(restoreDataDir);
 
 describe("GET /api/settings/permissions", () => {
   it("返回含真实 _count.roles 的权限列表", async () => {
