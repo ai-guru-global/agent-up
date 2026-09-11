@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { GET as listAgents, POST as createAgent } from "@/app/api/agents/route";
 import {
   GET as getAgent,
@@ -10,8 +11,10 @@ import {
   GET as getConfig,
   PUT as updateConfig,
 } from "@/app/api/agents/[id]/config/[partition]/route";
-import { store } from "@/lib/data/store";
+import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
+import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
 
@@ -27,7 +30,23 @@ function makeRequest(
   });
 }
 
-beforeEach(useTempDataDir);
+beforeEach(async () => {
+  resetActor();
+  useTempDataDir();
+  await _resetDb();
+  await prisma.productGroup.create({
+    data: { id: "ecs-group", name: "ecs-group", displayName: "ECS 产品组" },
+  });
+  await prisma.agent.create({
+    data: { id: AGENT_ID, name: "ECS 助手", productGroupId: "ecs-group", createdBy: "seed" },
+  });
+  await prisma.agent.create({
+    data: { id: "rds-assistant", name: "RDS 助手", productGroupId: "ecs-group", createdBy: "seed" },
+  });
+  await prisma.promptConfig.create({
+    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: [] },
+  });
+});
 afterEach(restoreDataDir);
 
 describe("GET /api/agents", () => {
@@ -38,15 +57,23 @@ describe("GET /api/agents", () => {
     const json = await res.json();
     expect(json.data.items.length).toBeGreaterThan(0);
     expect(json.data.pagination).toBeDefined();
+    // 列表项带真实计数与产品组摘要
+    expect(json.data.items[0]._count).toHaveProperty("feedbacks");
+    expect(json.data.items[0].productGroup).toMatchObject({ id: "ecs-group" });
   });
 
   it("filters by status", async () => {
+    await prisma.agent.update({
+      where: { id: AGENT_ID },
+      data: { status: "ACTIVE" },
+    });
     const req = new NextRequest(
       "http://localhost/api/agents?status=ACTIVE",
     );
     const res = await listAgents(req);
     const json = await res.json();
     expect(json.data.items.every((a: { status: string }) => a.status === "ACTIVE")).toBe(true);
+    expect(json.data.items.length).toBe(1);
   });
 });
 
@@ -61,9 +88,16 @@ describe("POST /api/agents", () => {
     const json = await res.json();
     expect(json.data.name).toBe("新 Agent");
     expect(json.data.status).toBe("DRAFT");
+    expect(json.data._count).toEqual({
+      feedbacks: 0,
+      releases: 0,
+      versions: 0,
+      skillBindings: 0,
+    });
     // 审计
-    const logs = store.readArray<Record<string, unknown>>("settings", "audit-logs.json");
-    expect(logs.some((l) => l.action === "agent.create")).toBe(true);
+    await flushAudit();
+    const logs = await listAudit({ action: "agent.create" });
+    expect(logs.some((l) => l.resourceId === json.data.id)).toBe(true);
   });
 
   it("returns 404 for missing product group", async () => {
@@ -89,6 +123,8 @@ describe("GET /api/agents/[id]", () => {
       { params: Promise.resolve({ id: AGENT_ID }) },
     );
     expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.productGroup).toMatchObject({ id: "ecs-group" });
   });
 
   it("returns 404 for missing agent", async () => {
@@ -141,6 +177,7 @@ describe("config partition routes", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data).toHaveProperty("systemPrompt");
+    expect(json.data).toHaveProperty("version");
   });
 
   it("GET rejects invalid partition (400)", async () => {
@@ -163,10 +200,13 @@ describe("config partition routes", () => {
     });
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(Number(json.data.version)).toBeGreaterThan(0);
+    expect(Number(json.data.version)).toBe(2); // 种子 version 1 + 1
 
-    // config-change 写入
-    const changes = store.list<Record<string, unknown>>("config-changes");
-    expect(changes.some((c) => c.agentId === AGENT_ID)).toBe(true);
+    // config-change 落 PG
+    const change = await prisma.configChange.findFirst({
+      where: { agentId: AGENT_ID },
+    });
+    expect(change).toBeTruthy();
+    expect(change?.partition).toBe("PROMPT");
   });
 });
