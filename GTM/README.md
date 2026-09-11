@@ -35,14 +35,14 @@
 
 | 口径 | 当前值 | 核实命令 |
 |------|--------|---------|
-| 测试数 | 315（Prisma 域测试需本地 PG：`docker compose up -d postgres`） | `cd apps/web && pnpm test` |
+| 测试数 | 334（需本地 PG：`docker compose up -d postgres`） | `cd apps/web && pnpm test` |
 | 演示站路由 | 17（含 10 个 Agent 详情静态页） | `cd apps/web && pnpm build:demo`（日志列出生成路由） |
 | Zod schema | 29 | `grep -c 'Schema = z' apps/web/lib/schemas.ts` |
 | API route 文件 | 38 | `find apps/web/app/api -name route.ts \| wc -l` |
 | 真实 LLM 集成点 | 5（探针/归因/摘要/试聊/发布 AI 评测） | 见 `docs/api/api-reference.md` 第四节 |
 | 演示账号 | allengaller / 123 | MOCK 登录 |
 | MiMo 探针实测 | 2,557ms · 入 45 / 出 73 tokens（mimo-v2.5-pro，2026-08-25） | 见 `docs/reports/2026-08-25-mimo-llm-integration-delivery.md` 第三节 |
-| 页面案例引用 | fb-001 / rel-001 / ver-002(0.2.0) / 试聊 ecs-assistant | `apps/web/data/` 种子（MOCK 徽标） |
+| 页面案例引用 | fb-001 / rel-001 / ver-002(0.2.0) / 试聊 ecs-assistant | PostgreSQL 种子（`pnpm db:seed`；MOCK 徽标） |
 | 效果报告口径 | 7 天窗口 · 懒计算幂等写回；页面报表数值为演示示例，非实测 | `apps/web/lib/services/effectiveness-service.ts` |
 
 > 项目数字变化后（新增测试/schema/route），先更新本表，再检查 01/02/03/04 四份物料与 W1 产品首页中的引用。

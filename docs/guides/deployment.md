@@ -26,13 +26,13 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `pnpm dev` | 开发服务器（Turbopack） |
 | `pnpm build` | 全量生产构建 |
 | `pnpm lint` | ESLint（全绿，0 problems） |
-| `cd apps/web && pnpm test` | 315 个测试（单元 + API 集成；Prisma 域测试需先 `docker compose up -d postgres`） |
+| `cd apps/web && pnpm test` | 334 个测试（单元 + API 集成；需先 `docker compose up -d postgres`） |
 | `cd apps/web && pnpm test -- --coverage` | 带覆盖率（阈值 lines/functions/statements ≥80，branches ≥70） |
 
 ### 数据与基础设施
 
-- **当前运行时存储**：`apps/web/data/` 本地 JSON 文件（mock 种子数据），由 `lib/data/store.ts` 读写
-- **PostgreSQL（Prisma 域）**：`docker compose up -d postgres` 后测试连真实 PG（per-worker 独立测试库互不干扰）；审计 / settings 域运行时已切 Prisma（批0/批1），其余业务仍 JSON，批次推进中
+- **运行时存储**：PostgreSQL 16 + Prisma ORM（批0–批5 全量落地，JSON 存储层已删除）；演示种子由 `pnpm db:seed` 灌入（可重复执行，先清库再灌入）
+- **数据库准备**：`docker compose up -d postgres` → `pnpm db:migrate` → `pnpm db:seed`；测试经 `_resetDb` 清库连真实 PG（per-worker 独立测试库互不干扰）
 
 ## 二、环境变量
 
@@ -44,7 +44,7 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `MIMO_API_KEY` | LLM 功能必填 | — | 小米 MiMo Token Plan 凭据（`tp-` 前缀）；缺失时 4 个 LLM 集成点返回 503 |
 | `MIMO_BASE_URL` | 否 | `https://token-plan-cn.xiaomimimo.com/v1` | Token Plan 套餐专属 Base URL（以控制台展示为准） |
 | `MIMO_MODEL` | 否 | `mimo-v2.5-pro` | 模型 ID |
-| `DATABASE_URL` | 测试必填 | — | PostgreSQL 连接串（test-db 冒烟测试与 `prisma migrate deploy` 使用；业务运行时暂未使用） |
+| `DATABASE_URL` | dev/测试必填 | — | PostgreSQL 连接串（`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试） |
 | `NEXTAUTH_URL` / `NEXTAUTH_SECRET` | 否 | — | NextAuth 接入位（暂未使用） |
 | `S3_*` | 否 | — | MinIO/S3（暂未使用） |
 | `WIKI_GIT_BASE_PATH` | 否 | — | Wiki Vault 仓库路径（暂未使用） |

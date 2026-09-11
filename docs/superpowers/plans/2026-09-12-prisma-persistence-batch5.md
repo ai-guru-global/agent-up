@@ -1,6 +1,6 @@
 # 批5（收官批）实施计划 —— db:seed 全局种子 + 拆除 JSON 存储层
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 移除最后的 JSON 存储残留（audit 镜像、dashboard 路由、store.ts、data/ 目录），提供全局 db:seed 种子与 demo 模式共享数据集，文档同步到「运行时全量 Prisma」口径。
 
@@ -34,10 +34,10 @@
 - Modify: `apps/web/app/api/dashboard/route.ts`
 - Create: `apps/web/app/api/__tests__/dashboard.test.ts`
 
-- [ ] 重写 route.ts：`prisma.agent.findMany`（id/name/status）计数 total/active；`prisma.feedback.count`（total / pending=status in NEW,TRIAGED,ASSIGNED,IN_PROGRESS）；`prisma.release.count`（PENDING）；recentFeedback/recentReleases 用 `findMany({orderBy:[{submittedAt:"desc"},{id:"desc"}], take:5, include:{agent:{select:{id,name}}}})`，响应形状与 JSON 时代逐字段一致（`agents:{total,active}` / `feedback:{total,pending}` / `releases:{pending}` / recent 数组 spread + `agent`）。
-- [ ] 新增 dashboard.test.ts：`_resetDb` + seedAgent 后建 2 agent（一 ACTIVE 一 DRAFT）、3 feedback（NEW/RESOLVED/POSITIVE…覆盖 pending 口径）、1 PENDING + 1 APPROVED release；断言计数与 recent 排序（submittedAt desc 取 5）、`agent` 嵌套形状。
-- [ ] `pnpm --filter web exec vitest run app/api/__tests__/dashboard.test.ts` + `pnpm --filter web exec tsc --noEmit` 全绿。
-- [ ] pathspec 提交。
+- [x] 重写 route.ts：`prisma.agent.findMany`（id/name/status）计数 total/active；`prisma.feedback.count`（total / pending=status in NEW,TRIAGED,ASSIGNED,IN_PROGRESS）；`prisma.release.count`（PENDING）；recentFeedback/recentReleases 用 `findMany({orderBy:[{submittedAt:"desc"},{id:"desc"}], take:5, include:{agent:{select:{id,name}}}})`，响应形状与 JSON 时代逐字段一致（`agents:{total,active}` / `feedback:{total,pending}` / `releases:{pending}` / recent 数组 spread + `agent`）。
+- [x] 新增 dashboard.test.ts：`_resetDb` + seedAgent 后建 2 agent（一 ACTIVE 一 DRAFT）、3 feedback（NEW/RESOLVED/POSITIVE…覆盖 pending 口径）、1 PENDING + 1 APPROVED release；断言计数与 recent 排序（submittedAt desc 取 5）、`agent` 嵌套形状。
+- [x] `pnpm --filter web exec vitest run app/api/__tests__/dashboard.test.ts` + `pnpm --filter web exec tsc --noEmit` 全绿。
+- [x] pathspec 提交。
 
 ## Task 2（T2）: 拆除 audit JSON 镜像
 
@@ -47,11 +47,11 @@
 - Modify: `apps/web/app/api/__tests__/feedback-ingest.test.ts`
 - Modify: `apps/web/app/api/__tests__/feedback-skills-wiki.test.ts`
 
-- [ ] audit-service.ts：删 `import { store }`、`AUDIT_FILE`、`appendJsonMirror` 及 line 101 调用；头注释去掉迁移期镜像说明。保留 pendingWrites/track/flushAudit/recordAudit PG 写/listAudit。
-- [ ] audit-service.test.ts：删除「桥接期同步镜像写 audit-logs.json（批5 移除）」用例及相关 useTempDataDir 引用。
-- [ ] feedback-ingest.test.ts：删 `clearRuntimeData`/`useTempDataDir`（PG `_resetDb` 已覆盖确定性）；beforeEach 只剩 resetActor + _resetDb。
-- [ ] feedback-skills-wiki.test.ts:46：镜像读改为 `await flushAudit()` + `listAudit()` 断言 action=feedback.create。
-- [ ] 相关 vitest + tsc 全绿；pathspec 提交。
+- [x] audit-service.ts：删 `import { store }`、`AUDIT_FILE`、`appendJsonMirror` 及 line 101 调用；头注释去掉迁移期镜像说明。保留 pendingWrites/track/flushAudit/recordAudit PG 写/listAudit。
+- [x] audit-service.test.ts：删除「桥接期同步镜像写 audit-logs.json（批5 移除）」用例及相关 useTempDataDir 引用。
+- [x] feedback-ingest.test.ts：删 `clearRuntimeData`/`useTempDataDir`（PG `_resetDb` 已覆盖确定性）；beforeEach 只剩 resetActor + _resetDb。
+- [x] feedback-skills-wiki.test.ts:46：镜像读改为 `await flushAudit()` + `listAudit()` 断言 action=feedback.create。
+- [x] 相关 vitest + tsc 全绿；pathspec 提交。
 
 ## Task 3（T3）: 删除 store.ts/_setDataDir/mock-store 及全部残留引用
 
@@ -60,9 +60,9 @@
 - Modify: ~16 个测试文件（去 useTempDataDir/restoreDataDir 导入与调用，列表以 grep 为准）
 - Modify: `apps/web/vitest.config.ts`（coverage.include 去 `lib/data/store.ts`）、`apps/web/lib/data/test-db.ts`（注释更新）
 
-- [ ] grep `useTempDataDir|restoreDataDir|_setDataDir|@/lib/data/store` 得精确文件清单，逐一清理。
-- [ ] 全量 `tsc --noEmit` + `vitest run`（应为 347±镜像用例数）全绿。
-- [ ] pathspec 提交。
+- [x] grep `useTempDataDir|restoreDataDir|_setDataDir|@/lib/data/store` 得精确文件清单，逐一清理。
+- [x] 全量 `tsc --noEmit` + `vitest run`（应为 347±镜像用例数）全绿。
+- [x] pathspec 提交。
 
 ## Task 4（T4）: db:seed 全局种子脚本
 
@@ -72,10 +72,10 @@
 - Modify: `packages/db/package.json`（`"prisma": {"seed": "node prisma/seed.mjs"}` + `"db:seed": "node prisma/seed.mjs"`）
 - Modify: `turbo.json`（新增 db:seed 任务，cache:false）
 
-- [ ] seed-data.mjs：按 data/*.json 原形状录入（id 全部保留），应用 D2-D5 补齐；agents 内嵌四分区配置原样保留。
-- [ ] seed.mjs：内联读取 `packages/db/.env`（无 dotenv 依赖）；逆 FK 序清库 → FK 序插入（User→ProductGroup→Member→Permission→Role→RolePermission→UserRole→Agent→WikiVault→WikiPage→四分区配置→Skill→SkillVersion→SkillBinding→Release(4 条，含 rel-000/rel-rds-000)→AgentVersion→Feedback→EvalCase→AuditLog(5 条)）；ISO 字符串转 Date；Json 列直接传对象。
-- [ ] `pnpm --filter @agent-up/db exec prisma db seed` 跑通；psql 抽查 counts（agent=2、feedback=3、release=4、agent_version=3、wiki_page=4、audit_log=5、user=6、skill_version=3、agent_skill_binding=1）。
-- [ ] pathspec 提交。
+- [x] seed-data.mjs：按 data/*.json 原形状录入（id 全部保留），应用 D2-D5 补齐；agents 内嵌四分区配置原样保留。
+- [x] seed.mjs：内联读取 `packages/db/.env`（无 dotenv 依赖）；逆 FK 序清库 → FK 序插入（User→ProductGroup→Member→Permission→Role→RolePermission→UserRole→Agent→WikiVault→WikiPage→四分区配置→Skill→SkillVersion→SkillBinding→Release(4 条，含 rel-000/rel-rds-000)→AgentVersion→Feedback→EvalCase→AuditLog(5 条)）；ISO 字符串转 Date；Json 列直接传对象。
+- [x] `pnpm --filter @agent-up/db exec prisma db seed` 跑通；psql 抽查 counts（agent=2、feedback=3、release=4、agent_version=3、wiki_page=4、audit_log=5、user=6、skill_version=3、agent_skill_binding=1）。
+- [x] pathspec 提交。
 
 ## Task 5（T5）: demo 切换共享数据集 + 删除 data/ 目录
 
@@ -83,10 +83,10 @@
 - Modify: `apps/web/demo/seed.ts`（24 个 JSON import → 1 个 seedData 深导入；wikiPages Record 由扁平数组按 vaultId 分组）
 - Delete: `apps/web/data/`（git rm 24 个 tracked 文件 + 清理未跟踪 .DS_Store/traces 残留）
 
-- [ ] demo/seed.ts 改造后 `createInitialState` 语义不变（traces: []、reservedAgentPool 不变）。
-- [ ] `git rm -r data`；确认 `grep -rn "data/"` 无运行时/构建引用残留（README 除外，T6 处理）。
-- [ ] `pnpm --filter web exec tsc --noEmit` + `pnpm --filter web run build` + `pnpm --filter web run build:demo` 全绿。
-- [ ] pathspec 提交。
+- [x] demo/seed.ts 改造后 `createInitialState` 语义不变（traces: []、reservedAgentPool 不变）。
+- [x] `git rm -r data`；确认 `grep -rn "data/"` 无运行时/构建引用残留（README 除外，T6 处理）。
+- [x] `pnpm --filter web exec tsc --noEmit` + `pnpm --filter web run build` + `pnpm --filter web run build:demo` 全绿。
+- [x] pathspec 提交。
 
 ## Task 6（T6）: docs 同步 + 全量门禁 + 终审记录回写
 
@@ -95,7 +95,56 @@
 - Modify: 根 `README.md`（L72 数据库口径、目录树 store.ts/data/ 行、L140-155 运行形态与架构图、L178-179 基础设施说明、L197 测试文件清单、L205/208 运行形态与 demo 说明、L232 数据源、L392 里程碑表、L429/445-460 FAQ）
 - Modify: `apps/web/app/(dashboard)/architecture/roadmap/page.tsx`（L97/L334 状态句、L111/L117 Prisma 路线条目标记完成、L233/238/244 历史表述按需微调）
 
-- [ ] 全量门禁：`tsc --noEmit`、`vitest run`、`pnpm --filter web run lint`、`build`。
-- [ ] 残留 grep：`_setDataDir|readArray|writeArray|@/lib/data/store|data/settings|audit-logs.json` 在 apps/web 源码（非测试快照）应为 0（除 distilled 文档）。
-- [ ] 本计划文档回写终审记录（门禁结果、提交清单、遗留裁决点）。
-- [ ] pathspec 提交。
+- [x] 全量门禁：`tsc --noEmit`、`vitest run`、`pnpm --filter web run lint`、`build`。
+- [x] 残留 grep：`_setDataDir|readArray|writeArray|@/lib/data/store|data/settings|audit-logs.json` 在 apps/web 源码（非测试快照）应为 0（除 distilled 文档）。
+- [x] 本计划文档回写终审记录（门禁结果、提交清单、遗留裁决点）。
+- [x] pathspec 提交。
+
+---
+
+## 终审记录（2026-09-12 回写）
+
+### 执行结果
+
+T1-T6 全部完成，JSON 存储层已彻底移除：运行时唯一数据通道为 Prisma → PostgreSQL，演示数据集单一事实源为 `packages/db/prisma/seed-data.mjs`（seed.mjs 与 demo/seed.ts 共同消费）。
+
+### 提交清单（全部 pathspec 提交，未 push）
+
+| 提交 | 内容 |
+|------|------|
+| `625e114` | 批5 计划文档 |
+| `e3cbfde` | T1 dashboard 路由迁移 Prisma + dashboard.test.ts（3 测试） |
+| `e5d28df` | T2 拆除 audit JSON 镜像（audit-service + 3 个测试文件） |
+| `2cbe99d` | T3 删除 store.ts / store.test.ts（15 用例）/ mock-store + 14 个测试文件清理 + vitest coverage include 收缩 |
+| `e65a0da` | T4 seed-data.mjs + seed.mjs + packages/db package.json（prisma.seed + db:seed）+ turbo.json db:seed 任务 |
+| `da76c7b` | T5 demo/seed.ts 切共享数据集 + git rm data/ 24 文件（−8641 行）+ 14 处 UI 文案改 PostgreSQL 口径 + .gitignore 清理 |
+| `fae072e` | T6 的一部分（apps/web/README.md + roadmap 页 13+/14−）——被并行会话的杂项提交 `update` 卷入，内容完整但归属不洁，如实记录 |
+| 本提交 | T6 其余文档同步（根 README、deployment/troubleshooting 指南、GTM 事实口径表、chrome-extension README）+ 终审记录 |
+
+### 门禁结果（T6 收口时点）
+
+- `pnpm --filter web exec tsc --noEmit`：0 错误
+- `pnpm --filter web exec vitest run`：**334/334 通过，33 个文件**（16 lib + 17 api；批4 结束时 347 − 1 镜像用例 − 15 store 用例 + 3 dashboard）
+- `pnpm --filter web run lint`：0 problems
+- `pnpm --filter web run build`：41 路由全绿（Turbopack 对 `export * from "@prisma/client"` 有 1 条 CJS 运行时导出警告，批0 起即存在，cosmetic）
+- `pnpm --filter web run build:demo`：27 页静态导出全绿（验证 seed-data.mjs 深导入在 DEMO_EXPORT 下可解析）
+- seed 幂等：连续两次 `prisma db seed` 成功；psql 抽查 agent=2、feedback=3、release=4（rel-000/001 APPROVED、rel-002 PENDING、rel-rds-000 APPROVED）、agent_version=3、skill_version=3（2+1）、audit_log=5、user=6
+
+### 残留 grep 判定
+
+`_setDataDir|readArray|writeArray|@/lib/data/store|data/settings|audit-logs.json|apps/web/data` 全仓命中已分类：源码 0（roadmap 页 2 处为**有意保留**的历史轮次行，已加「被取代」注）；活跃文档 0（deployment/troubleshooting/GTM/chrome-extension README 已同步）；其余命中均为有意保留的历史记录（docs/superpowers 计划与规格、docs/reports、docs/distilled、.zcode 计划、.qoder repowiki）。
+
+### 执行期修复
+
+1. **seed 二次运行 P2002**：clearAll() 漏了 `skill.deleteMany()`（26 个模型唯一遗漏）；首次运行碰巧成功、二次运行中途崩溃留下混合状态。补行后连续两次干净运行验证。
+2. **Edit 前必须 Read**：4 个页面文件的文案编辑因会话压缩后未重读而失败，Read 目标片段后重放。
+3. **lint 孤儿导入**：3 个测试文件（evidence-chain / maas-usage / version-lineage）在删除空 afterEach 块后留下未使用的 afterEach 导入，逐一移除。
+4. **feedback-ingest.test.ts 断供**：T2 清理 import 块时误删了仍在使用的 `prisma` 导入，grep 复查后补回。
+
+### 遗留裁决点（留给后续批次 / 用户裁决）
+
+1. **docs/skills/agent-up-services/ 的 stub 知识库**仍按 JSON 时代描述 audit 镜像与 store 约定（内容锚定 docs/distilled 的 source_commit）；更新需重新蒸馏，超出批5 范围（D9）。回答服务层问题时应注意其审计/存储描述已过期。
+2. **并行会话产物未触碰**：`apps/web/README 2.md`、`apps/web/demo/mock-server 2.ts`、并行会话的 `demo/mock-server.ts` 修改，均保持原状。
+3. **Turbopack 警告**：`export *` 消费 CJS @prisma/client 的构建警告仍在，消除需改 packages/db/client.ts 为显式具名导出，属可选优化。
+4. **审计历史起点**：演示库审计记录从 5 条手工条目（log-001..005）开始，不包含 JSON 时代被提交的 664 条测试噪音（D2 有意为之）。
+5. **NextAuth / RBAC** 与 **部署运维基线** 两个后续子项目未启动，等用户授权。

@@ -92,8 +92,8 @@ agent-up POST /api/feedback → 反馈池
 
 ## 演示后的数据清理
 
-提交的反馈会真实写入 `apps/web/data/feedback/`（JSON 文件即数据库），属预期行为；
-演示结束 `git restore apps/web/data` 即可重置（与仓库 FAQ 一致）。
+提交的反馈会真实写入本地 PostgreSQL（反馈池，Prisma），属预期行为；
+演示结束执行 `pnpm db:seed` 即可重置（与仓库 FAQ 一致）。
 
 ## 诚实边界（MOCK 口径）
 

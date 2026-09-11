@@ -77,11 +77,11 @@
 
 ## 五、数据
 
-### 14. 种子 JSON 损坏 / 读取报错
+### 14. 数据库连接失败 / 页面报数据不可用
 
-- **原因**：手工编辑 JSON 语法错误。store 会对损坏文件抛结构化错误（不会静默返回空）。
-- **修复**：`node -e "require('./apps/web/data/<文件>.json')"` 定位语法错误；或用 `git checkout` 恢复。
+- **原因**：PostgreSQL 未启动，或未执行迁移与种子。
+- **修复**：`docker compose up -d postgres` → `pnpm db:migrate` → `pnpm db:seed`；确认 `apps/web/.env` 的 `DATABASE_URL` 指向该实例后重启 dev server。
 
-### 15. 开发时误改了种子数据想还原
+### 15. 开发数据被误改想还原
 
-- **修复**：`git checkout -- apps/web/data/`；测试永远用临时目录，不会污染种子数据。
+- **修复**：`pnpm db:seed` 重建演示数据（种子脚本先清空业务表再灌入，可重复执行）；测试经 `_resetDb` 清库隔离，不会污染开发数据。
