@@ -80,8 +80,8 @@ export default function DashboardHome() {
         >
           {error}
           <span className="mt-1 block text-xs">
-            概览数据来自 /api/dashboard，它会汇总 apps/web/data/ 下的 agents、feedback、releases
-            三类 JSON。请确认这些文件仍是合法 JSON，然后刷新页面重试。
+            概览数据来自 /api/dashboard，由服务端实时汇总 Agent、反馈与发布数据。
+            若刚启动，请确认本地 PostgreSQL 可用后刷新重试。
           </span>
         </Alert>
       </div>

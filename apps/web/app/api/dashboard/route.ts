@@ -1,34 +1,40 @@
-import { store } from "@/lib/data/store";
+import { prisma } from "@agent-up/db";
+import type { FeedbackStatus } from "@agent-up/db";
 import { success } from "@/lib/utils";
 
+const PENDING_FEEDBACK_STATUSES: FeedbackStatus[] = [
+  "NEW",
+  "TRIAGED",
+  "ASSIGNED",
+  "IN_PROGRESS",
+];
+
 export async function GET() {
-  const agents = store.list<Record<string, unknown>>("agents");
-  const feedbacks = store.list<Record<string, unknown>>("feedback");
-  const releases = store.list<Record<string, unknown>>("releases");
-
-  const totalAgents = agents.length;
-  const activeAgents = agents.filter((a) => a.status === "ACTIVE").length;
-  const totalFeedback = feedbacks.length;
-  const pendingFeedback = feedbacks.filter((f) =>
-    ["NEW", "TRIAGED", "ASSIGNED", "IN_PROGRESS"].includes(String(f.status))
-  ).length;
-  const pendingReleases = releases.filter((r) => r.status === "PENDING").length;
-
-  const recentFeedback = feedbacks
-    .sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)))
-    .slice(0, 5)
-    .map((f) => {
-      const agent = agents.find((a) => a.id === f.agentId);
-      return { ...f, agent: agent ? { id: agent.id, name: agent.name } : null };
-    });
-
-  const recentReleases = releases
-    .sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)))
-    .slice(0, 5)
-    .map((r) => {
-      const agent = agents.find((a) => a.id === r.agentId);
-      return { ...r, agent: agent ? { id: agent.id, name: agent.name } : null };
-    });
+  const [
+    totalAgents,
+    activeAgents,
+    totalFeedback,
+    pendingFeedback,
+    pendingReleases,
+    recentFeedback,
+    recentReleases,
+  ] = await Promise.all([
+    prisma.agent.count(),
+    prisma.agent.count({ where: { status: "ACTIVE" } }),
+    prisma.feedback.count(),
+    prisma.feedback.count({ where: { status: { in: PENDING_FEEDBACK_STATUSES } } }),
+    prisma.release.count({ where: { status: "PENDING" } }),
+    prisma.feedback.findMany({
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+      take: 5,
+      include: { agent: { select: { id: true, name: true } } },
+    }),
+    prisma.release.findMany({
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+      take: 5,
+      include: { agent: { select: { id: true, name: true } } },
+    }),
+  ]);
 
   return success({
     agents: { total: totalAgents, active: activeAgents },
