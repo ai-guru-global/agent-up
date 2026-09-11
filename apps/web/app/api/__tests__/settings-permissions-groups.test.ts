@@ -65,7 +65,7 @@ describe("POST /api/settings/permissions", () => {
   it("resource+action 重复 409", async () => {
     const res = await createPermission(makeRequest("POST", { resource: "agent", action: "read" }));
     expect(res.status).toBe(409);
-    const { error, code } = await res.json();
+    const { code } = await res.json();
     expect(code).toBe("CONFLICT");
   });
 
