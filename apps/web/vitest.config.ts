@@ -13,9 +13,10 @@ export default defineConfig({
         inline: ["@agent-up/db"],
       },
     },
-    poolOptions: {
-      threads: { maxThreads: 4 },
-    },
+    // 限制并发 worker：每个 worker 的 PrismaClient 独立建连接池，批1 起
+    // 测试文件全部连 PG，不限制会耗尽 PG 默认 100 连接（maxWorkers 对
+    // forks/threads 两种 pool 都生效；Vitest 3 默认 pool 是 forks）
+    maxWorkers: 4,
     coverage: {
       provider: "v8",
       reporter: ["text", "text-summary", "html"],

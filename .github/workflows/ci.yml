@@ -47,6 +47,11 @@ jobs:
         # packageManager: pnpm@9.15.0，锁文件唯一事实源为 pnpm-lock.yaml
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        # @prisma/client 的 postinstall 在 monorepo 根找不到 schema，不会自动
+        # generate；不生成则导入 @agent-up/db 时 PrismaClient 构造直接抛错
+        run: pnpm --filter @agent-up/db exec prisma generate
+
       - name: Apply Prisma migrations
         # 测试依赖真实 PostgreSQL（服务容器）；deploy 只应用已提交的迁移，不会产生新迁移
         run: pnpm --filter @agent-up/db exec prisma migrate deploy
@@ -61,6 +66,6 @@ jobs:
         run: cd apps/web && pnpm test
 
       - name: Build
-        # packages/db 的 build 内含 prisma generate，无需额外配置；
+        # packages/db 的 build 内含 prisma generate（上面已单独跑过，幂等）；
         # 未配置 MIMO_API_KEY 时 LLM 端点仅降级为 503，不影响构建
         run: pnpm build

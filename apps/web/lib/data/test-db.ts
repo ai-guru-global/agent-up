@@ -5,6 +5,10 @@
 import "dotenv/config";
 import { prisma } from "@agent-up/db";
 
+if (!process.env.VITEST) {
+  throw new Error("test-db 是测试专用模块（TRUNCATE 清库），仅限 vitest 环境导入");
+}
+
 const RESERVED_TABLES = new Set(["_prisma_migrations"]);
 
 export async function _resetDb(): Promise<void> {
