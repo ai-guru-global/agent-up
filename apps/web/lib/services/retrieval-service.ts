@@ -1,7 +1,7 @@
 /**
  * BM25-lite 知识库检索服务。
  *
- * 对 wiki-vaults/{vaultId}/pages/*.json 做本地文本检索，
+ * 对 PG 中的 WikiPage 做本地文本检索，
  * 为 Agent 试聊和评测重放提供知识上下文。
  *
  * 设计决策：
@@ -10,9 +10,7 @@
  * - confidence：检索分归一化 0-1，与 page.baseConfidence 加权（0.6/0.4）
  * - 低于 confidenceThreshold 的不入上下文，记入 belowThreshold
  */
-import { readdirSync, readFileSync, existsSync } from "fs";
-import { join } from "path";
-import { _getDataDir } from "@/lib/data/store";
+import { prisma } from "@agent-up/db";
 
 export interface SearchWikiParams {
   query: string;
@@ -100,19 +98,20 @@ interface WikiPage {
   baseConfidence?: number;
 }
 
-function loadPages(vaultId: string): WikiPage[] {
-  const pagesDir = join(_getDataDir(), "wiki-vaults", vaultId, "pages");
-  if (!existsSync(pagesDir)) return [];
-  return readdirSync(pagesDir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => {
-      try {
-        return JSON.parse(readFileSync(join(pagesDir, f), "utf-8")) as WikiPage;
-      } catch {
-        return null;
-      }
-    })
-    .filter((p): p is WikiPage => p !== null);
+async function loadPages(vaultId: string): Promise<WikiPage[]> {
+  return prisma.wikiPage.findMany({
+    where: { vaultId },
+    select: {
+      id: true,
+      vaultId: true,
+      title: true,
+      slug: true,
+      summary: true,
+      content: true,
+      tags: true,
+      baseConfidence: true,
+    },
+  });
 }
 
 function scorePage(page: WikiPage, queryTokens: string[]): number {
@@ -144,7 +143,7 @@ export async function searchWiki(params: SearchWikiParams): Promise<WikiSearchRe
     return { query, strategy: "BM25_LITE", candidates: 0, results: [], belowThreshold: [], fallbackTriggered: true };
   }
 
-  const pages = loadPages(vaultId);
+  const pages = await loadPages(vaultId);
   if (pages.length === 0) {
     return { query, strategy: "BM25_LITE", candidates: 0, results: [], belowThreshold: [], fallbackTriggered: true };
   }
