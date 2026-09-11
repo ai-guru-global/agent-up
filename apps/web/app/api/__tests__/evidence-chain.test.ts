@@ -172,33 +172,46 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
 
     expect(data.agentId).toBe("agent-x");
     expect(data.agentName).toBe("证据助手");
-    expect(data.nodes).toHaveLength(5);
+    // 6 = 5 类节点 + 版本夹具的 Release 行（AgentVersion.releaseId 必填 FK，
+    // JSON 时代 releaseId 可指向不存在的文件，PG 下 seed 必建真实 Release）
+    expect(data.nodes).toHaveLength(6);
     expect(String(data.declaration)).toContain("非因果改进证明");
 
-    // 时间倒序
-    const [rb, ver, rel, trace, fb] = data.nodes;
+    const byId = new Map(data.nodes.map((n) => [n.id, n]));
+
+    // 时间倒序：回滚审计（09-05）最新；rel-ver-x1 与 ver-x1 同刻并列时按 id 升序
+    expect(data.nodes.map((n) => n.id)).toEqual([
+      "log-rb1",
+      "rel-ver-x1",
+      "ver-x1",
+      "rel-x1",
+      "tr-x1",
+      "fb-x1",
+    ]);
+
+    const rb = byId.get("log-rb1")!;
     expect(rb.type).toBe("ROLLBACK");
-    expect(rb.id).toBe("log-rb1");
     expect(rb.detail?.rollbackFromVersion).toBe("0.1.0");
 
+    const ver = byId.get("ver-x1")!;
     expect(ver.type).toBe("VERSION");
-    expect(ver.id).toBe("ver-x1");
     expect(ver.detail?.version).toBe("0.2.0");
     expect(ver.detail?.hasEffectivenessReport).toBe(true);
 
+    // isRollback 的 rel-rb 不出 RELEASE 节点
+    expect(byId.has("rel-rb")).toBe(false);
+    const rel = byId.get("rel-x1")!;
     expect(rel.type).toBe("RELEASE");
-    expect(rel.id).toBe("rel-x1");
     expect(rel.status).toBe("PENDING");
     expect(rel.detail?.aiReviewStatus).toBe("FAILED");
-    expect(data.nodes.some((n) => n.id === "rel-rb")).toBe(false);
 
+    const trace = byId.get("tr-x1")!;
     expect(trace.type).toBe("TRACE");
-    expect(trace.id).toBe("tr-x1");
     expect(trace.status).toBe("DOWN");
     expect(trace.detail?.evalCaseId).toBe("ec-x1");
 
+    const fb = byId.get("fb-x1")!;
     expect(fb.type).toBe("FEEDBACK");
-    expect(fb.id).toBe("fb-x1");
     expect(fb.title).toBe("安全组说明不清");
     expect(fb.detail?.targetPartition).toBe("KNOWLEDGE");
   });

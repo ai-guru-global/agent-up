@@ -1,10 +1,10 @@
-import { readdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma, Prisma } from "@agent-up/db";
 import { GET as getUsage } from "@/app/api/maas/usage/route";
-import { store, _getDataDir } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
+import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 /**
@@ -28,43 +28,38 @@ interface SeededTrace {
   note: string | null;
 }
 
-function seedTrace(t: Partial<SeededTrace> & { id: string; agentId: string }) {
-  const trace: SeededTrace = {
-    id: t.id,
-    agentId: t.agentId,
-    message: t.message ?? "m",
-    reply: t.reply ?? "r",
-    model: t.model ?? "mimo-v2.5-pro",
-    usage: t.usage ?? { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-    latencyMs: t.latencyMs ?? 1000,
-    createdAt: t.createdAt ?? "2026-09-09T00:00:00.000Z",
-    rating: t.rating ?? null,
-    ratedAt: t.ratedAt ?? null,
-    note: t.note ?? null,
-  };
-  store.write(trace, "traces", `${trace.id}.json`);
-}
-
-function writeAgent(id: string, name: string) {
-  store.write({ id, name, status: "ACTIVE" }, "agents", `${id}.json`);
+async function seedTrace(t: Partial<SeededTrace> & { id: string; agentId: string }) {
+  await prisma.trace.create({
+    data: {
+      id: t.id,
+      agentId: t.agentId,
+      systemPrompt: "s",
+      history: [] as Prisma.InputJsonValue,
+      message: t.message ?? "m",
+      reply: t.reply ?? "r",
+      model: t.model ?? "mimo-v2.5-pro",
+      usage: (t.usage ?? {
+        promptTokens: 100,
+        completionTokens: 50,
+        totalTokens: 150,
+      }) as Prisma.InputJsonValue,
+      latencyMs: t.latencyMs ?? 1000,
+      createdAt: new Date(t.createdAt ?? "2026-09-09T00:00:00.000Z"),
+      rating: t.rating ?? null,
+      ratedAt: t.ratedAt ? new Date(t.ratedAt) : null,
+      note: t.note ?? null,
+    },
+  });
 }
 
 function makeRequest(): NextRequest {
   return new NextRequest("http://localhost/api/maas/usage", { method: "GET" });
 }
 
-/** useTempDataDir 会拷贝运行时 data/（可能含历史 trace），按文件名清理（含 macOS「 2」重名副本等旁支文件）保证确定性 */
-function clearTraces() {
-  const dir = join(_getDataDir(), "traces");
-  for (const name of readdirSync(dir)) {
-    if (name.endsWith(".json")) unlinkSync(join(dir, name));
-  }
-}
-
-beforeEach(() => {
+beforeEach(async () => {
   resetActor();
   useTempDataDir();
-  clearTraces();
+  await _resetDb();
 });
 
 afterEach(() => {
@@ -82,15 +77,15 @@ describe("GET /api/maas/usage（每 Agent 真实用量聚合）", () => {
   });
 
   it("按 agent 聚合调用次数 / tokens / 平均时延 / 评分计数，按调用次数降序", async () => {
-    writeAgent("agent-a", "助手 A");
-    writeAgent("agent-b", "助手 B");
+    await seedAgent("agent-a", "助手 A");
+    await seedAgent("agent-b", "助手 B");
 
     // agent-a：3 次调用（UP 1 / DOWN 1 / 未打分 1），latency 1000+2000+3000 → avg 2000
-    seedTrace({ id: "t-a1", agentId: "agent-a", rating: "UP", latencyMs: 1000 });
-    seedTrace({ id: "t-a2", agentId: "agent-a", rating: "DOWN", latencyMs: 2000 });
-    seedTrace({ id: "t-a3", agentId: "agent-a", latencyMs: 3000 });
+    await seedTrace({ id: "t-a1", agentId: "agent-a", rating: "UP", latencyMs: 1000 });
+    await seedTrace({ id: "t-a2", agentId: "agent-a", rating: "DOWN", latencyMs: 2000 });
+    await seedTrace({ id: "t-a3", agentId: "agent-a", latencyMs: 3000 });
     // agent-b：1 次调用
-    seedTrace({
+    await seedTrace({
       id: "t-b1",
       agentId: "agent-b",
       latencyMs: 800,
@@ -145,14 +140,15 @@ describe("GET /api/maas/usage（每 Agent 真实用量聚合）", () => {
     expect(b.model).toBe("mimo-v2.5-flash");
   });
 
-  it("model 取最近一次调用（createdAt 最大）的模型；agent 不存在时 agentName=null", async () => {
-    seedTrace({
+  it("model 取最近一次调用（createdAt 最大）的模型；trace.agentId 是 FK，agentName 恒非空（D9）", async () => {
+    await seedAgent("agent-x", "助手 X");
+    await seedTrace({
       id: "t-old",
       agentId: "agent-x",
       model: "old-model",
       createdAt: "2026-09-01T00:00:00.000Z",
     });
-    seedTrace({
+    await seedTrace({
       id: "t-new",
       agentId: "agent-x",
       model: "new-model",
@@ -168,6 +164,6 @@ describe("GET /api/maas/usage（每 Agent 真实用量聚合）", () => {
     }>;
     expect(only.agentId).toBe("agent-x");
     expect(only.model).toBe("new-model");
-    expect(only.agentName).toBeNull();
+    expect(only.agentName).toBe("助手 X");
   });
 });
