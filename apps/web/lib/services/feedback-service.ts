@@ -1,11 +1,13 @@
-import { store } from "@/lib/data/store";
+import {
+  prisma,
+  type FeedbackStatus,
+  type FeedbackSeverity,
+  type FeedbackRating,
+  type Prisma,
+} from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
-
-type FeedbackStatus =
-  | "NEW" | "TRIAGED" | "ASSIGNED" | "IN_PROGRESS"
-  | "RESOLVED" | "VERIFIED" | "CLOSED" | "WONTFIX";
 
 /**
  * 反馈状态机：合法转移表。
@@ -34,10 +36,47 @@ function assertTransition(from: FeedbackStatus, to: FeedbackStatus) {
   }
 }
 
-function withAgentName<T extends Record<string, unknown>>(item: T): T {
-  const agent = store.read<{ id: string; name: string }>("agents", `${item.agentId}.json`);
-  return { ...item, agent: agent ? { id: agent.id, name: agent.name } : null };
+const AGENT_SELECT = { id: true, name: true } as const;
+type FeedbackWithAgent = Prisma.FeedbackGetPayload<{
+  include: { agent: { select: typeof AGENT_SELECT } };
+}>;
+
+/**
+ * 旧 JSON 契约：时间戳与可选字段「设置后才出现键」，externalRef 只在
+ * 工单接入记录上出现，agent 摘要恒有（null 占位）。列表/详情/创建/更新
+ * 四个出口共用，保证形状一致。
+ */
+function toFeedbackResponse(row: FeedbackWithAgent) {
+  return {
+    id: row.id,
+    agentId: row.agentId,
+    source: row.source,
+    title: row.title,
+    content: row.content,
+    rating: row.rating,
+    tags: [...row.tags],
+    severity: row.severity,
+    status: row.status,
+    targetPartition: row.targetPartition,
+    sessionData: row.sessionData ?? null,
+    submittedBy: row.submittedBy,
+    submittedAt: row.submittedAt.toISOString(),
+    ...(row.assignedTo !== null && {
+      assignedTo: row.assignedTo,
+      assignedAt: row.assignedAt!.toISOString(),
+    }),
+    ...(row.resolvedAt !== null && { resolvedAt: row.resolvedAt.toISOString() }),
+    ...(row.verifiedAt !== null && { verifiedAt: row.verifiedAt.toISOString() }),
+    ...(row.verificationNote !== null && { verificationNote: row.verificationNote }),
+    ...(row.resolution !== null && { resolution: row.resolution }),
+    ...(row.externalRefId !== null && {
+      externalRef: { id: row.externalRefId, url: row.externalRefUrl },
+    }),
+    agent: row.agent ? { id: row.agent.id, name: row.agent.name } : null,
+  };
 }
+
+const WITH_AGENT = { agent: { select: AGENT_SELECT } } as const;
 
 export async function listFeedback(params: {
   skip: number;
@@ -48,36 +87,30 @@ export async function listFeedback(params: {
   rating?: string;
   tag?: string;
 }) {
-  const result = store.queryList<Record<string, unknown>>(
-    ["feedback"],
-    {
-      ...(params.agentId && { agentId: (f) => f.agentId === params.agentId }),
-      ...(params.status && params.status !== "ALL" && {
-        status: (f) => f.status === params.status,
-      }),
-      ...(params.severity && params.severity !== "ALL" && {
-        severity: (f) => f.severity === params.severity,
-      }),
-      ...(params.rating && params.rating !== "ALL" && {
-        rating: (f) => f.rating === params.rating,
-      }),
-      ...(params.tag && {
-        tag: (f) => Array.isArray(f.tags) && (f.tags as string[]).includes(params.tag!),
-      }),
-    },
-    (a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)),
-    params.skip,
-    params.take,
-  );
-  // getFeedback / createFeedback / updateFeedback 都会填充 agent 字段，但列表接口漏了，
-  // 导致反馈中心页读 fb.agent.name 时直接崩溃。这里补上，保证四个出口契约一致
-  return { ...result, items: result.items.map(withAgentName) };
+  const where: Prisma.FeedbackWhereInput = {
+    ...(params.agentId && { agentId: params.agentId }),
+    ...(params.status && params.status !== "ALL" && { status: params.status as FeedbackStatus }),
+    ...(params.severity && params.severity !== "ALL" && { severity: params.severity as FeedbackSeverity }),
+    ...(params.rating && params.rating !== "ALL" && { rating: params.rating as FeedbackRating }),
+    ...(params.tag && { tags: { has: params.tag } }),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.feedback.findMany({
+      where,
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+      skip: params.skip,
+      take: params.take,
+      include: WITH_AGENT,
+    }),
+    prisma.feedback.count({ where }),
+  ]);
+  return { items: rows.map(toFeedbackResponse), total };
 }
 
 export async function getFeedback(id: string) {
-  const fb = store.read<Record<string, unknown>>("feedback", `${id}.json`);
-  if (!fb) return null;
-  return withAgentName(fb);
+  const row = await prisma.feedback.findUnique({ where: { id }, include: WITH_AGENT });
+  if (!row) return null;
+  return toFeedbackResponse(row);
 }
 
 export async function createFeedback(input: {
@@ -90,34 +123,34 @@ export async function createFeedback(input: {
   sessionData?: unknown;
   targetPartition?: "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING" | null;
 }) {
-  const agent = store.read("agents", `${input.agentId}.json`);
+  const agent = await prisma.agent.findUnique({
+    where: { id: input.agentId },
+    select: AGENT_SELECT,
+  });
   if (!agent) throw new NotFoundError("Agent 不存在");
 
-  const id = store.generateId();
-  const ts = store.now();
-  const feedback = {
-    id,
-    agentId: input.agentId,
-    source: "MANUAL",
-    title: input.title,
-    content: input.content,
-    rating: input.rating,
-    tags: input.tags ?? [],
-    severity: input.severity ?? "MINOR",
-    status: "NEW",
-    targetPartition: input.targetPartition ?? null,
-    sessionData: input.sessionData ?? null,
-    submittedBy: getActor().id,
-    submittedAt: ts,
-  };
-
-  store.write(feedback, "feedback", `${id}.json`);
-  recordAudit("feedback.create", "feedback", id, {
-    agentId: input.agentId,
-    rating: input.rating,
-    severity: feedback.severity,
+  const created = await prisma.feedback.create({
+    data: {
+      agentId: input.agentId,
+      source: "MANUAL",
+      title: input.title,
+      content: input.content,
+      rating: input.rating,
+      tags: input.tags ?? [],
+      severity: input.severity ?? "MINOR",
+      targetPartition: input.targetPartition ?? null,
+      sessionData: (input.sessionData ?? null) as never,
+      submittedBy: getActor().id,
+    },
+    include: WITH_AGENT,
   });
-  return withAgentName(feedback as Record<string, unknown>);
+
+  recordAudit("feedback.create", "feedback", created.id, {
+    agentId: input.agentId,
+    rating: input.rating,
+    severity: created.severity,
+  });
+  return toFeedbackResponse(created);
 }
 
 /**
@@ -193,54 +226,50 @@ export async function ingestFeedback(
 ) {
   const adapter = CHANNEL_ADAPTERS[input.channel];
   if (!adapter) throw new ValidationError(`未知接入渠道：${input.channel}`);
-  const agent = store.read("agents", `${input.agentId}.json`);
+  const agent = await prisma.agent.findUnique({
+    where: { id: input.agentId },
+    select: AGENT_SELECT,
+  });
   if (!agent) throw new NotFoundError("Agent 不存在");
 
   const draft = adapter(input);
 
   // 幂等：同渠道 + 同外部单号视为同一工单（webhook 重试保护）
   if (draft.externalRef.id) {
-    const dup = store
-      .list<Record<string, unknown>>("feedback")
-      .find(
-        (f) =>
-          f.source === input.channel &&
-          (f.externalRef as Record<string, unknown> | null)?.id === draft.externalRef.id,
-      );
+    const dup = await prisma.feedback.findFirst({
+      where: { source: input.channel, externalRefId: draft.externalRef.id },
+      select: { id: true, title: true },
+    });
     if (dup) {
       throw new ConflictError(
-        `该工单已接入：${String(dup.id)}`,
+        `该工单已接入：${dup.id}`,
         { existingFeedbackId: dup.id, channel: input.channel },
       );
     }
   }
 
-  const id = store.generateId();
-  const ts = store.now();
-  const feedback = {
-    id,
-    agentId: draft.agentId,
-    source: input.channel,
-    title: draft.title,
-    content: draft.content,
-    rating: draft.rating,
-    tags: draft.tags ?? [],
-    severity: draft.severity ?? "MINOR",
-    status: "NEW",
-    targetPartition: null,
-    externalRef: draft.externalRef,
-    sessionData: null,
-    submittedBy: getActor().id,
-    submittedAt: ts,
-  };
+  const created = await prisma.feedback.create({
+    data: {
+      agentId: draft.agentId,
+      source: input.channel,
+      title: draft.title,
+      content: draft.content,
+      rating: draft.rating,
+      tags: draft.tags ?? [],
+      severity: draft.severity ?? "MINOR",
+      externalRefId: draft.externalRef.id,
+      externalRefUrl: draft.externalRef.url,
+      submittedBy: getActor().id,
+    },
+    include: WITH_AGENT,
+  });
 
-  store.write(feedback, "feedback", `${id}.json`);
-  recordAudit("feedback.ingest", "feedback", id, {
+  recordAudit("feedback.ingest", "feedback", created.id, {
     channel: input.channel,
     externalRefId: draft.externalRef.id,
-    severity: feedback.severity,
+    severity: created.severity,
   });
-  return withAgentName(feedback as Record<string, unknown>);
+  return toFeedbackResponse(created);
 }
 
 export async function updateFeedback(id: string, input: {
@@ -251,38 +280,35 @@ export async function updateFeedback(id: string, input: {
   targetPartition?: "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING" | null;
   verificationNote?: string | null;
 }) {
-  const fb = store.read<Record<string, unknown>>("feedback", `${id}.json`);
+  const fb = await prisma.feedback.findUnique({ where: { id }, select: { status: true } });
   if (!fb) throw new NotFoundError("Feedback 不存在");
 
-  const currentStatus = fb.status as FeedbackStatus;
-
+  const currentStatus = fb.status;
   if (input.status !== undefined) {
     assertTransition(currentStatus, input.status);
   }
 
-  const ts = store.now();
-  const updated: Record<string, unknown> = { ...fb };
-
+  const data: Prisma.FeedbackUpdateInput = {};
   if (input.status !== undefined) {
-    updated.status = input.status;
-    if (input.status === "RESOLVED") updated.resolvedAt = ts;
+    data.status = input.status;
+    if (input.status === "RESOLVED") data.resolvedAt = new Date();
     if (input.status === "ASSIGNED" && input.assignedTo) {
-      updated.assignedTo = input.assignedTo;
-      updated.assignedAt = ts;
+      data.assignedTo = input.assignedTo;
+      data.assignedAt = new Date();
     }
     if (input.status === "VERIFIED") {
-      updated.verifiedAt = ts;
-      if (input.verificationNote) updated.verificationNote = input.verificationNote;
+      data.verifiedAt = new Date();
+      if (input.verificationNote) data.verificationNote = input.verificationNote;
     }
   }
-  if (input.severity !== undefined) updated.severity = input.severity;
-  if (input.resolution !== undefined) updated.resolution = input.resolution;
-  if (input.targetPartition !== undefined) updated.targetPartition = input.targetPartition;
+  if (input.severity !== undefined) data.severity = input.severity;
+  if (input.resolution !== undefined) data.resolution = input.resolution;
+  if (input.targetPartition !== undefined) data.targetPartition = input.targetPartition;
 
-  store.write(updated, "feedback", `${id}.json`);
+  const updated = await prisma.feedback.update({ where: { id }, data, include: WITH_AGENT });
   recordAudit("feedback.update", "feedback", id, {
     from: currentStatus,
     to: input.status ?? currentStatus,
   });
-  return withAgentName(updated);
+  return toFeedbackResponse(updated);
 }

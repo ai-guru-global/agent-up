@@ -64,6 +64,16 @@ export async function seedSettings(): Promise<void> {
   });
 }
 
+/** 批2 起 service 直测的最小 Agent 建档（产品组 + agent；勿与 seedSettings 的 ecs-assistant 同文件混用） */
+export async function seedAgent(id = "ecs-assistant", name = "ECS 助手"): Promise<void> {
+  await prisma.productGroup.create({
+    data: { id: `${id}-group`, name: `${id}-group`, displayName: `${id} 产品组` },
+  });
+  await prisma.agent.create({
+    data: { id, name, productGroupId: `${id}-group`, createdBy: "seed" },
+  });
+}
+
 /** audit-logs 路由测试用审计夹具（绕过 recordAudit 直插，可精确控制 userId/createdAt） */
 export async function seedAuditLogs(): Promise<void> {
   await prisma.auditLog.createMany({
