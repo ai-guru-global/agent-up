@@ -85,6 +85,8 @@ model Agent {
   skillBindings AgentSkillBinding[]
   wikiVault     WikiVault?
   configChanges ConfigChange[]
+  traces        Trace[]
+  evalCases     EvalCase[]
 
   @@index([productGroupId])
   @@index([status])
@@ -310,6 +312,9 @@ model Release {
 
   // 关联配置快照
   configSnapshot Json?
+
+  // AI 评测结果快照（2026-09 断言门禁，运行时为自由形状 AiReviewResult）
+  aiReview Json?
 
   // 关联
   version AgentVersion?
@@ -622,4 +627,46 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([action, createdAt])
   @@index([createdAt])
+}
+
+// ============================================================
+// 试聊 Trace 与评测用例（2026-09 运行时新增，schema 补齐漂移）
+// ============================================================
+
+model Trace {
+  id           String    @id @default(cuid())
+  agentId      String
+  agent        Agent     @relation(fields: [agentId], references: [id])
+  systemPrompt String
+  history      Json
+  message      String
+  reply        String
+  model        String
+  usage        Json
+  latencyMs    Int
+  createdAt    DateTime  @default(now())
+  rating       String?
+  ratedAt      DateTime?
+  note         String?
+
+  @@index([agentId, createdAt])
+}
+
+model EvalCase {
+  id             String   @id @default(cuid())
+  agentId        String
+  agent          Agent    @relation(fields: [agentId], references: [id])
+  sourceTraceId  String
+  title          String
+  expectation    String
+  assertions     Json?
+  systemPrompt   String
+  history        Json
+  message        String
+  referenceReply String
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now())
+  createdBy      String
+
+  @@index([agentId, createdAt])
 }
