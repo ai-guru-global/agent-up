@@ -1,4 +1,15 @@
-import { store } from "@/lib/data/store";
+import {
+  prisma,
+  Prisma,
+  type AgentStatus,
+  type SearchStrategy,
+  type PromptConfig,
+  type KnowledgeConfig,
+  type ToolsConfig,
+  type RoutingConfig,
+  type Release,
+  type AgentVersion,
+} from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
@@ -14,65 +25,215 @@ interface ListAgentsParams {
   search?: string;
 }
 
-/**
- * 把 productGroupId 解析成完整的产品组对象。
- * createAgent / updateAgent 都会写入 productGroup，但种子数据与 listAgents / getAgent
- * 都只有 productGroupId，导致列表页的「所属产品组」一栏只能渲染成一个孤零零的占位符。
- * 这里统一补齐，保证四个出口的数据形状一致。
- */
-function withProductGroup<T extends Record<string, unknown>>(item: T): T {
-  const groups = store.readArray<{ id: string; name: string; displayName: string }>(
-    "settings",
-    "product-groups.json",
-  );
-  const group = groups.find((g) => g.id === item.productGroupId);
+const PRODUCT_GROUP_SELECT = { id: true, name: true, displayName: true } as const;
+const SKILL_SNAPSHOT_SELECT = { id: true, name: true, displayName: true } as const;
+const CONFIG_INCLUDE = {
+  promptConfig: true,
+  knowledgeConfig: true,
+  toolsConfig: true,
+  routingConfig: true,
+} as const;
+const AGENT_COUNT_INCLUDE = {
+  _count: {
+    select: { feedbacks: true, releases: true, versions: true, skillBindings: true },
+  },
+} as const;
+
+/** 列表契约：无 skillBindings 键（旧 JSON 列表项本就没有） */
+const LIST_INCLUDE = {
+  productGroup: { select: PRODUCT_GROUP_SELECT },
+  ...CONFIG_INCLUDE,
+  ...AGENT_COUNT_INCLUDE,
+} as const;
+
+/** 详情契约：含 skillBindings，skill 摘要实时 include（替代 JSON 时代嵌入快照） */
+const AGENT_INCLUDE = {
+  ...LIST_INCLUDE,
+  skillBindings: { include: { skill: { select: SKILL_SNAPSHOT_SELECT } } },
+} as const;
+
+type AgentRow = Prisma.AgentGetPayload<{ include: typeof AGENT_INCLUDE }>;
+type AgentListRow = Prisma.AgentGetPayload<{ include: typeof LIST_INCLUDE }>;
+type BindingRow = AgentRow["skillBindings"][number];
+
+function toBindingResponse(row: BindingRow) {
   return {
-    ...item,
-    productGroup: group
-      ? { id: group.id, name: group.name, displayName: group.displayName }
+    id: row.id,
+    agentId: row.agentId,
+    skillId: row.skillId,
+    config: row.config ?? null,
+    enabled: row.enabled,
+    priority: row.priority,
+    boundBy: row.boundBy,
+    createdAt: row.boundAt.toISOString(),
+    skill: row.skill,
+  };
+}
+
+function toPromptConfigResponse(row: PromptConfig) {
+  return {
+    systemPrompt: row.systemPrompt,
+    roleDefinition: row.roleDefinition,
+    constraints: [...row.constraints],
+    outputFormat: row.outputFormat,
+    version: row.version,
+    lastModifiedAt: row.lastModifiedAt.toISOString(),
+  };
+}
+
+function toKnowledgeConfigResponse(row: KnowledgeConfig) {
+  return {
+    wikiVaultId: row.wikiVaultId,
+    searchStrategy: row.searchStrategy,
+    fallbackToMcp: row.fallbackToMcp,
+    maxWikiResults: row.maxWikiResults,
+    confidenceThreshold: row.confidenceThreshold,
+    version: row.version,
+    lastModifiedAt: row.lastModifiedAt.toISOString(),
+  };
+}
+
+function toToolsConfigResponse(row: ToolsConfig) {
+  return {
+    mcpTools: row.mcpTools,
+    wikiQueryTools: row.wikiQueryTools,
+    maxConcurrentCalls: row.maxConcurrentCalls,
+    timeoutMs: row.timeoutMs,
+    retryCount: row.retryCount,
+    version: row.version,
+    lastModifiedAt: row.lastModifiedAt.toISOString(),
+  };
+}
+
+function toRoutingConfigResponse(row: RoutingConfig) {
+  return {
+    rules: row.rules,
+    escalationPolicy: row.escalationPolicy ?? null,
+    humanThreshold: row.humanThreshold,
+    maxConversationTurns: row.maxConversationTurns,
+    idleTimeoutMinutes: row.idleTimeoutMinutes,
+    version: row.version,
+    lastModifiedAt: row.lastModifiedAt.toISOString(),
+  };
+}
+
+function toAgentResponse(row: AgentRow | AgentListRow) {
+  const skillBindings =
+    "skillBindings" in row ? row.skillBindings.map(toBindingResponse) : undefined;
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    productGroupId: row.productGroupId,
+    status: row.status,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    productGroup: row.productGroup
+      ? {
+          id: row.productGroup.id,
+          name: row.productGroup.name,
+          displayName: row.productGroup.displayName,
+        }
       : null,
+    promptConfig: row.promptConfig ? toPromptConfigResponse(row.promptConfig) : null,
+    knowledgeConfig: row.knowledgeConfig
+      ? toKnowledgeConfigResponse(row.knowledgeConfig)
+      : null,
+    toolsConfig: row.toolsConfig ? toToolsConfigResponse(row.toolsConfig) : null,
+    routingConfig: row.routingConfig ? toRoutingConfigResponse(row.routingConfig) : null,
+    skillBindings,
+    _count: { ...row._count },
+  };
+}
+
+function toReleaseResponse(row: Release) {
+  return {
+    id: row.id,
+    agentId: row.agentId,
+    changeNote: row.changeNote,
+    changedPartitions: [...row.changedPartitions],
+    status: row.status,
+    submittedBy: row.submittedBy,
+    submittedAt: row.submittedAt.toISOString(),
+    approvedBy: row.approvedBy,
+    approvedAt: row.approvedAt ? row.approvedAt.toISOString() : null,
+    reviewComment: row.reviewComment,
+    configSnapshot: row.configSnapshot ?? null,
+    aiReview: row.aiReview ?? null,
+  };
+}
+
+function toVersionResponse(row: AgentVersion) {
+  return {
+    id: row.id,
+    agentId: row.agentId,
+    version: row.version,
+    major: row.major,
+    minor: row.minor,
+    patch: row.patch,
+    promptSnapshot: row.promptSnapshot,
+    knowledgeSnapshot: row.knowledgeSnapshot,
+    toolsSnapshot: row.toolsSnapshot,
+    routingSnapshot: row.routingSnapshot,
+    releaseId: row.releaseId,
+    wikiCommitSha: row.wikiCommitSha,
+    publishedAt: row.publishedAt.toISOString(),
+    publishedBy: row.publishedBy,
+    changeNote: row.changeNote,
+    effectivenessReport: row.effectivenessReport ?? null,
   };
 }
 
 export async function listAgents(params: ListAgentsParams) {
-  const result = store.queryList<Record<string, unknown>>(
-    ["agents"],
-    {
-      ...(params.status && params.status !== "ALL" && {
-        status: (a) => a.status === params.status,
-      }),
-      ...(params.productGroupId && {
-        productGroupId: (a) => a.productGroupId === params.productGroupId,
-      }),
-      ...(params.search && {
-        search: (a) => {
-          const q = params.search!.toLowerCase();
-          return String(a.name ?? "").toLowerCase().includes(q) ||
-            String(a.description ?? "").toLowerCase().includes(q);
-        },
-      }),
-    },
-    (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)),
-    params.skip,
-    params.take,
-  );
-  return { ...result, items: result.items.map(withProductGroup) };
+  const where: Prisma.AgentWhereInput = {
+    ...(params.status && params.status !== "ALL" && {
+      status: params.status as AgentStatus,
+    }),
+    ...(params.productGroupId && { productGroupId: params.productGroupId }),
+    ...(params.search && {
+      OR: [
+        { name: { contains: params.search, mode: "insensitive" } },
+        { description: { contains: params.search, mode: "insensitive" } },
+      ],
+    }),
+  };
+
+  const [rows, total] = await Promise.all([
+    prisma.agent.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip: params.skip,
+      take: params.take,
+      include: LIST_INCLUDE,
+    }),
+    prisma.agent.count({ where }),
+  ]);
+
+  return { items: rows.map(toAgentResponse), total };
 }
 
 export async function getAgent(id: string) {
-  const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
-  if (!agent) return null;
+  const row = await prisma.agent.findUnique({ where: { id }, include: AGENT_INCLUDE });
+  if (!row) return null;
 
-  const releases = store.list<Record<string, unknown>>("releases")
-    .filter((r) => r.agentId === id && r.status === "PENDING")
-    .sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
+  const [releases, versions] = await Promise.all([
+    prisma.release.findMany({
+      where: { agentId: id, status: "PENDING" },
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+    }),
+    prisma.agentVersion.findMany({
+      where: { agentId: id },
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+      take: 5,
+    }),
+  ]);
 
-  const versions = store.list<Record<string, unknown>>("versions")
-    .filter((v) => v.agentId === id)
-    .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)))
-    .slice(0, 5);
-
-  return { ...withProductGroup(agent), releases, versions };
+  return {
+    ...toAgentResponse(row),
+    releases: releases.map(toReleaseResponse),
+    versions: versions.map(toVersionResponse),
+  };
 }
 
 export async function createAgent(input: {
@@ -80,97 +241,272 @@ export async function createAgent(input: {
   description?: string;
   productGroupId: string;
 }) {
-  const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
-  const group = groups.find((g) => g.id === input.productGroupId);
-  if (!group) {
-    throw new NotFoundError(`产品组 ${input.productGroupId} 不存在`);
-  }
+  const group = await prisma.productGroup.findUnique({
+    where: { id: input.productGroupId },
+    select: PRODUCT_GROUP_SELECT,
+  });
+  if (!group) throw new NotFoundError(`产品组 ${input.productGroupId} 不存在`);
 
-  const actor = getActor();
-  const id = store.generateId();
-  const ts = store.now();
-  const agent = {
-    id,
-    name: input.name,
-    description: input.description ?? null,
-    productGroupId: input.productGroupId,
-    status: "DRAFT",
-    createdBy: actor.id,
-    createdAt: ts,
-    updatedAt: ts,
-    promptConfig: null,
-    knowledgeConfig: null,
-    toolsConfig: null,
-    routingConfig: null,
-    skillBindings: [],
-    productGroup: { id: group.id, name: group.name, displayName: group.displayName },
-    _count: { feedbacks: 0, releases: 0, versions: 0, skillBindings: 0 },
-  };
+  const agent = await prisma.agent.create({
+    data: {
+      name: input.name,
+      description: input.description ?? null,
+      productGroupId: input.productGroupId,
+      createdBy: getActor().id,
+    },
+    include: AGENT_INCLUDE,
+  });
 
-  store.write(agent, "agents", `${id}.json`);
-  recordAudit("agent.create", "agent", id, { name: input.name });
-  return agent;
+  recordAudit("agent.create", "agent", agent.id, { name: input.name });
+  return toAgentResponse(agent);
 }
 
-export async function updateAgent(id: string, input: {
-  name?: string;
-  description?: string | null;
-  status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
-}) {
-  const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
-  if (!agent) throw new NotFoundError(`Agent ${id} 不存在`);
+export async function updateAgent(
+  id: string,
+  input: {
+    name?: string;
+    description?: string | null;
+    status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+  },
+) {
+  const existing = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new NotFoundError(`Agent ${id} 不存在`);
 
-  const groups = store.readArray<{ id: string; name: string; displayName: string }>("settings", "product-groups.json");
-  const group = groups.find((g) => g.id === agent.productGroupId);
+  const updated = await prisma.agent.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.description !== undefined && { description: input.description }),
+      ...(input.status !== undefined && { status: input.status as AgentStatus }),
+    },
+    include: AGENT_INCLUDE,
+  });
 
-  const updated = {
-    ...agent,
-    ...(input.name !== undefined && { name: input.name }),
-    ...(input.description !== undefined && { description: input.description }),
-    ...(input.status !== undefined && { status: input.status }),
-    updatedAt: store.now(),
-    productGroup: group ? { id: group.id, name: group.name, displayName: group.displayName } : agent.productGroup,
-  };
-
-  store.write(updated, "agents", `${id}.json`);
   recordAudit("agent.update", "agent", id, input);
-  return updated;
+  return toAgentResponse(updated);
 }
 
 export async function deleteAgent(id: string) {
-  const agent = store.read<Record<string, unknown>>("agents", `${id}.json`);
-  if (!agent) throw new NotFoundError(`Agent ${id} 不存在`);
+  const existing = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new NotFoundError(`Agent ${id} 不存在`);
 
-  const updated = { ...agent, status: "ARCHIVED", updatedAt: store.now() };
-  store.write(updated, "agents", `${id}.json`);
+  const updated = await prisma.agent.update({
+    where: { id },
+    data: { status: "ARCHIVED" },
+    include: AGENT_INCLUDE,
+  });
+
   recordAudit("agent.archive", "agent", id);
-  return updated;
+  return toAgentResponse(updated);
 }
 
 export async function getAgentConfig(agentId: string, partition: Partition) {
-  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    include: CONFIG_INCLUDE,
+  });
   if (!agent) throw new NotFoundError(`Agent ${agentId} 不存在`);
 
-  const key = `${partition}Config`;
-  return (agent[key] as Record<string, unknown>) ?? null;
+  switch (partition) {
+    case "prompt":
+      return agent.promptConfig ? toPromptConfigResponse(agent.promptConfig) : null;
+    case "knowledge":
+      return agent.knowledgeConfig ? toKnowledgeConfigResponse(agent.knowledgeConfig) : null;
+    case "tools":
+      return agent.toolsConfig ? toToolsConfigResponse(agent.toolsConfig) : null;
+    case "routing":
+      return agent.routingConfig ? toRoutingConfigResponse(agent.routingConfig) : null;
+  }
 }
 
-function updateConfigPartition(agentId: string, partition: Partition, data: Record<string, unknown>) {
-  const agent = store.read<Record<string, unknown>>("agents", `${agentId}.json`);
+/**
+ * 分区配置更新：upsert 合并语义对齐旧实现（未传字段保留），version 恒为干净递增 Int。
+ * lastModifiedBy 落库但不回显（旧契约无此键）。
+ */
+async function updateConfigPartition(
+  agentId: string,
+  partition: Partition,
+  data: Record<string, unknown>,
+) {
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: { id: true },
+  });
   if (!agent) throw new NotFoundError(`Agent ${agentId} 不存在`);
 
-  const key = `${partition}Config`;
-  const existing = (agent[key] as Record<string, unknown>) ?? {};
-  const updated = {
-    ...existing,
-    ...data,
-    version: (Number(existing.version) || 0) + 1,
-    lastModifiedAt: store.now(),
-  };
+  const actor = getActor();
+  const now = new Date();
 
-  const updatedAgent = { ...agent, [key]: updated, updatedAt: store.now() };
-  store.write(updatedAgent, "agents", `${agentId}.json`);
-  return updated;
+  switch (partition) {
+    case "prompt": {
+      const row = await prisma.promptConfig.upsert({
+        where: { agentId },
+        create: {
+          agentId,
+          systemPrompt: data.systemPrompt as string,
+          ...(data.roleDefinition !== undefined && {
+            roleDefinition: data.roleDefinition as string | null,
+          }),
+          ...(data.constraints !== undefined && { constraints: data.constraints as string[] }),
+          ...(data.outputFormat !== undefined && {
+            outputFormat: data.outputFormat as string | null,
+          }),
+          version: 1,
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+        update: {
+          ...(data.systemPrompt !== undefined && { systemPrompt: data.systemPrompt as string }),
+          ...(data.roleDefinition !== undefined && {
+            roleDefinition: data.roleDefinition as string | null,
+          }),
+          ...(data.constraints !== undefined && { constraints: data.constraints as string[] }),
+          ...(data.outputFormat !== undefined && {
+            outputFormat: data.outputFormat as string | null,
+          }),
+          version: { increment: 1 },
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+      });
+      await prisma.agent.update({ where: { id: agentId }, data: { updatedAt: now } });
+      return toPromptConfigResponse(row);
+    }
+    case "knowledge": {
+      const row = await prisma.knowledgeConfig.upsert({
+        where: { agentId },
+        create: {
+          agentId,
+          ...(data.wikiVaultId !== undefined && {
+            wikiVaultId: data.wikiVaultId as string | null,
+          }),
+          ...(data.searchStrategy !== undefined && {
+            searchStrategy: data.searchStrategy as SearchStrategy,
+          }),
+          ...(data.fallbackToMcp !== undefined && {
+            fallbackToMcp: data.fallbackToMcp as boolean,
+          }),
+          ...(data.maxWikiResults !== undefined && {
+            maxWikiResults: data.maxWikiResults as number,
+          }),
+          ...(data.confidenceThreshold !== undefined && {
+            confidenceThreshold: data.confidenceThreshold as number,
+          }),
+          version: 1,
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+        update: {
+          ...(data.wikiVaultId !== undefined && {
+            wikiVaultId: data.wikiVaultId as string | null,
+          }),
+          ...(data.searchStrategy !== undefined && {
+            searchStrategy: data.searchStrategy as SearchStrategy,
+          }),
+          ...(data.fallbackToMcp !== undefined && {
+            fallbackToMcp: data.fallbackToMcp as boolean,
+          }),
+          ...(data.maxWikiResults !== undefined && {
+            maxWikiResults: data.maxWikiResults as number,
+          }),
+          ...(data.confidenceThreshold !== undefined && {
+            confidenceThreshold: data.confidenceThreshold as number,
+          }),
+          version: { increment: 1 },
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+      });
+      await prisma.agent.update({ where: { id: agentId }, data: { updatedAt: now } });
+      return toKnowledgeConfigResponse(row);
+    }
+    case "tools": {
+      const row = await prisma.toolsConfig.upsert({
+        where: { agentId },
+        create: {
+          agentId,
+          mcpTools: (data.mcpTools ?? []) as Prisma.InputJsonValue,
+          wikiQueryTools: (data.wikiQueryTools ?? []) as Prisma.InputJsonValue,
+          ...(data.maxConcurrentCalls !== undefined && {
+            maxConcurrentCalls: data.maxConcurrentCalls as number,
+          }),
+          ...(data.timeoutMs !== undefined && { timeoutMs: data.timeoutMs as number }),
+          ...(data.retryCount !== undefined && { retryCount: data.retryCount as number }),
+          version: 1,
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+        update: {
+          ...(data.mcpTools !== undefined && {
+            mcpTools: data.mcpTools as Prisma.InputJsonValue,
+          }),
+          ...(data.wikiQueryTools !== undefined && {
+            wikiQueryTools: data.wikiQueryTools as Prisma.InputJsonValue,
+          }),
+          ...(data.maxConcurrentCalls !== undefined && {
+            maxConcurrentCalls: data.maxConcurrentCalls as number,
+          }),
+          ...(data.timeoutMs !== undefined && { timeoutMs: data.timeoutMs as number }),
+          ...(data.retryCount !== undefined && { retryCount: data.retryCount as number }),
+          version: { increment: 1 },
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+      });
+      await prisma.agent.update({ where: { id: agentId }, data: { updatedAt: now } });
+      return toToolsConfigResponse(row);
+    }
+    case "routing": {
+      const row = await prisma.routingConfig.upsert({
+        where: { agentId },
+        create: {
+          agentId,
+          rules: (data.rules ?? []) as Prisma.InputJsonValue,
+          ...(data.escalationPolicy !== undefined && {
+            escalationPolicy:
+              data.escalationPolicy === null
+                ? Prisma.JsonNull
+                : (data.escalationPolicy as Prisma.InputJsonValue),
+          }),
+          ...(data.humanThreshold !== undefined && {
+            humanThreshold: data.humanThreshold as number,
+          }),
+          ...(data.maxConversationTurns !== undefined && {
+            maxConversationTurns: data.maxConversationTurns as number,
+          }),
+          ...(data.idleTimeoutMinutes !== undefined && {
+            idleTimeoutMinutes: data.idleTimeoutMinutes as number,
+          }),
+          version: 1,
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+        update: {
+          ...(data.rules !== undefined && { rules: data.rules as Prisma.InputJsonValue }),
+          ...(data.escalationPolicy !== undefined && {
+            escalationPolicy:
+              data.escalationPolicy === null
+                ? Prisma.JsonNull
+                : (data.escalationPolicy as Prisma.InputJsonValue),
+          }),
+          ...(data.humanThreshold !== undefined && {
+            humanThreshold: data.humanThreshold as number,
+          }),
+          ...(data.maxConversationTurns !== undefined && {
+            maxConversationTurns: data.maxConversationTurns as number,
+          }),
+          ...(data.idleTimeoutMinutes !== undefined && {
+            idleTimeoutMinutes: data.idleTimeoutMinutes as number,
+          }),
+          version: { increment: 1 },
+          lastModifiedAt: now,
+          lastModifiedBy: actor.id,
+        },
+      });
+      await prisma.agent.update({ where: { id: agentId }, data: { updatedAt: now } });
+      return toRoutingConfigResponse(row);
+    }
+  }
 }
 
 export async function updatePromptConfig(agentId: string, data: Record<string, unknown>) {
@@ -190,32 +526,31 @@ export async function updateRoutingConfig(agentId: string, data: Record<string, 
 }
 
 /**
- * 记录一次配置分区变更（含 diff 明细）。
- * 写 data/config-changes/<id>.json，并同步写一条审计日志。
- * changedBy 从 actor context 取，不再硬编码。
+ * 记录一次配置分区变更（含 diff 明细），落 PG（config-changes 无运行时读者，不做 JSON 镜像）。
+ * changedBy 从 actor context 取。
  */
 export async function recordConfigChange(
   agentId: string,
   partition: string,
   before: unknown,
   after: unknown,
-  changeNote?: string
+  changeNote?: string,
 ) {
   const actor = getActor();
   const diff = computeJsonDiff(before, after);
-  const id = store.generateId();
-  const change = {
-    id,
-    agentId,
-    partition,
-    before,
-    after,
-    diff,
-    changedBy: actor.id,
-    changeNote,
-    createdAt: store.now(),
-  };
-  store.write(change, "config-changes", `${id}.json`);
+
+  const change = await prisma.configChange.create({
+    data: {
+      agentId,
+      partition,
+      before: before == null ? Prisma.JsonNull : (before as Prisma.InputJsonValue),
+      after: after as Prisma.InputJsonValue,
+      diff: diff as Prisma.InputJsonValue,
+      changedBy: actor.id,
+      changeNote: changeNote ?? null,
+    },
+  });
+
   recordAudit("agent.config.update", "agent", agentId, {
     partition,
     changeNote,
@@ -225,5 +560,16 @@ export async function recordConfigChange(
       changed: Object.keys(diff.changed),
     },
   });
-  return change;
+
+  return {
+    id: change.id,
+    agentId,
+    partition,
+    before,
+    after,
+    diff,
+    changedBy: actor.id,
+    changeNote: changeNote ?? null,
+    createdAt: change.changedAt.toISOString(),
+  };
 }
