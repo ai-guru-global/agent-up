@@ -10,7 +10,7 @@ import { getMaasUsageReport } from "@/lib/services/maas-usage-service";
  */
 export async function GET(_request: NextRequest) {
   try {
-    return success(getMaasUsageReport());
+    return success(await getMaasUsageReport());
   } catch (err) {
     return handleApiError(err);
   }

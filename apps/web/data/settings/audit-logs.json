@@ -4832,5 +4832,2931 @@
     "details": {
       "name": "test-skill"
     }
+  },
+  {
+    "id": "ff69d084-d802-4318-9c27-edd9195a4807",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:13.480Z",
+    "details": {
+      "name": "改名后",
+      "description": "新描述",
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "f8100327-f3a1-4d82-91af-b82466bd1ab1",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:13.723Z"
+  },
+  {
+    "id": "3de7c1ba-aadb-4bbe-ac69-470b26805134",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:13.938Z"
+  },
+  {
+    "id": "6a3f7096-79c7-484a-a48a-ab4a1bc42e10",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "cmtwyjyyl000d0qx1tt3zqukd",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:14.214Z",
+    "details": {
+      "name": "新助手"
+    }
+  },
+  {
+    "id": "7169b119-6949-45a4-92b4-8763f421e226",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:14.464Z",
+    "details": {
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "c18433c7-4d4c-416e-9b4e-a17663bd751d",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:15.120Z",
+    "details": {
+      "partition": "PROMPT",
+      "changeNote": "测试变更",
+      "diffSummary": {
+        "added": [
+          "c"
+        ],
+        "removed": [],
+        "changed": [
+          "b"
+        ]
+      }
+    }
+  },
+  {
+    "id": "2a92e341-6743-4936-b8ed-3f41029d9d8c",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:15.216Z",
+    "details": {
+      "partition": "KNOWLEDGE",
+      "diffSummary": {
+        "added": [],
+        "removed": [],
+        "changed": [
+          "x"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dfd53cdd-9ae6-447b-b6b8-d99543fd18ff",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:15.322Z",
+    "details": {
+      "partition": "PROMPT_ROLLBACK",
+      "diffSummary": {
+        "added": [
+          "a"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    }
+  },
+  {
+    "id": "98553bf3-3ce0-42aa-94b8-ea26e9ad2573",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:38.966Z",
+    "details": {
+      "name": "改名后",
+      "description": "新描述",
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "4f49523b-8455-4751-adff-e5c4f1983472",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:39.174Z"
+  },
+  {
+    "id": "a0365888-344d-4e61-9dd0-8e159513b91e",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:39.350Z"
+  },
+  {
+    "id": "35a511a2-525c-405b-b1dc-cf935d5455bc",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "cmtwykihv000d0q89vyky8u8j",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:39.528Z",
+    "details": {
+      "name": "新助手"
+    }
+  },
+  {
+    "id": "ab69ed04-7dbc-4cf1-81c6-d5d57d788a66",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:39.692Z",
+    "details": {
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "be208d1f-8744-4835-b2d3-b1866ebea99e",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:40.119Z",
+    "details": {
+      "partition": "PROMPT",
+      "changeNote": "测试变更",
+      "diffSummary": {
+        "added": [
+          "c"
+        ],
+        "removed": [],
+        "changed": [
+          "b"
+        ]
+      }
+    }
+  },
+  {
+    "id": "0f754e62-177a-4aee-a26d-643ba19febec",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:40.197Z",
+    "details": {
+      "partition": "KNOWLEDGE",
+      "diffSummary": {
+        "added": [],
+        "removed": [],
+        "changed": [
+          "x"
+        ]
+      }
+    }
+  },
+  {
+    "id": "a48609b4-91ca-4cc8-a937-3473a83e2ac3",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T12:54:40.273Z",
+    "details": {
+      "partition": "PROMPT_ROLLBACK",
+      "diffSummary": {
+        "added": [
+          "a"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    }
+  },
+  {
+    "id": "575a7c09-638b-414b-a6bb-0af3ff98bf9d",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytkdl00010qcwxs64uyb5",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:41.876Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "98d3d03e-c106-485f-9fd6-cbbf1b3eb3ec",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytkdu00000qcxupy0vwzv",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:41.883Z",
+    "details": {
+      "name": "x"
+    }
+  },
+  {
+    "id": "f49960a3-2350-4e78-b03a-40e05cdbfd62",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytken00030qcw91xgamcm",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:41.914Z",
+    "details": {
+      "name": "新库"
+    }
+  },
+  {
+    "id": "c018d48b-7b94-4f6a-b605-9d73b9a5e995",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytkkx00010qcu6mrdliim",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.137Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "21766258-af55-4f4a-a40d-6cd314a9efd3",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytkmf00010qcxkzdjndvy",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.191Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "5d46d288-3cbb-4fc8-a8a7-e808e6e220ba",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytksj00030qcumhtn77ux",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.413Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "5a78847a-807a-45ed-97dd-cc1b16eed4d9",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytksv00070qcw5nobcrv6",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.419Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "3ade9956-03dd-4f54-bf8e-271fa1164ded",
+    "action": "wiki.vault.update",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytksv00070qcw5nobcrv6",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.430Z"
+  },
+  {
+    "id": "3eeca65e-247a-49c8-b5e9-13eb51640bfb",
+    "action": "wiki.vault.delete",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytksv00070qcw5nobcrv6",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.439Z"
+  },
+  {
+    "id": "da1b2ceb-54dc-401c-9780-b34032c949c0",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytkzz00090qcweok0mm9s",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.677Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "cde35a80-09fc-40df-8f1a-c4763aac8c84",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytl6t00030qcxap3r09fp",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.923Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "177559c3-6ceb-46e5-8dab-0ccf82d85ca1",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytl7g000b0qcwm5z01ynr",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.950Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "b690272b-a706-4bba-8fe9-67717e79aa64",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytl7y000d0qcwe0avkhan",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.964Z",
+    "details": {
+      "vaultId": "cmtwytl7g000b0qcwm5z01ynr",
+      "title": "级联页"
+    }
+  },
+  {
+    "id": "f1abb4b0-c82c-43c2-9454-326b76bfc810",
+    "action": "wiki.vault.delete",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytl7g000b0qcwm5z01ynr",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:42.978Z"
+  },
+  {
+    "id": "6ee538fb-ac37-4949-8dce-c8dd4dc2fd1e",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytlei00070qcuovfkr6bs",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.203Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "5f5b17a1-80d7-4d60-8a73-ae615c669d56",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytlf000090qcu9f6j3u3g",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.222Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MINOR"
+    }
+  },
+  {
+    "id": "278715c5-803e-4f56-a1d1-c7ee1e5532f4",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytlfe000b0qcu2lcl0yl3",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.232Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "60e7193a-ed5e-49b0-a5e0-46e14568c8a0",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytlg0000h0qcwtyouvcrr",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.267Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "c5c57833-6d32-42d6-9aa6-7018ac8804e3",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytlgn000j0qcwckcumiau",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.279Z",
+    "details": {
+      "name": "专属库"
+    }
+  },
+  {
+    "id": "6f6abdc6-3af9-4435-a46b-ddad87e09298",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytlgy000l0qcwqhy7fc1w",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.285Z",
+    "details": {
+      "name": "共享库"
+    }
+  },
+  {
+    "id": "c0357c79-82cd-4eda-93e8-df516e184200",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytlnc00060qcxrglldnft",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.519Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "f443ca10-41a6-47be-a312-f1357c627785",
+    "action": "skill.update",
+    "resource": "skill",
+    "resourceId": "cmtwytlnc00060qcxrglldnft",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.535Z",
+    "details": {
+      "displayName": "改名"
+    }
+  },
+  {
+    "id": "cf0628f8-1e0a-4bc1-b99b-8c116e5d8233",
+    "action": "skill.archive",
+    "resource": "skill",
+    "resourceId": "cmtwytlnc00060qcxrglldnft",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.560Z"
+  },
+  {
+    "id": "f2aa1c6a-3ae5-4920-8544-03b066e9bdad",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytlp0000d0qcujgnpzpaz",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.578Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "46088877-e689-49e5-a56b-3471fa0fd857",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytlq9000n0qcw80mvb9yi",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.624Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "d11ef46a-3b12-4893-bb1f-b23b35b4f9bd",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytlxo00070qcxt1xqukow",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.892Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "95cf852b-927d-487b-a05a-4864b9282019",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytlyc000f0qcu0d3fukbr",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.918Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "0327321c-11ae-4008-bb1d-783a16957353",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytlyc000f0qcu0d3fukbr",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.930Z",
+    "details": {
+      "from": "NEW",
+      "to": "TRIAGED"
+    }
+  },
+  {
+    "id": "99afe8c6-1f32-47a8-a74f-4400cc0c334a",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytlza000p0qcwkeel7p5p",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.948Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "4ff41893-3e0a-46e5-a2f3-5d545c9ba2a6",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytlzo000r0qcw1z94eycc",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:43.959Z",
+    "details": {
+      "vaultId": "cmtwytlza000p0qcwkeel7p5p",
+      "title": "第一页"
+    }
+  },
+  {
+    "id": "36cc79f2-cbe6-4a7b-8b66-ed22bf63fcf8",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytm5d000h0qcu8ticpjuy",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.167Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "08a407cd-3bb1-407c-9123-65938f675e79",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytm67000t0qcwfd8kau4d",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.199Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "0c4dd6aa-4582-4971-a3a3-48dc75cf5edb",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytm6s000v0qcwlfeygvuu",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.216Z",
+    "details": {
+      "vaultId": "cmtwytm67000t0qcwfd8kau4d",
+      "title": "新页面"
+    }
+  },
+  {
+    "id": "74f0b72e-59ce-4076-a2cd-d2ab642258c0",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytmca00080qcxv7j46a40",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.415Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "c2106927-557b-4273-9a63-dedf818647a3",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.426Z",
+    "details": {
+      "skillId": "cmtwytmca00080qcxv7j46a40"
+    }
+  },
+  {
+    "id": "4ef6ffed-85a5-4fb0-bf3f-090ed08abc8f",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.441Z",
+    "details": {
+      "skillId": "cmtwytmca00080qcxv7j46a40"
+    }
+  },
+  {
+    "id": "3f0cb08d-454b-482b-a72e-608d4a841420",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytmd9000j0qcumo0nfti8",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.450Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "7a9b229d-154c-4ae9-a005-18b6ffd1bcb3",
+    "action": "skill.unbind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.454Z",
+    "details": {
+      "skillId": "cmtwytmca00080qcxv7j46a40"
+    }
+  },
+  {
+    "id": "57ae2543-64ce-43ed-a754-afbe69202e23",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytmd9000j0qcumo0nfti8",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.460Z",
+    "details": {
+      "from": "NEW",
+      "to": "TRIAGED"
+    }
+  },
+  {
+    "id": "1872e943-8ae5-4235-a175-527071c310b7",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytmdt000x0qcwzddh39wj",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.471Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "5acf550d-a5a6-45dd-b067-676c04038ed2",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytme6000z0qcw51j259mi",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.481Z",
+    "details": {
+      "vaultId": "cmtwytmdt000x0qcwzddh39wj",
+      "title": "t"
+    }
+  },
+  {
+    "id": "2d748d55-f631-456a-90ee-c9ac248c3325",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytmd9000j0qcumo0nfti8",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.483Z",
+    "details": {
+      "from": "ASSIGNED",
+      "to": "IN_PROGRESS"
+    }
+  },
+  {
+    "id": "71441dff-3ebf-4e39-913b-20591f617c09",
+    "action": "wiki.page.update",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytme6000z0qcw51j259mi",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.494Z",
+    "details": {
+      "vaultId": "cmtwytmdt000x0qcwzddh39wj",
+      "title": "改"
+    }
+  },
+  {
+    "id": "8a6bca14-842a-4e15-91f3-1b2c0f5f239f",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytmd9000j0qcumo0nfti8",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.501Z",
+    "details": {
+      "from": "IN_PROGRESS",
+      "to": "RESOLVED"
+    }
+  },
+  {
+    "id": "dfba4e3a-4a7e-44bf-9489-ef9a9fa48c88",
+    "action": "wiki.page.delete",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytme6000z0qcw51j259mi",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.508Z",
+    "details": {
+      "vaultId": "cmtwytmdt000x0qcwzddh39wj"
+    }
+  },
+  {
+    "id": "7aefd95d-7a04-4b19-b87a-bbec279de81f",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytmd9000j0qcumo0nfti8",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.518Z",
+    "details": {
+      "from": "RESOLVED",
+      "to": "VERIFIED"
+    }
+  },
+  {
+    "id": "c48afbd9-174b-4d4b-b095-fa0ccbed10c6",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytmd9000j0qcumo0nfti8",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.533Z",
+    "details": {
+      "from": "VERIFIED",
+      "to": "CLOSED"
+    }
+  },
+  {
+    "id": "22c4221f-185e-4626-a7dc-08f9982faf38",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytmlj00110qcwfeufada1",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.749Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "a284b4d3-c541-4459-8052-8e729fe325e3",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytmm1000l0qcu2y7kzj24",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.767Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "22ba0d71-5ea0-4cdf-a6a4-ec262f01b4e9",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytmsh00130qcw2oo7ym3b",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:44.998Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "ac940e89-bbef-4927-8256-32b2698f8eee",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytmss00150qcwjqarp1c9",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.006Z",
+    "details": {
+      "vaultId": "cmtwytmsh00130qcw2oo7ym3b",
+      "title": "SSH 指南"
+    }
+  },
+  {
+    "id": "d7f97163-592d-4efd-afe6-a049754e9dd6",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytmsu000n0qcurvrxsd21",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.012Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "5705a637-c48b-4fd0-a172-35685fca5ddd",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytmt000170qcwoxbi7rcb",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.014Z",
+    "details": {
+      "vaultId": "cmtwytmsh00130qcw2oo7ym3b",
+      "title": "OSS 教程"
+    }
+  },
+  {
+    "id": "6c6a05cc-85a2-4d31-aebd-e4c4ff7448ea",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytmwv000d0qcxroxco02v",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.157Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "49bcc39c-8c35-4b70-9044-f225017fbbef",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytmx6000e0qcx8dnkpsgn",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.166Z",
+    "details": {
+      "name": "low-prio"
+    }
+  },
+  {
+    "id": "da84ae2a-e419-4036-bf5b-ef6bbba37117",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.179Z",
+    "details": {
+      "skillId": "cmtwytmwv000d0qcxroxco02v"
+    }
+  },
+  {
+    "id": "7094e97f-a7df-4a93-b019-883ca73436fc",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.194Z",
+    "details": {
+      "skillId": "cmtwytmx6000e0qcx8dnkpsgn"
+    }
+  },
+  {
+    "id": "a0608765-b958-40da-809b-1de813779c25",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytn0g000p0qcucqgb558s",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.295Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "695df165-e2ad-476d-ad5b-56c621592112",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytn0u00190qcwl0drd1mj",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.310Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "5da2d570-0c57-4af5-b3b3-af1d36f8582d",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytn0g000p0qcucqgb558s",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.334Z",
+    "details": {
+      "from": "NEW",
+      "to": "NEW"
+    }
+  },
+  {
+    "id": "47e4db17-17dd-4154-93e8-160f04f0f470",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytn1x001b0qcwg1jry6g0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.340Z",
+    "details": {
+      "vaultId": "cmtwytn0u00190qcwl0drd1mj",
+      "title": "SSH 指南"
+    }
+  },
+  {
+    "id": "cb536ce6-25d4-4481-9c04-33fdf9161593",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytn2a001d0qcwbnanc3rv",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.348Z",
+    "details": {
+      "vaultId": "cmtwytn0u00190qcwl0drd1mj",
+      "title": "OSS 教程"
+    }
+  },
+  {
+    "id": "685b8f0e-4795-4c37-9d05-ac1759c2b1e6",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytn6k000j0qcxwre2ahjp",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.505Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "2d6ed909-100d-4b0f-8062-2148cfc03768",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytn85000r0qcu9b3fgu1r",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.563Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "59b139bf-886f-485b-a723-09cf5fb36b26",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytn8d001f0qcwr2ag5bnk",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.570Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "d96243ea-b663-4ee7-94c4-3830fa30bddc",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytn85000r0qcu9b3fgu1r",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.577Z",
+    "details": {
+      "from": "RESOLVED",
+      "to": "IN_PROGRESS"
+    }
+  },
+  {
+    "id": "7b9a3e3d-7d9c-487a-a72e-522edfa0b4f0",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytn8p001h0qcwrw1jjw1q",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.581Z",
+    "details": {
+      "vaultId": "cmtwytn8d001f0qcwr2ag5bnk",
+      "title": "页 0"
+    }
+  },
+  {
+    "id": "81dd825c-e0ac-4b92-9590-2603eeb7c115",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytn8y001j0qcwk5wzdeyf",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.588Z",
+    "details": {
+      "vaultId": "cmtwytn8d001f0qcwr2ag5bnk",
+      "title": "页 1"
+    }
+  },
+  {
+    "id": "fd7e6a5b-c65a-4c6f-bb06-5eb196f38ee9",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytn95001l0qcw4x1tdnza",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.596Z",
+    "details": {
+      "vaultId": "cmtwytn8d001f0qcwr2ag5bnk",
+      "title": "页 2"
+    }
+  },
+  {
+    "id": "b97d51b8-ecee-43d5-8fc2-7e60e34578a6",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytn9e001n0qcwtaetb7hm",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.604Z",
+    "details": {
+      "vaultId": "cmtwytn8d001f0qcwr2ag5bnk",
+      "title": "页 3"
+    }
+  },
+  {
+    "id": "8d1d9340-d3fa-4668-a366-726894c4614b",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwytn9m001p0qcwwdiliffy",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.611Z",
+    "details": {
+      "vaultId": "cmtwytn8d001f0qcwr2ag5bnk",
+      "title": "页 4"
+    }
+  },
+  {
+    "id": "3e1a3360-92c0-4133-9e0e-ecfe16122f32",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwytnd6000k0qcxsdntauc2",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.742Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "72661c1d-419d-4a7a-9fb2-09fa7e02c924",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwytnf9001r0qcw13lymzdo",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:45.819Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "916d1d5c-e2e5-4bce-9425-2ed977655c3f",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwytnm3000t0qcunkbtp3en",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:46.066Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "de2f8806-4f1b-435b-b822-1023586b063d",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwytnm3000t0qcunkbtp3en",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:46.076Z",
+    "details": {
+      "from": "NEW",
+      "to": "TRIAGED"
+    }
+  },
+  {
+    "id": "f99d169f-921b-4318-b40a-d58541318d0e",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:49.444Z",
+    "details": {
+      "name": "改名后",
+      "description": "新描述",
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "e6dc61d4-b405-4f53-9173-b9ee940d098b",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:49.991Z"
+  },
+  {
+    "id": "7b4c9136-1a63-4e8e-9aff-0052c4d00bbd",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:50.432Z"
+  },
+  {
+    "id": "d86ffdb6-9286-44fc-bc28-acea14649914",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "a1",
+    "userName": "张三",
+    "userRole": "product_member",
+    "userId": "u-42",
+    "createdAt": "2026-09-11T13:01:50.632Z",
+    "details": {
+      "k": "v"
+    }
+  },
+  {
+    "id": "3c178e4b-e9d9-457e-b5bd-a6499320691a",
+    "action": "x.y",
+    "resource": "z",
+    "resourceId": "1",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:50.927Z"
+  },
+  {
+    "id": "742b6af7-a03e-442a-bcaa-eba082bed58e",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "cmtwytrdm000d0qd5txaejzhs",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:50.953Z",
+    "details": {
+      "name": "新助手"
+    }
+  },
+  {
+    "id": "3d9c602d-e502-4416-9105-0a0f27e71317",
+    "action": "a",
+    "resource": "b",
+    "resourceId": "c",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:51.136Z"
+  },
+  {
+    "id": "c530abd7-1a0c-4df0-86b0-7829012f6529",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "a2",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:51.346Z"
+  },
+  {
+    "id": "c75a8b3a-1811-4425-bbd0-a845d0feab80",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:51.382Z",
+    "details": {
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "1efa3afa-0fe7-44db-9c81-246da957d253",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:52.529Z",
+    "details": {
+      "partition": "PROMPT",
+      "changeNote": "测试变更",
+      "diffSummary": {
+        "added": [
+          "c"
+        ],
+        "removed": [],
+        "changed": [
+          "b"
+        ]
+      }
+    }
+  },
+  {
+    "id": "e5f503d3-2e18-4da4-9acb-a69bca54a2b3",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:52.775Z",
+    "details": {
+      "partition": "KNOWLEDGE",
+      "diffSummary": {
+        "added": [],
+        "removed": [],
+        "changed": [
+          "x"
+        ]
+      }
+    }
+  },
+  {
+    "id": "8eec53ab-c4dd-4d58-9fa4-a15674218ee4",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:01:53.038Z",
+    "details": {
+      "partition": "PROMPT_ROLLBACK",
+      "diffSummary": {
+        "added": [
+          "a"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    }
+  },
+  {
+    "id": "a4315185-6aed-4e77-afc7-d46b9a8aee8d",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz19wq00010qgvnulb8z1w",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:41.565Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "0c7709db-8e28-4301-b0f7-6576c7990c7b",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1a4b00030qgvpqg4ce97",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:41.824Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "d32167ab-445a-4865-a162-138cf1027a93",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1asn00050qgvzobg93wd",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:42.714Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "f92e53b6-628f-4046-a2e6-0f33b3c087a1",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1b1n00070qgv4xk3rjq1",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.026Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "121d307b-21da-471a-b579-628bb4befd2b",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1b1w00090qgvapghgsr5",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.033Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MINOR"
+    }
+  },
+  {
+    "id": "d240fbd0-ab12-4079-bee2-c2c611865dc1",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1b27000b0qgvkomfu6xv",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.043Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "cfebd80f-aa6e-496a-86ee-cad8aba20188",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bcx000d0qgvvdehbar1",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.431Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "03aa45de-4104-4c67-b9f4-151261e8ed67",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bgw000f0qgv6fb7qcr7",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.570Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "c08417dc-a28c-4c0b-8f69-c29cb405ef39",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bgw000f0qgv6fb7qcr7",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.576Z",
+    "details": {
+      "from": "NEW",
+      "to": "TRIAGED"
+    }
+  },
+  {
+    "id": "d28c6527-19d7-4759-8d10-e9ba62c7cf72",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.728Z",
+    "details": {
+      "name": "改名后",
+      "description": "新描述",
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "63e4976f-e8c9-43e9-bca4-f8ba7eaeb095",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bnt000h0qgvwgh3qgrr",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.819Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "8808cac9-f7db-4315-949d-3a023025bb58",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bs3000j0qgv7tcw2p5x",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.974Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "680e7408-8938-40ba-99e8-1efc65c09c31",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bs3000j0qgv7tcw2p5x",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.982Z",
+    "details": {
+      "from": "NEW",
+      "to": "TRIAGED"
+    }
+  },
+  {
+    "id": "721a5d5f-e26e-4833-bfd6-919e22740c9a",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bs3000j0qgv7tcw2p5x",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:43.998Z",
+    "details": {
+      "from": "TRIAGED",
+      "to": "ASSIGNED"
+    }
+  },
+  {
+    "id": "b25f7a40-252f-4a53-abeb-52a2cbf5caa4",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bs3000j0qgv7tcw2p5x",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.014Z",
+    "details": {
+      "from": "ASSIGNED",
+      "to": "IN_PROGRESS"
+    }
+  },
+  {
+    "id": "c787e42a-ad3e-4a5e-997c-da440da28cb8",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bs3000j0qgv7tcw2p5x",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.021Z",
+    "details": {
+      "from": "IN_PROGRESS",
+      "to": "RESOLVED"
+    }
+  },
+  {
+    "id": "2e26fabe-16f3-4269-b8d1-21a20dd5b175",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bs3000j0qgv7tcw2p5x",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.032Z",
+    "details": {
+      "from": "RESOLVED",
+      "to": "VERIFIED"
+    }
+  },
+  {
+    "id": "ddd75bd7-8bed-47a0-b463-e4e43cd24dac",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bs3000j0qgv7tcw2p5x",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.038Z",
+    "details": {
+      "from": "VERIFIED",
+      "to": "CLOSED"
+    }
+  },
+  {
+    "id": "6aa4bae4-d8ad-4ee4-a393-281f9890da73",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.110Z"
+  },
+  {
+    "id": "630dcad0-9489-44a1-80db-85728f975412",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1bz7000l0qgv6j3v751v",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.231Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "390b114b-d7d7-432c-b044-efcd1b541c5a",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1c3b000n0qgv5gf9j7k2",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.377Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "3698d497-0287-4c9e-97f4-c729903a884d",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.434Z"
+  },
+  {
+    "id": "4a76716a-0f41-4456-8892-01752bbc5be6",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1c7o000p0qgvmn27k9me",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.536Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "8b9e0fda-5a79-4ec2-b637-9462568b74ab",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1c7o000p0qgvmn27k9me",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.542Z",
+    "details": {
+      "from": "NEW",
+      "to": "NEW"
+    }
+  },
+  {
+    "id": "4bc15062-ee04-456e-b552-6d76c59147fb",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1cey000r0qgvlzxmp73c",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.801Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "0f3d01a8-3422-4c34-ae8b-79489652999b",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1cey000r0qgvlzxmp73c",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.813Z",
+    "details": {
+      "from": "RESOLVED",
+      "to": "IN_PROGRESS"
+    }
+  },
+  {
+    "id": "16920ece-f714-4d7a-8782-62bc198fe908",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "cmtwz1cgn000d0qgsgznclujh",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:44.865Z",
+    "details": {
+      "name": "新助手"
+    }
+  },
+  {
+    "id": "39dab5d5-34a1-4654-b78a-21883083b8d0",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1cl800010qh9uue05p2r",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.028Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "eca5badb-fb57-4df9-a3c7-a36838f2e9d7",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1clu00030qh9cy7hvlra",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.049Z",
+    "details": {
+      "name": "新库"
+    }
+  },
+  {
+    "id": "3468f43e-fd44-4d02-a15a-1b5022c49dd8",
+    "action": "feedback.create",
+    "resource": "feedback",
+    "resourceId": "cmtwz1cpc000t0qgvca3hc1do",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.173Z",
+    "details": {
+      "agentId": "ecs-assistant",
+      "rating": "NEGATIVE",
+      "severity": "MAJOR"
+    }
+  },
+  {
+    "id": "7e8bd10d-66d8-4c8d-97bc-ab8f6f69164b",
+    "action": "feedback.update",
+    "resource": "feedback",
+    "resourceId": "cmtwz1cpc000t0qgvca3hc1do",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.181Z",
+    "details": {
+      "from": "NEW",
+      "to": "TRIAGED"
+    }
+  },
+  {
+    "id": "a3011152-5323-4f0c-a99d-573a3058c950",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.250Z",
+    "details": {
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "70798a0f-6520-4a4b-bb04-6668d353d2f4",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1csh00050qh9zcbxswra",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.287Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "f2979c8d-b948-440a-99f8-0cdb08a2e137",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1cx200000qhew54abd8q",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.450Z",
+    "details": {
+      "name": "x"
+    }
+  },
+  {
+    "id": "b36e2dfb-b9b4-4e7a-b5ef-6a6a5d91c471",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1cya00070qh9z11c19mx",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.493Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "6e001ad9-d4b2-4e51-8744-b32d859134f1",
+    "action": "wiki.vault.update",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1cya00070qh9z11c19mx",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.500Z"
+  },
+  {
+    "id": "4ac52cb0-6cde-4684-8c76-f02543b5f913",
+    "action": "wiki.vault.delete",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1cya00070qh9z11c19mx",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.507Z"
+  },
+  {
+    "id": "f3ca22ba-4dc5-4a51-b74e-7ee16c1ad40b",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1d2x00010qhemo0z2znc",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.666Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "7ccc413f-53c7-44f6-8640-46d2fa9e2587",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1d4000090qh93cwhw4lf",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.699Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "60abf2d0-c7d2-443b-8b79-622a572caa8a",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1d7o00020qhep85riqv7",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.833Z",
+    "details": {
+      "name": "audit-skill"
+    }
+  },
+  {
+    "id": "86e3ad74-6670-43cd-97d4-9f8b2a2daad4",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1d8c000b0qh98ginitcy",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.854Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "abab8ecb-e616-4bf4-b3df-cabdaedd5caa",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1d8h000d0qh9lyd0zcdi",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.859Z",
+    "details": {
+      "vaultId": "cmtwz1d8c000b0qh98ginitcy",
+      "title": "级联页"
+    }
+  },
+  {
+    "id": "26c207ea-2d8d-4525-b308-90d58b98a64e",
+    "action": "wiki.vault.delete",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1d8c000b0qh98ginitcy",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:45.869Z"
+  },
+  {
+    "id": "b925d2ff-4fc9-4dbb-8659-b57ced397a89",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1dcw000h0qh9i8vakh4q",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.019Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "93bd3811-4ec8-43fc-bae1-7daccda1c75f",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1dd1000j0qh9nl9vug4u",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.025Z",
+    "details": {
+      "name": "专属库"
+    }
+  },
+  {
+    "id": "0a1a7ffa-ce37-4917-8df4-1edf7fb6e09b",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1dd9000l0qh93ba58xls",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.032Z",
+    "details": {
+      "name": "共享库"
+    }
+  },
+  {
+    "id": "7bdf9b5e-55bd-4824-9dcf-97f4f3a7d2b4",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1dgq00030qhepmqugocs",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.158Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "2c57a876-73df-4baf-a4c7-929feb31c81b",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.167Z",
+    "details": {
+      "skillId": "cmtwz1dgq00030qhepmqugocs"
+    }
+  },
+  {
+    "id": "e6f1e7bb-5be3-492c-ab60-38bc3da8c06d",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.197Z",
+    "details": {
+      "partition": "PROMPT",
+      "changeNote": "测试变更",
+      "diffSummary": {
+        "added": [
+          "c"
+        ],
+        "removed": [],
+        "changed": [
+          "b"
+        ]
+      }
+    }
+  },
+  {
+    "id": "7fe0e601-7a13-49c1-b826-49caedb8b9d7",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1dj0000n0qh9d6ffs4qt",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.249Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "80f08a62-eddb-4375-bcaa-f1d2445894bb",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.529Z",
+    "details": {
+      "partition": "KNOWLEDGE",
+      "diffSummary": {
+        "added": [],
+        "removed": [],
+        "changed": [
+          "x"
+        ]
+      }
+    }
+  },
+  {
+    "id": "6702fa7a-9bb6-49c8-aa22-578d8e3ce7ed",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1drz000p0qh9y547f9ix",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.570Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "2b593e24-d372-435c-b800-4a90e81c3422",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1dse000r0qh9x8rk1k0r",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.577Z",
+    "details": {
+      "vaultId": "cmtwz1drz000p0qh9y547f9ix",
+      "title": "第一页"
+    }
+  },
+  {
+    "id": "e533e198-7974-4af3-9bf9-6954b844688d",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1dvx00060qheyx6bkmz0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.705Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "7559143f-75b6-47ff-91c9-f4c035c28626",
+    "action": "skill.update",
+    "resource": "skill",
+    "resourceId": "cmtwz1dvx00060qheyx6bkmz0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.712Z",
+    "details": {
+      "displayName": "改名"
+    }
+  },
+  {
+    "id": "99cee22c-4a44-4448-a532-8509ecfb5654",
+    "action": "skill.archive",
+    "resource": "skill",
+    "resourceId": "cmtwz1dvx00060qheyx6bkmz0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.721Z"
+  },
+  {
+    "id": "3b343d93-a274-4a89-8eed-c240735b2349",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.726Z",
+    "details": {
+      "partition": "PROMPT_ROLLBACK",
+      "diffSummary": {
+        "added": [
+          "a"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    }
+  },
+  {
+    "id": "27a10519-8cf5-4f79-90fc-fff618c3b3c5",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1dxp000t0qh9fwf7hzf0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.769Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "f6f0c345-35c0-4e2a-b0b4-1c492064e7af",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1dxx000v0qh978d18iwy",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.777Z",
+    "details": {
+      "vaultId": "cmtwz1dxp000t0qh9fwf7hzf0",
+      "title": "新页面"
+    }
+  },
+  {
+    "id": "e47d6bb7-d001-499d-ac99-55cd553b1f20",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1e1v00070qhe38i8tqd1",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.918Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "c81bb65e-19cb-4ba7-9cfc-8809da8cf4b4",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1e3e000x0qh98pblh97b",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.976Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "4a133d7b-1300-4bfa-b1f7-ecd511efb45f",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1e3r000z0qh9w482cid0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.985Z",
+    "details": {
+      "vaultId": "cmtwz1e3e000x0qh98pblh97b",
+      "title": "t"
+    }
+  },
+  {
+    "id": "5b9568dd-9d29-4f73-bb77-25c34e91e577",
+    "action": "wiki.page.update",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1e3r000z0qh9w482cid0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.989Z",
+    "details": {
+      "vaultId": "cmtwz1e3e000x0qh98pblh97b",
+      "title": "改"
+    }
+  },
+  {
+    "id": "562119b9-6fdb-49d0-85ea-2cb817b728dc",
+    "action": "wiki.page.delete",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1e3r000z0qh9w482cid0",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:46.995Z",
+    "details": {
+      "vaultId": "cmtwz1e3e000x0qh98pblh97b"
+    }
+  },
+  {
+    "id": "d3317812-2fe6-4d42-840c-37ed4bc6f7f7",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1ea500110qh9ti3rr06a",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.216Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "9ce0e36c-dbed-4204-a0b3-521d1bac87ee",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1edz00080qhelabya8iy",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.356Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "2bf5b2e4-2c47-433d-a8ea-80dbd56d9252",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.362Z",
+    "details": {
+      "skillId": "cmtwz1edz00080qhelabya8iy"
+    }
+  },
+  {
+    "id": "e23477f3-b26f-4b4a-8be5-b0d579a94a34",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.369Z",
+    "details": {
+      "skillId": "cmtwz1edz00080qhelabya8iy"
+    }
+  },
+  {
+    "id": "f3f47fd4-ab8d-4da1-8a81-133a6ce13728",
+    "action": "skill.unbind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.376Z",
+    "details": {
+      "skillId": "cmtwz1edz00080qhelabya8iy"
+    }
+  },
+  {
+    "id": "fe09d794-b35c-4ec2-b129-76790e1651c7",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1egn00130qh99gpuiwyw",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.451Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "82630df1-8026-435d-b651-1d579493d7c8",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1egy00150qh9wyzotrb6",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.461Z",
+    "details": {
+      "vaultId": "cmtwz1egn00130qh99gpuiwyw",
+      "title": "SSH 指南"
+    }
+  },
+  {
+    "id": "bb5ed419-1cb2-42bb-a364-dca1abf6b051",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1eh900170qh96tf8yufq",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.473Z",
+    "details": {
+      "vaultId": "cmtwz1egn00130qh99gpuiwyw",
+      "title": "OSS 教程"
+    }
+  },
+  {
+    "id": "1782bb70-2948-4c36-ab08-5a460e520deb",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1epi00190qh98i47lzus",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.769Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "d3094ff6-87f0-45d4-821c-2746c920e47a",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1epp001b0qh9zvxc02op",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.775Z",
+    "details": {
+      "vaultId": "cmtwz1epi00190qh98i47lzus",
+      "title": "SSH 指南"
+    }
+  },
+  {
+    "id": "8d3ba216-d5e9-4cc2-98a7-d5360060052d",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1epz001d0qh9r4xvd7kj",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.786Z",
+    "details": {
+      "vaultId": "cmtwz1epi00190qh98i47lzus",
+      "title": "OSS 教程"
+    }
+  },
+  {
+    "id": "ca3d1fab-ef00-4661-b0cc-5c88adf15caa",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1evq001f0qh9udznw7ur",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:47.994Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "a42c8e32-9aa8-4e21-872e-6789398c4b55",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1ew1001h0qh9tiucimqk",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.004Z",
+    "details": {
+      "vaultId": "cmtwz1evq001f0qh9udznw7ur",
+      "title": "页 0"
+    }
+  },
+  {
+    "id": "89d406dc-c3d8-40cc-930d-628920974bec",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1ew9001j0qh99ixz47oc",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.010Z",
+    "details": {
+      "vaultId": "cmtwz1evq001f0qh9udznw7ur",
+      "title": "页 1"
+    }
+  },
+  {
+    "id": "104dab28-af3c-4e0a-b3c3-4b58cf36db75",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1ewf001l0qh9f4867tu4",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.017Z",
+    "details": {
+      "vaultId": "cmtwz1evq001f0qh9udznw7ur",
+      "title": "页 2"
+    }
+  },
+  {
+    "id": "daa0ac8f-bee4-40ef-bc55-4aeea75eef2a",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1ewn001n0qh9ndzzl8nn",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.025Z",
+    "details": {
+      "vaultId": "cmtwz1evq001f0qh9udznw7ur",
+      "title": "页 3"
+    }
+  },
+  {
+    "id": "461c4778-ec84-4f0f-a59c-a83969ba8b3c",
+    "action": "wiki.page.create",
+    "resource": "wiki-page",
+    "resourceId": "cmtwz1eww001p0qh95yu9e9e1",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.034Z",
+    "details": {
+      "vaultId": "cmtwz1evq001f0qh9udznw7ur",
+      "title": "页 4"
+    }
+  },
+  {
+    "id": "1c6b549d-be54-4451-8602-800ed1c77537",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1ez2000d0qheu50lsyli",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.117Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "50b9c137-05c9-43b4-88e6-6989135d6596",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1ezd000e0qhekelaz6xs",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.124Z",
+    "details": {
+      "name": "low-prio"
+    }
+  },
+  {
+    "id": "d790b91c-9fce-41e8-bbe8-d3cb6c03a157",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.131Z",
+    "details": {
+      "skillId": "cmtwz1ez2000d0qheu50lsyli"
+    }
+  },
+  {
+    "id": "b69eaf1f-d4de-4042-9b6c-fd62991f8ee4",
+    "action": "skill.bind",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.140Z",
+    "details": {
+      "skillId": "cmtwz1ezd000e0qhekelaz6xs"
+    }
+  },
+  {
+    "id": "eeb71bcf-79db-4dbd-9230-42b1f62928dc",
+    "action": "wiki.vault.create",
+    "resource": "wiki-vault",
+    "resourceId": "cmtwz1f32001r0qh95a2u9mz4",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.257Z",
+    "details": {
+      "name": "测试库"
+    }
+  },
+  {
+    "id": "a556fe2c-df47-40bb-bbf1-0e9efe418903",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1f5k000j0qhewdre67w9",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.357Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "4aa197cd-a3cf-4c8c-9d66-451037422fc5",
+    "action": "skill.create",
+    "resource": "skill",
+    "resourceId": "cmtwz1fdz000k0qhey1x4ht94",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.651Z",
+    "details": {
+      "name": "test-skill"
+    }
+  },
+  {
+    "id": "46fba164-a701-4a51-8431-ed2dd68f1ee4",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "a1",
+    "userName": "张三",
+    "userRole": "product_member",
+    "userId": "u-42",
+    "createdAt": "2026-09-11T13:07:48.700Z",
+    "details": {
+      "k": "v"
+    }
+  },
+  {
+    "id": "9d808555-8b18-42d0-b3f0-5440e8e26052",
+    "action": "x.y",
+    "resource": "z",
+    "resourceId": "1",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:48.928Z"
+  },
+  {
+    "id": "ae208916-5645-4d8b-bafc-b73d4dca2e11",
+    "action": "a",
+    "resource": "b",
+    "resourceId": "c",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:49.106Z"
+  },
+  {
+    "id": "4c258ded-3029-48a5-99de-194c13d16eb5",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "a2",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:07:49.259Z"
+  },
+  {
+    "id": "589cb540-fe1d-4353-8493-aa4e0f42daa8",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:05.513Z",
+    "details": {
+      "name": "改名后",
+      "description": "新描述",
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "8b313d3d-3fc3-47ae-982e-362283d60fed",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:05.925Z"
+  },
+  {
+    "id": "721ed7be-6eeb-418c-b1b1-49cf4dbe312e",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:06.462Z"
+  },
+  {
+    "id": "9bed1d37-5dc7-44bc-8b1c-217cb221382c",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "cmtwz3442000d0q6hyfvs0g07",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:07.360Z",
+    "details": {
+      "name": "新助手"
+    }
+  },
+  {
+    "id": "26335ceb-0e8b-44c0-93d3-8bd2e1c917ac",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:07.835Z",
+    "details": {
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "f1f60973-e403-4a0b-baa2-5a9afb036302",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:10.186Z",
+    "details": {
+      "partition": "PROMPT",
+      "changeNote": "测试变更",
+      "diffSummary": {
+        "added": [
+          "c"
+        ],
+        "removed": [],
+        "changed": [
+          "b"
+        ]
+      }
+    }
+  },
+  {
+    "id": "32ab4a2c-ac0f-4d37-b857-16b80ad41ce3",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:10.405Z",
+    "details": {
+      "partition": "KNOWLEDGE",
+      "diffSummary": {
+        "added": [],
+        "removed": [],
+        "changed": [
+          "x"
+        ]
+      }
+    }
+  },
+  {
+    "id": "a49e740f-2504-4e24-9cc3-80b1b5e1dedf",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T13:09:10.528Z",
+    "details": {
+      "partition": "PROMPT_ROLLBACK",
+      "diffSummary": {
+        "added": [
+          "a"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    }
+  },
+  {
+    "id": "6a1c11aa-53aa-41ce-81c0-ae18fd3d9cef",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:16.010Z",
+    "details": {
+      "name": "改名后",
+      "description": "新描述",
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "b8712c40-ff68-4f49-8e6f-44be336c18d3",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:16.333Z"
+  },
+  {
+    "id": "777867aa-7070-47e1-bcb5-bd0931b056f1",
+    "action": "agent.archive",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:16.728Z"
+  },
+  {
+    "id": "4d811740-860a-40cd-bcca-283c7816d094",
+    "action": "agent.create",
+    "resource": "agent",
+    "resourceId": "cmtx1dmjz000d0qbca4fdyygv",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:17.048Z",
+    "details": {
+      "name": "新助手"
+    }
+  },
+  {
+    "id": "47c505cd-ea1d-4bf6-bac7-b2d45f9b7d77",
+    "action": "agent.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:17.461Z",
+    "details": {
+      "status": "ACTIVE"
+    }
+  },
+  {
+    "id": "ef6bef65-d42d-40a7-b7b4-b8267ee1ec5c",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:18.395Z",
+    "details": {
+      "partition": "PROMPT",
+      "changeNote": "测试变更",
+      "diffSummary": {
+        "added": [
+          "c"
+        ],
+        "removed": [],
+        "changed": [
+          "b"
+        ]
+      }
+    }
+  },
+  {
+    "id": "0d5e0a46-7a90-40c5-94db-806a8e545dcb",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:18.543Z",
+    "details": {
+      "partition": "KNOWLEDGE",
+      "diffSummary": {
+        "added": [],
+        "removed": [],
+        "changed": [
+          "x"
+        ]
+      }
+    }
+  },
+  {
+    "id": "3898e85a-1574-444e-b76c-b2fe3be6b21a",
+    "action": "agent.config.update",
+    "resource": "agent",
+    "resourceId": "ecs-assistant",
+    "userName": "系统",
+    "userRole": "platform_admin",
+    "userId": "system",
+    "createdAt": "2026-09-11T14:13:18.686Z",
+    "details": {
+      "partition": "PROMPT_ROLLBACK",
+      "diffSummary": {
+        "added": [
+          "a"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    }
   }
 ]

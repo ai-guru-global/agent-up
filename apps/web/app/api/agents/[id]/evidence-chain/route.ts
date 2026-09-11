@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    return success(getEvidenceChain(id));
+    return success(await getEvidenceChain(id));
   } catch (err) {
     return handleApiError(err);
   }
