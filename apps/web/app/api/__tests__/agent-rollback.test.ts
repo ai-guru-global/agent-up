@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import { POST as rollback } from "@/app/api/agents/[id]/rollback/[versionId]/route";
 import { GET as getConfig } from "@/app/api/agents/[id]/config/[partition]/route";
 import { store } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
+import { _resetDb } from "@/lib/data/test-db";
+import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
 const AGENT_ID = "ecs-assistant";
@@ -15,9 +18,17 @@ function makeRequest(): NextRequest {
   });
 }
 
-beforeEach(() => {
+// 回滚的版本查找与 release/version 落盘仍读/写 JSON 夹具（批4 切 PG）；
+// 分区覆盖批3 起走 PG upsert，需 PG 建档；ver-001 的 knowledgeSnapshot 带
+// wikiVaultId: "ecs-wiki"，PG 需有对应 vault 行才不触发 FK 违例
+beforeEach(async () => {
   resetActor();
   useTempDataDir();
+  await _resetDb();
+  await seedAgent(AGENT_ID);
+  await prisma.wikiVault.create({
+    data: { id: "ecs-wiki", name: "ECS 知识库", agentId: AGENT_ID },
+  });
 });
 afterEach(restoreDataDir);
 

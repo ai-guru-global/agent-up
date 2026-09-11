@@ -9,6 +9,12 @@ import {
   type Partition,
   type SemVer,
 } from "@/lib/versioning";
+import {
+  updatePromptConfig,
+  updateKnowledgeConfig,
+  updateToolsConfig,
+  updateRoutingConfig,
+} from "@/lib/services/agent-service";
 
 type Config = Record<string, unknown> | null;
 
@@ -279,14 +285,9 @@ export async function createRollbackRelease(agentId: string, targetVersionId: st
     TOOLS: "toolsSnapshot",
     ROUTING: "routingSnapshot",
   };
-  const activeKey: Record<Partition, keyof AgentLike> = {
-    PROMPT: "promptConfig",
-    KNOWLEDGE: "knowledgeConfig",
-    TOOLS: "toolsConfig",
-    ROUTING: "routingConfig",
-  };
 
-  // 1) 直接覆盖 agent 当前 4 分区为 target 的 snapshot
+  // 1) 覆盖 Agent 当前 4 分区为 target 的 snapshot——批3 起分区配置事实源为 PG，
+  //    经 agent-service upsert；版本查找仍读 JSON（批4 随 release-service 一起迁移）
   const ts = store.now();
   const configSnapshot: Record<string, unknown> = {};
   for (const p of partitions) {
@@ -294,11 +295,11 @@ export async function createRollbackRelease(agentId: string, targetVersionId: st
     const { version: _v, lastModifiedAt: _l, ...payload } = raw;
     void _v; void _l;
     configSnapshot[p.toLowerCase()] = payload;
-    // AgentLike 无 index signature，需先转 unknown 再转 Record
-    (agent as unknown as Record<string, unknown>)[activeKey[p]] = payload;
+    if (p === "PROMPT") await updatePromptConfig(agentId, payload);
+    else if (p === "KNOWLEDGE") await updateKnowledgeConfig(agentId, payload);
+    else if (p === "TOOLS") await updateToolsConfig(agentId, payload);
+    else await updateRoutingConfig(agentId, payload);
   }
-  (agent as unknown as Record<string, unknown>).updatedAt = ts;
-  store.write(agent as unknown as Record<string, unknown>, "agents", `${agentId}.json`);
 
   // 2) 创建一个 status=APPROVED 的 release（不走审批）
   const actor = getActor();
