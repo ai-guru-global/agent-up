@@ -1,7 +1,9 @@
+import { readdirSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as getUsage } from "@/app/api/maas/usage/route";
-import { store } from "@/lib/data/store";
+import { store, _getDataDir } from "@/lib/data/store";
 import { resetActor } from "@/lib/context";
 import { useTempDataDir, restoreDataDir } from "@/lib/__tests__/helpers/mock-store";
 
@@ -51,10 +53,11 @@ function makeRequest(): NextRequest {
   return new NextRequest("http://localhost/api/maas/usage", { method: "GET" });
 }
 
-/** useTempDataDir 会拷贝运行时 data/（可能含历史 trace），测试前清空保证确定性 */
+/** useTempDataDir 会拷贝运行时 data/（可能含历史 trace），按文件名清理（含 macOS「 2」重名副本等旁支文件）保证确定性 */
 function clearTraces() {
-  for (const t of store.list<{ id: string }>("traces")) {
-    store.delete("traces", `${t.id}.json`);
+  const dir = join(_getDataDir(), "traces");
+  for (const name of readdirSync(dir)) {
+    if (name.endsWith(".json")) unlinkSync(join(dir, name));
   }
 }
 

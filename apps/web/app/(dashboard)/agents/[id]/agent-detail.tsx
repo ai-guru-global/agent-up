@@ -459,6 +459,30 @@ const PARTITION_LABELS: Record<string, string> = {
   routing: "路由",
 };
 
+/** 资产演进线单条目（R5a）：与 version-lineage-service 响应形状对应 */
+interface LineageEntry {
+  changedPartitions: string[] | null;
+  diffSummary: Record<string, { added: number; removed: number; changed: number }> | null;
+}
+
+/** 「较上一版本」摘要：基线 / 完全一致 / 分区级键计数三种形态 */
+function lineageSummary(entry: LineageEntry): string | null {
+  if (entry.changedPartitions === null) return "资产基线（首个版本）";
+  if (entry.changedPartitions.length === 0) return "与上一版本配置一致";
+  const parts = entry.changedPartitions.map((p) => {
+    const label = PARTITION_LABELS[p.toLowerCase()] ?? p;
+    const c = entry.diffSummary?.[p];
+    if (!c) return label;
+    const bits = [
+      c.added > 0 ? `新增 ${c.added}` : "",
+      c.removed > 0 ? `删除 ${c.removed}` : "",
+      c.changed > 0 ? `修改 ${c.changed}` : "",
+    ].filter(Boolean);
+    return `${label}（${bits.join(" · ")}）`;
+  });
+  return `较上一版本：${parts.join("、")}`;
+}
+
 interface EffectivenessReport {
   totalFeedbacks: number;
   byRating: { POSITIVE: number; NEGATIVE: number; NEUTRAL: number };
@@ -502,6 +526,8 @@ function VersionHistory({
   const [loading, setLoading] = useState(true);
   /** 版本列表拉取失败的原因。原实现无 catch，网络异常时 loading 永远不会结束 */
   const [loadError, setLoadError] = useState("");
+  /** 资产演进线（R5a）：versionId → 较上一版本的分区级变更摘要；拉取失败时静默降级为不显示 */
+  const [lineage, setLineage] = useState<Map<string, LineageEntry> | null>(null);
   const [rolling, setRolling] = useState<string | null>(null);
   const [rollingAll, setRollingAll] = useState<string | null>(null);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -531,7 +557,28 @@ function VersionHistory({
     }
   }, [agentId]);
 
+  // 演进线是辅助信息：失败不重试不报错，只是每行少一句「较上一版本」摘要
+  const fetchLineage = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/agents/${agentId}/version-lineage`);
+      const json = await res.json();
+      if (json.success) {
+        setLineage(
+          new Map(
+            (json.data.lineage as Array<LineageEntry & { versionId: string }>).map((e) => [
+              e.versionId,
+              e,
+            ]),
+          ),
+        );
+      }
+    } catch {
+      /* 辅助信息降级 */
+    }
+  }, [agentId]);
+
   useEffect(() => { fetchVersions(); /* eslint-disable-line react-hooks/set-state-in-effect */ }, [fetchVersions]);
+  useEffect(() => { fetchLineage(); /* eslint-disable-line react-hooks/set-state-in-effect */ }, [fetchLineage]);
 
   const handleRollback = async (versionId: string, versionLabel: string) => {
     setPendingPartition(null);
@@ -571,6 +618,7 @@ function VersionHistory({
         setResult({ ok: true, text: `已回滚整个 Agent 到 v${versionLabel},新版本 v${newVer} 已生成` });
         onRollbackDone();
         await fetchVersions();
+        fetchLineage();
       } else {
         setResult({ ok: false, text: json.error || "整版本回滚失败" });
       }
@@ -656,6 +704,8 @@ function VersionHistory({
             const snap = v[`${activePartition}Snapshot`] as Record<string, unknown> | null;
             const eff = v.effectivenessReport as EffectivenessReport | undefined;
             const busy = rollingAll === v.id || rolling === v.id;
+            const lineageEntry = lineage?.get(v.id as string);
+            const lineageText = lineageEntry ? lineageSummary(lineageEntry) : null;
             return (
               <li
                 key={v.id as string}
@@ -683,6 +733,14 @@ function VersionHistory({
                   {!snap && (
                     <p className="mt-1 text-[11px] text-[var(--subtle)]">
                       此版本没有保存「{partitionLabel}」分区的快照，因此只能整版本回滚。
+                    </p>
+                  )}
+                  {lineageText && (
+                    <p
+                      className="mt-0.5 text-[11px] text-[var(--subtle)]"
+                      title="资产演进线：与上一版本快照的结构化对比（Harness 资产版本化）"
+                    >
+                      {lineageText}
                     </p>
                   )}
                 </div>

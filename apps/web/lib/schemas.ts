@@ -92,6 +92,47 @@ export const updateFeedbackSchema = z.object({
   verificationNote: z.string().nullable().optional(),
 });
 
+// ---- 多渠道工单适配器（R5b）：机器接入反馈，按 channel 适配规范化 ----
+
+/** generic 渠道：外部系统自行完成字段映射后的直传形态 */
+export const feedbackIngestGenericSchema = z.object({
+  channel: z.literal("generic"),
+  agentId: z.string().min(1),
+  title: z.string().min(1, "标题不能为空").max(200),
+  content: z.string().min(1, "内容不能为空"),
+  /** 工单接入默认视为问题反馈；POSITIVE/NEUTRAL 需显式声明 */
+  rating: z.enum(["POSITIVE", "NEGATIVE", "NEUTRAL"]).default("NEGATIVE"),
+  severity: z.enum(["CRITICAL", "MAJOR", "MINOR", "SUGGESTION"]).optional(),
+  tags: z.array(
+    z.enum([
+      "ANSWER_QUALITY", "KNOWLEDGE_GAP", "TOOL_FAILURE",
+      "ROUTING_ERROR", "HALLUCINATION", "OUTDATED_INFO",
+      "TONE_ISSUE", "INCOMPLETE", "OFF_TOPIC",
+    ])
+  ).optional(),
+  /** 外部单号（幂等键）：同渠道同单号重复接入返回 409 */
+  externalId: z.string().min(1).max(100).optional(),
+  externalUrl: z.string().url().max(500).optional(),
+});
+
+/** ticket-webhook 渠道：典型工单系统 webhook 的原生字段形态，由适配器规范化 */
+export const feedbackIngestTicketSchema = z.object({
+  channel: z.literal("ticket-webhook"),
+  agentId: z.string().min(1),
+  ticket: z.object({
+    key: z.string().min(1, "工单号不能为空").max(100),
+    subject: z.string().min(1, "工单标题不能为空").max(200),
+    description: z.string().min(1, "工单描述不能为空"),
+    priority: z.enum(["P0", "P1", "P2", "P3"]),
+    url: z.string().url().max(500).optional(),
+  }),
+});
+
+export const feedbackIngestSchema = z.discriminatedUnion("channel", [
+  feedbackIngestGenericSchema,
+  feedbackIngestTicketSchema,
+]);
+
 // ============================================================
 // Release
 // ============================================================

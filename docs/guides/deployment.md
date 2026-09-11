@@ -26,13 +26,13 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `pnpm dev` | 开发服务器（Turbopack） |
 | `pnpm build` | 全量生产构建 |
 | `pnpm lint` | ESLint（全绿，0 problems） |
-| `cd apps/web && pnpm test` | 268 个测试（单元 + API 集成） |
+| `cd apps/web && pnpm test` | 279 个测试（单元 + API 集成；test-db 冒烟测试需先 `docker compose up -d postgres`） |
 | `cd apps/web && pnpm test -- --coverage` | 带覆盖率（阈值 lines/functions/statements ≥80，branches ≥70） |
 
 ### 数据与基础设施
 
 - **当前运行时存储**：`apps/web/data/` 本地 JSON 文件（mock 种子数据），由 `lib/data/store.ts` 读写
-- **不需要** `docker compose up`：`docker-compose.yml`（PostgreSQL + MinIO）与 `packages/db` 的 Prisma schema 是持久化落地阶段的储备，业务代码尚未接入 Prisma Client
+- **PostgreSQL（测试用）**：`docker compose up -d postgres` 后测试连真实 PG（`test-db` 冒烟测试 + `_resetDb` 清库基建，批0 已落地）；业务运行时仍为 JSON，批1 起逐步切换
 
 ## 二、环境变量
 
@@ -44,7 +44,7 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `MIMO_API_KEY` | LLM 功能必填 | — | 小米 MiMo Token Plan 凭据（`tp-` 前缀）；缺失时 4 个 LLM 集成点返回 503 |
 | `MIMO_BASE_URL` | 否 | `https://token-plan-cn.xiaomimimo.com/v1` | Token Plan 套餐专属 Base URL（以控制台展示为准） |
 | `MIMO_MODEL` | 否 | `mimo-v2.5-pro` | 模型 ID |
-| `DATABASE_URL` | 否 | — | PostgreSQL（暂未使用） |
+| `DATABASE_URL` | 测试必填 | — | PostgreSQL 连接串（test-db 冒烟测试与 `prisma migrate deploy` 使用；业务运行时暂未使用） |
 | `NEXTAUTH_URL` / `NEXTAUTH_SECRET` | 否 | — | NextAuth 接入位（暂未使用） |
 | `S3_*` | 否 | — | MinIO/S3（暂未使用） |
 | `WIKI_GIT_BASE_PATH` | 否 | — | Wiki Vault 仓库路径（暂未使用） |
@@ -62,14 +62,14 @@ cd apps/web && npx next start  # 生产模式启动
 
 - 生产环境同样需要 `apps/web/.env`（或注入等效环境变量）才能启用 LLM 功能
 - 静态页面（architecture / maas / login 等）预渲染；API 与动态页按需渲染
-- 当前无 CI：提交前请本地执行 `pnpm lint && cd apps/web && pnpm test && pnpm build`（路线图 P3 项）
+- CI 已就绪（`.github/workflows/ci.yml`：lint + test 连 PG 服务容器 + build）；本地提交前建议执行同样三件套 `pnpm lint && cd apps/web && pnpm test && pnpm build`
 
 ## 四、客户现场演示前检查清单
 
 | 检查项 | 命令 / 动作 |
 |--------|------------|
 | 依赖与构建 | `pnpm install && pnpm build` 通过 |
-| 测试全绿 | `cd apps/web && pnpm test` → 268/268 |
+| 测试全绿 | `cd apps/web && pnpm test` → 279/279（需 PG：`docker compose up -d postgres`） |
 | 服务启动 | `pnpm dev` 后 `curl http://localhost:3000` 返回 200 |
 | LLM 凭据 | `/maas` 页 LIVE 区块显示模型与 Base URL；点「发起真实调用」有回复 |
 | 演示动线 | ① `/maas` 连通性 → ② 反馈页「AI 归因」→ ③ `/agents/ecs-assistant` 试聊 → ④ `/releases` 查看变更 + AI 摘要 + AI 评测 |

@@ -41,6 +41,10 @@ interface Feedback {
   agent: { id: string; name: string } | null;
   targetPartition: string | null;
   resolution: string | null;
+  /** 反馈来源渠道：MANUAL（web 表单/插件）或机器接入渠道（generic / ticket-webhook，R5b） */
+  source?: string;
+  /** 机器接入的外部单号（多渠道工单适配器写入） */
+  externalRef?: { id: string | null; url: string | null } | null;
 }
 
 interface AgentOption {
@@ -301,6 +305,18 @@ export default function FeedbackPage() {
                               code={fb.rating}
                             >
                               {metaOf(RATING, fb.rating).label}
+                            </Badge>
+                          )}
+                          {fb.source && fb.source !== "MANUAL" && (
+                            <Badge
+                              tone="accent"
+                              title={
+                                fb.externalRef?.id
+                                  ? `由工单系统经多渠道适配器（${fb.source}）自动接入，外部单号 ${fb.externalRef.id}`
+                                  : `由外部系统经多渠道适配器（${fb.source}）自动接入`
+                              }
+                            >
+                              渠道 {fb.source}
                             </Badge>
                           )}
                         </div>

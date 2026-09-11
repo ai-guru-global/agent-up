@@ -1,6 +1,6 @@
 import { store } from "@/lib/data/store";
 import { getActor } from "@/lib/context";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 
 type FeedbackStatus =
@@ -115,6 +115,129 @@ export async function createFeedback(input: {
   recordAudit("feedback.create", "feedback", id, {
     agentId: input.agentId,
     rating: input.rating,
+    severity: feedback.severity,
+  });
+  return withAgentName(feedback as Record<string, unknown>);
+}
+
+/**
+ * 多渠道工单适配器（R5b）：机器接入反馈。
+ *
+ * 与 createFeedback（人：web 表单 / Chrome 插件）不同，ingest 面向工单系统
+ * 原生日志接入：适配器注册表按 channel 把外部原生 payload 规范化为反馈字段，
+ * 记录来源渠道（source）与外部单号（externalRef），并按「渠道 + 单号」幂等
+ * （重复接入 409），防止 webhook 重试造成重复工单。
+ * 新渠道 = 在 CHANNEL_ADAPTERS 加一个规范化函数，不改路由与存储。
+ */
+export type FeedbackChannel = "generic" | "ticket-webhook";
+
+interface IngestDraft {
+  agentId: string;
+  title: string;
+  content: string;
+  rating: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
+  severity?: "CRITICAL" | "MAJOR" | "MINOR" | "SUGGESTION";
+  tags?: string[];
+  externalRef: { id: string | null; url: string | null };
+}
+
+/** P0→CRITICAL / P1→MAJOR / P2→MINOR / P3→SUGGESTION */
+const PRIORITY_TO_SEVERITY: Record<string, "CRITICAL" | "MAJOR" | "MINOR" | "SUGGESTION"> = {
+  P0: "CRITICAL",
+  P1: "MAJOR",
+  P2: "MINOR",
+  P3: "SUGGESTION",
+};
+
+const CHANNEL_ADAPTERS: Record<FeedbackChannel, (payload: unknown) => IngestDraft> = {
+  generic: (raw) => {
+    const p = raw as {
+      agentId: string;
+      title: string;
+      content: string;
+      rating?: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
+      severity?: "CRITICAL" | "MAJOR" | "MINOR" | "SUGGESTION";
+      tags?: string[];
+      externalId?: string;
+      externalUrl?: string;
+    };
+    return {
+      agentId: p.agentId,
+      title: p.title,
+      content: p.content,
+      rating: p.rating ?? "NEGATIVE",
+      severity: p.severity,
+      tags: p.tags,
+      externalRef: { id: p.externalId ?? null, url: p.externalUrl ?? null },
+    };
+  },
+  "ticket-webhook": (raw) => {
+    const p = raw as {
+      agentId: string;
+      ticket: { key: string; subject: string; description: string; priority: string; url?: string };
+    };
+    return {
+      agentId: p.agentId,
+      title: p.ticket.subject,
+      content: p.ticket.description,
+      // 工单即问题反馈
+      rating: "NEGATIVE",
+      severity: PRIORITY_TO_SEVERITY[p.ticket.priority] ?? "MINOR",
+      externalRef: { id: p.ticket.key, url: p.ticket.url ?? null },
+    };
+  },
+};
+
+export async function ingestFeedback(
+  input: { channel: FeedbackChannel; agentId: string } & Record<string, unknown>,
+) {
+  const adapter = CHANNEL_ADAPTERS[input.channel];
+  if (!adapter) throw new ValidationError(`未知接入渠道：${input.channel}`);
+  const agent = store.read("agents", `${input.agentId}.json`);
+  if (!agent) throw new NotFoundError("Agent 不存在");
+
+  const draft = adapter(input);
+
+  // 幂等：同渠道 + 同外部单号视为同一工单（webhook 重试保护）
+  if (draft.externalRef.id) {
+    const dup = store
+      .list<Record<string, unknown>>("feedback")
+      .find(
+        (f) =>
+          f.source === input.channel &&
+          (f.externalRef as Record<string, unknown> | null)?.id === draft.externalRef.id,
+      );
+    if (dup) {
+      throw new ConflictError(
+        `该工单已接入：${String(dup.id)}`,
+        { existingFeedbackId: dup.id, channel: input.channel },
+      );
+    }
+  }
+
+  const id = store.generateId();
+  const ts = store.now();
+  const feedback = {
+    id,
+    agentId: draft.agentId,
+    source: input.channel,
+    title: draft.title,
+    content: draft.content,
+    rating: draft.rating,
+    tags: draft.tags ?? [],
+    severity: draft.severity ?? "MINOR",
+    status: "NEW",
+    targetPartition: null,
+    externalRef: draft.externalRef,
+    sessionData: null,
+    submittedBy: getActor().id,
+    submittedAt: ts,
+  };
+
+  store.write(feedback, "feedback", `${id}.json`);
+  recordAudit("feedback.ingest", "feedback", id, {
+    channel: input.channel,
+    externalRefId: draft.externalRef.id,
     severity: feedback.severity,
   });
   return withAgentName(feedback as Record<string, unknown>);

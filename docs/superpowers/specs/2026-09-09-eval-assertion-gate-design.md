@@ -1,6 +1,6 @@
 # 评测确定性断言与发布门禁增强设计
 
-> 状态：**Implemented（R1–R4 已交付 2026-09-10；R5 组织级指标代理为 Backlog）** · 日期：2026-09-09
+> 状态：**Implemented（R1–R4 已交付 2026-09-10；R5a/R5b 已交付 2026-09-11，R5 组织级指标代理仍为 Backlog）** · 日期：2026-09-09
 > 决策记录：D1 软门禁（FAILED 后批准须留痕，硬门禁留作 v2）；D2 断言类型集合 v1 = contains / not_contains / regex；D3 断言失败跳过 LLM 判官；D4 证据链放 Agent 详情页面板（R4 实施时生效）。
 > 来源：[Better Harness 文章深度研究](../../evaluation/2026-09-09-better-harness-article-research.md) 第 4.2 节缺口清单的功能需求转换
 > 上游依赖：评测闭环（2026-09-05 已交付：trace 落盘 → 打分 → 沉淀用例 → 发布前 AI 评测）
@@ -87,9 +87,11 @@ interface EvalCase { /* 现有字段不变 */ assertions?: EvalAssertion[]; }
 
 ### R5（Backlog，本轮不做）
 
-- 工单场景 org 指标代理（一次解决率、升级人工次数）——依赖 L1 会话数据回流（README 下一步第 2 项）；
-- configSnapshot → 带跨版本变更历史的 Harness 资产版本化；
-- 多渠道工单适配器（借鉴 Better Harness per-host adapter 模式，把反馈收集从 Chrome 插件单入口扩展为工单系统原生日志接入）。
+> 2026-09-11 更新：R5 拆分为 R5a/R5b 交付，item 1 维持 Backlog（依赖 L1 会话回流）。
+
+- 工单场景 org 指标代理（一次解决率、升级人工次数）——依赖 L1 会话数据回流（README 下一步第 2 项）；**维持 Backlog**；
+- **R5a（已交付 2026-09-11）**：configSnapshot → 带跨版本变更历史的 Harness 资产版本化。落点：`GET /api/agents/[id]/version-lineage`（只读聚合，无新存储）——按 publishedAt 升序对相邻版本快照做结构化 diff（剥离 version/lastModifiedAt 元数据，与 createRollbackRelease 同规则），输出每版本 `changedPartitions` 与分区级 added/removed/changed 计数；首个版本为基线（`changedPartitions: null`）；快照缺失按空对象计入 added。Agent 详情页版本历史每条附「较上一版本：知识（修改 2）」式摘要（拉取失败静默降级，不影响主功能）。
+- **R5b（已交付 2026-09-11）**：多渠道工单适配器（借鉴 Better Harness per-host adapter 模式）。落点：`POST /api/feedback/ingest`——`channel` 判别联合（`generic` 字段直映射 / `ticket-webhook` subject+priority→severity 适配），记录 `source` 与 `externalRef`（外部单号/URL）；同渠道同外部单号重复接入 → 409 幂等拒绝（`details.existingFeedbackId`）；反馈页对非手工来源显示「渠道 ×」徽标。工程纪律：ingest 走独立 Zod schema（3 个），API 集成测试 4 例（映射/幂等/422/404）。
 
 ## 三、不做的事（Non-goals)
 
@@ -108,7 +110,8 @@ interface EvalCase { /* 现有字段不变 */ assertions?: EvalAssertion[]; }
 |------|------|-------------|
 | 本轮 | R1 + R2（断言 + 门禁留痕） | P1「Harness 纪律」评测子项 |
 | 下一轮 | R3 + R4（真实用量 + 证据链视图） | P1 / P2 过渡 |
-| Backlog | R5 | P2 / P3 |
+| 2026-09-11 | R5a + R5b（资产演进线 + 多渠道工单接入） | P2 |
+| Backlog | R5 组织级指标代理 | P2 / P3 |
 
 ## 六、开放决策（待确认后转 Approved）
 

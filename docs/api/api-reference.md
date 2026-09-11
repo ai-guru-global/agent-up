@@ -1,6 +1,6 @@
 # API 接口说明（api-reference）
 
-> 维护日期：2026-09-10 · 覆盖 `apps/web/app/api/` 全部 **36 个 route 文件**
+> 维护日期：2026-09-11 · 覆盖 `apps/web/app/api/` 全部 **38 个 route 文件**
 > 实现约定以 `lib/utils.ts`（响应/校验）与 `lib/errors.ts`（错误体系）为准。
 
 ## 一、通用约定
@@ -36,7 +36,7 @@
 
 ---
 
-## 二、Agent 域（12 route）
+## 二、Agent 域（13 route）
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
@@ -51,9 +51,10 @@
 | POST / PUT | `/api/agents/[id]/release` | 提交发布（自动 diff + 真 SemVer）/ 更新待审 Release |
 | GET / POST | `/api/agents/[id]/eval-cases` | 评测用例库：列表（按沉淀时间倒序）/ 从试聊 trace 沉淀（自动校验 trace 归属） |
 | GET | `/api/agents/[id]/evidence-chain` | **任务证据链**（只读聚合，无新存储）：反馈 → 试聊 trace（含打分/沉淀用例）→ Release（AI 评测结论）→ Version（效果报告）→ 回滚审计，按时间倒序；响应固定携带 `declaration`（非因果改进证明） |
+| GET | `/api/agents/[id]/version-lineage` | **资产演进线**（只读聚合，无新存储）：按 publishedAt 升序对相邻版本快照做结构化 diff（剥离 version/lastModifiedAt 元数据），输出每版本 `changedPartitions` 与分区级 added/removed/changed 计数；首个版本为基线（`changedPartitions: null`）；快照缺失按空对象计入 added |
 | POST | `/api/agents/[id]/chat` | **Agent 试聊（真实 LLM）**，见第四节 |
 
-## 三、发布 / Trace / Eval / 反馈 / Skills / Wiki / Settings / 其他（24 route，含 4 个 LLM 端点详见第四节）
+## 三、发布 / Trace / Eval / 反馈 / Skills / Wiki / Settings / 其他（25 route，含 4 个 LLM 端点详见第四节）
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
@@ -63,6 +64,7 @@
 | POST | `/api/releases/[id]/summary` | **AI 变更摘要（真实 LLM）**，见第四节 |
 | POST | `/api/releases/[id]/ai-review` | **发布前 AI 评测（真实 LLM）**：仅 PENDING 可跑，快照 prompt 回放评测用例 + LLM 判官，结果写回 `release.aiReview`；见第四节 |
 | GET / POST / PUT | `/api/feedback` | 反馈列表 / 创建 / 更新（状态机校验：NEW→TRIAGED→…→CLOSED，终态不可转） |
+| POST | `/api/feedback/ingest` | **多渠道工单接入（R5b）**：机器到机器反馈入口，按 `channel` 适配器规范化 payload（`generic` 直映射 / `ticket-webhook` 工单 subject+priority→severity），记 `source` 与 `externalRef`；同渠道同外部单号重复接入 → 409（幂等） |
 | POST | `/api/feedback/[id]/insight` | **AI 归因分析（真实 LLM）**，见第四节 |
 | POST | `/api/traces/[id]/rate` | 试聊回复打分：body `{ rating: UP|DOWN, note? }`（可改分；trace 不存在 404） |
 | DELETE | `/api/eval-cases/[id]` | 移除一条评测用例（同步审计日志） |

@@ -48,7 +48,7 @@
 
 | 文档 | 受众 | 内容 |
 |------|------|------|
-| [API 接口说明](./api/api-reference.md) | 前端 / 集成方 | 36 个 route 的端点清单、响应约定、错误码、LLM 端点细节 |
+| [API 接口说明](./api/api-reference.md) | 前端 / 集成方 | 38 个 route 的端点清单、响应约定、错误码、LLM 端点细节 |
 | [部署指南](./guides/deployment.md) | 部署 / 演示准备 | 本地启动、环境变量、生产构建、演示前检查清单 |
 | [故障排查手册](./guides/troubleshooting.md) | 开发者 | 已知问题与修复模式（env 加载、LLM 错误、测试时间炸弹等） |
 

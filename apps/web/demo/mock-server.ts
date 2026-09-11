@@ -323,6 +323,87 @@ function evidenceChain(agentId: string): AnyRec {
   };
 }
 
+// ----- 资产演进线（镜像 version-lineage-service：相邻版本 4 分区 diff） -----
+
+const LINEAGE_PARTITIONS = ["PROMPT", "KNOWLEDGE", "TOOLS", "ROUTING"] as const;
+const LINEAGE_SNAPSHOT_KEY: Record<(typeof LINEAGE_PARTITIONS)[number], string> = {
+  PROMPT: "promptSnapshot",
+  KNOWLEDGE: "knowledgeSnapshot",
+  TOOLS: "toolsSnapshot",
+  ROUTING: "routingSnapshot",
+};
+
+/** 键级 diff 计数（镜像 lib/diff.computeJsonDiff 的 added/removed/changed 形状） */
+function countKeyDiff(
+  before: AnyRec,
+  after: AnyRec,
+): { added: number; removed: number; changed: number } {
+  const added = Object.keys(after).filter((k) => !(k in before)).length;
+  const removed = Object.keys(before).filter((k) => !(k in after)).length;
+  const changed = Object.keys(before).filter(
+    (k) => k in after && JSON.stringify(before[k]) !== JSON.stringify(after[k]),
+  ).length;
+  return { added, removed, changed };
+}
+
+function versionLineage(agentId: string): AnyRec {
+  const a = state.agents.find((x) => x.id === agentId);
+  if (!a) throw new MockError(404, "Agent 不存在");
+
+  const versions = state.versions
+    .filter((v) => v.agentId === agentId)
+    .sort(
+      (x, y) =>
+        String(x.publishedAt ?? "").localeCompare(String(y.publishedAt ?? "")) ||
+        String(x.id).localeCompare(String(y.id)),
+    );
+
+  const lineage: AnyRec[] = [];
+  let previous: AnyRec | null = null;
+  for (const v of versions) {
+    if (!previous) {
+      lineage.push({
+        versionId: v.id,
+        version: v.version ?? "?",
+        publishedAt: v.publishedAt ?? "",
+        changeNote: v.changeNote ?? null,
+        changedPartitions: null,
+        diffSummary: null,
+      });
+    } else {
+      const diffSummary: AnyRec = {};
+      const changedPartitions: string[] = [];
+      for (const p of LINEAGE_PARTITIONS) {
+        const key = LINEAGE_SNAPSHOT_KEY[p];
+        const strip = (s: unknown): AnyRec => {
+          if (!s || typeof s !== "object") return {};
+          const { version: _v, lastModifiedAt: _l, ...payload } = s as AnyRec;
+          return payload;
+        };
+        const count = countKeyDiff(strip(previous[key]), strip(v[key]));
+        diffSummary[p] = count;
+        if (count.added + count.removed + count.changed > 0) changedPartitions.push(p);
+      }
+      lineage.push({
+        versionId: v.id,
+        version: v.version ?? "?",
+        publishedAt: v.publishedAt ?? "",
+        changeNote: v.changeNote ?? null,
+        changedPartitions,
+        diffSummary,
+      });
+    }
+    previous = v;
+  }
+
+  return {
+    agentId,
+    agentName: (a.name as string) ?? null,
+    computedAt: now(),
+    lineage,
+  };
+}
+
 // ---------- SemVer（镜像 lib/versioning.bumpVersion） ----------
 
 function compareSemVer(a: string, b: string): number {
@@ -845,6 +926,11 @@ function route(
       };
     }
 
+    // /api/agents/:id/version-lineage（只读聚合，镜像 version-lineage-service）
+    if (third === "version-lineage" && M === "GET") {
+      return ok(versionLineage(String(second)));
+    }
+
     // /api/agents/:id/evidence-chain（只读聚合，镜像 evidence-chain-service）
     if (third === "evidence-chain" && M === "GET") {
       return ok(evidenceChain(String(second)));
@@ -1145,6 +1231,83 @@ function route(
         });
         return ok(withAgentName(feedback), 201);
       }
+
+      // /api/feedback/ingest（多渠道工单适配器，镜像 feedback-service.ingestFeedback）
+      if (second === "ingest" && M === "POST") {
+        if (!state.agents.find((a) => a.id === payload.agentId))
+          return fail("Agent 不存在", 404);
+        const channel = String(payload.channel ?? "");
+        const PRIORITY: Record<string, string> = {
+          P0: "CRITICAL",
+          P1: "MAJOR",
+          P2: "MINOR",
+          P3: "SUGGESTION",
+        };
+        let draft: {
+          title: string;
+          content: string;
+          rating: string;
+          severity: string;
+          tags: string[];
+          externalRef: { id: string | null; url: string | null };
+        };
+        if (channel === "generic") {
+          draft = {
+            title: String(payload.title ?? ""),
+            content: String(payload.content ?? ""),
+            rating: String(payload.rating ?? "NEGATIVE"),
+            severity: String(payload.severity ?? "MINOR"),
+            tags: (payload.tags as string[]) ?? [],
+            externalRef: { id: (payload.externalId as string) ?? null, url: (payload.externalUrl as string) ?? null },
+          };
+        } else if (channel === "ticket-webhook") {
+          const t = payload.ticket as AnyRec | undefined;
+          if (!t?.key || !t?.subject || !t?.description || !t?.priority)
+            return fail("参数校验失败：ticket.key / subject / description / priority 必填", 422);
+          draft = {
+            title: String(t.subject),
+            content: String(t.description),
+            rating: "NEGATIVE",
+            severity: PRIORITY[String(t.priority)] ?? "MINOR",
+            tags: [],
+            externalRef: { id: String(t.key), url: (t.url as string) ?? null },
+          };
+        } else {
+          return fail(`参数校验失败：未知接入渠道 ${channel || "（缺省）"}`, 422);
+        }
+        if (draft.externalRef.id) {
+          const dup = state.feedback.find(
+            (f) =>
+              f.source === channel &&
+              (f.externalRef as AnyRec | null)?.id === draft.externalRef.id,
+          );
+          if (dup) return fail(`该工单已接入：${String(dup.id)}`, 409);
+        }
+        const feedback: AnyRec = {
+          id: newId(),
+          agentId: payload.agentId,
+          source: channel,
+          title: draft.title,
+          content: draft.content,
+          rating: draft.rating,
+          tags: draft.tags,
+          severity: draft.severity,
+          status: "NEW",
+          targetPartition: null,
+          externalRef: draft.externalRef,
+          sessionData: null,
+          submittedBy: SYSTEM_ACTOR.id,
+          submittedAt: now(),
+        };
+        state.feedback.push(feedback);
+        recordAudit("feedback.ingest", "feedback", String(feedback.id), {
+          channel,
+          externalRefId: draft.externalRef.id,
+          severity: draft.severity,
+        });
+        return ok(withAgentName(feedback), 201);
+      }
+
       if (M === "PUT") {
         const { id, ...rest } = payload;
         if (!id) return fail("id 必填");
