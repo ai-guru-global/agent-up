@@ -1,6 +1,6 @@
 # API 接口说明（api-reference）
 
-> 维护日期：2026-09-11 · 覆盖 `apps/web/app/api/` 全部 **38 个 route 文件**
+> 维护日期：2026-09-22 · 覆盖 `apps/web/app/api/` 全部 **39 个 route 文件**
 > 实现约定以 `lib/utils.ts`（响应/校验）与 `lib/errors.ts`（错误体系）为准。
 
 ## 一、通用约定
@@ -54,7 +54,7 @@
 | GET | `/api/agents/[id]/version-lineage` | **资产演进线**（只读聚合，无新存储）：按 publishedAt 升序对相邻版本快照做结构化 diff（剥离 version/lastModifiedAt 元数据），输出每版本 `changedPartitions` 与分区级 added/removed/changed 计数；首个版本为基线（`changedPartitions: null`）；快照缺失按空对象计入 added |
 | POST | `/api/agents/[id]/chat` | **Agent 试聊（真实 LLM）**，见第四节 |
 
-## 三、发布 / Trace / Eval / 反馈 / Skills / Wiki / Settings / 其他（25 route，含 4 个 LLM 端点详见第四节）
+## 三、发布 / Trace / Eval / 反馈 / Skills / Wiki / Settings / 其他（26 route，含 4 个 LLM 端点详见第四节）
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
@@ -71,6 +71,7 @@
 | GET / POST | `/api/skills` · GET / PUT / DELETE `/api/skills/[id]` | Skills CRUD |
 | GET / POST | `/api/wiki/vaults` · GET / PUT / DELETE `/api/wiki/vaults/[id]` | Wiki Vault CRUD |
 | GET / POST | `/api/wiki/vaults/[id]/pages` · GET / PUT / DELETE `/api/wiki/pages/[id]` | Wiki Page CRUD |
+| GET | `/api/wiki/vaults/[id]/search` | **Vault 内知识检索（BM25-lite，retrieval-service 生产接线）**：query `q` 必填 / `limit` 1-20 默认 5 / `threshold` 0-1 默认 0.35；返回 `results`（score / confidence / excerpt / usedInContext）与 `belowThreshold`、`fallbackTriggered`；vault 不存在 404，参数不合法 422 |
 | GET / POST | `/api/settings/roles` · PUT / DELETE `/api/settings/roles/[id]` | 角色管理 |
 | GET / POST | `/api/settings/permissions` | 权限管理 |
 | GET / POST | `/api/settings/product-groups` | 产品组管理 |

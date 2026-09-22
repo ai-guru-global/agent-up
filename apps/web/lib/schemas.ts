@@ -242,6 +242,13 @@ export const updateWikiPageSchema = z.object({
   wikilinks: z.array(z.string()).optional(),
 });
 
+// threshold 为置信度门限：confidence = 0.6 * 检索分归一 + 0.4 * baseConfidence，低于门限的候选不入 results
+export const wikiSearchQuerySchema = z.object({
+  q: z.string().min(1, "检索词 q 不能为空").max(500),
+  limit: z.coerce.number().int().min(1).max(20).default(5),
+  threshold: z.coerce.number().min(0).max(1).default(0.35),
+});
+
 // ============================================================
 // Settings: Role / Permission / ProductGroup（此前完全无校验）
 // ============================================================
