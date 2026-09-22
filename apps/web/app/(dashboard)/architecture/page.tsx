@@ -225,7 +225,7 @@ export default function ArchitectureOverviewPage() {
 
       <Section
         title="功能完整性 · 八维评分"
-        description="结合代码与设计文档的实读结果评分。评分相对「设计目标」而非「同类产品」—— 5 表示设计目标已基本落地。"
+        description="结合代码与设计文档的实读结果评分。评分相对「设计目标」而非「同类产品」—— 5 表示设计目标已基本落地。评估基准：2026-09-22（Prisma 批5 收官后，v1.5–v1.8 能力已计入）。"
       >
         <Table
           head={["维度", "评分", "现状", "关键缺口"]}
@@ -238,9 +238,9 @@ export default function ArchitectureOverviewPage() {
             ],
             [
               "发布流（Release → Version）",
-              <ScoreDots score={4} />,
-              <span>提交 → 审批 → 通过后生成不可变 Version 快照（语义化版本）已跑通</span>,
-              "无 diff 查看器、无分区级回滚、无灰度（Canary）",
+              <ScoreDots score={5} />,
+              <span>提交 → 审批 → 不可变 Version 快照（真 diff + SemVer）；diff 查看器与分区级 / 整版本双粒度回滚均已落地</span>,
+              "无灰度（Canary）发布",
             ],
             [
               "Skills 体系",
@@ -251,32 +251,32 @@ export default function ArchitectureOverviewPage() {
             [
               "Wiki 知识库",
               <ScoreDots score={3} />,
-              <span>采用 llm-wiki「蒸馏知识网络」模式：vault → page，含 provenance / lifecycle / tier 元数据</span>,
+              <span>采用 llm-wiki「蒸馏知识网络」模式：vault → page，含 provenance / lifecycle / tier 元数据；PG 持久化 + BM25-lite 检索已接线为生产 API（<code className="rounded bg-[var(--surface-elevated)] px-1">/api/wiki/vaults/[id]/search</code>）</span>,
               <span><strong>蒸馏引擎未实现</strong>（WikiIngestJob 仅有模型）；无 Git 版本化；无跨 vault 共享概念池</span>,
             ],
             [
               "反馈闭环",
-              <ScoreDots score={3} />,
-              <span>反馈 CRUD、根因分析字段、与 Release 关联齐全</span>,
-              <strong>L1 自动采集管道缺失（手动录入）</strong>,
+              <ScoreDots score={4} />,
+              <span>反馈 CRUD + 8 状态机 + AI 归因（真实 LLM）+ 多渠道工单接入（channel 适配器、幂等 409）；trace 👍/👎 可沉淀评测用例，发布前 AI 评测（确定性断言 + LLM 判官）</span>,
+              <strong>L1 自动采集管道仍缺（Chrome 插件 PoC 为手动触发）</strong>,
             ],
             [
               "RBAC / 审计",
-              <ScoreDots score={2} />,
-              "数据模型完整（Role/Permission/UserRole/AuditLog），UI 可见",
-              <span><strong>没有真鉴权</strong>（login 是 stub）；RBAC 未在 API 强制；审计日志未真正写入</span>,
+              <ScoreDots score={3} />,
+              "数据模型完整（Role/Permission/UserRole/AuditLog），UI 可见；审计已全量真实写入（append-only，PG 单事实源）",
+              <span><strong>没有真鉴权</strong>（MOCK 登录 + 可伪造 x-actor-* 头）；RBAC 未在 API 强制</span>,
             ],
             [
               "数据持久化",
-              <ScoreDots score={2} />,
-              "Prisma schema 626 行、30 个模型已就绪",
-              <span><strong>运行时用的是 JSON 文件</strong>，Prisma 完全没接；无迁移</span>,
+              <ScoreDots score={5} />,
+              "批0–批5 全量落地：运行时全面走 PostgreSQL（Prisma），JSON 存储层已删除；种子由 pnpm db:seed 灌入，测试经 _resetDb 隔离",
+              "MinIO / S3 对象存储预留未接",
             ],
             [
               "可观测性 / 效果度量",
-              <ScoreDots score={1} />,
-              "仅 dashboard 聚合统计 + 审计日志数据",
-              <strong>无发布后 7 天效果报告、无改进看板、无指标埋点</strong>,
+              <ScoreDots score={4} />,
+              "发布 7 天懒计算效果报告；试聊 trace 落盘 + 👍/👎 打分；MaaS 每 Agent 真实用量聚合；任务证据链与版本演进线只读视图",
+              "无指标埋点与改进看板、无灰度观测",
             ],
           ]}
         />
@@ -331,19 +331,19 @@ export default function ArchitectureOverviewPage() {
 
       <Section
         title="成熟度画像 · 设计 vs 实现"
-        description="平台叫「Agent 持续改进」，但目前只能管理「改进的记录」（Feedback 单据、Release 审批单），不能执行「改进的分析和验证」—— 改进的智力劳动 100% 还在人脑里。这是当前最核心的矛盾。"
+        description="平台叫「Agent 持续改进」，核心矛盾是智力劳动仍大量依赖人脑。v1.5–v1.8 已把最重的一段自动化（AI 归因 / AI 评测 / 效果报告 / 证据链），蒸馏与 L1 自动采集仍缺。（2026-09-22 复评）"
         source="docs/reports/2026-07-31 评估报告 · 第一章"
       >
         <Table
           head={["维度", "评级", "证据"]}
           rows={[
             ["概念设计（三层 Loop / 四分区 / Release→Version）", <ScoreDots score={5} />, "MVP 设计文档完整、逻辑自洽"],
-            ["数据模型", <ScoreDots score={4} />, "Prisma schema 626 行 30 个模型，覆盖全域"],
-            ["配置版本控制", <ScoreDots score={4} />, "SemVer 自动计算 + 不可变快照 + 回滚，超过多数同类工具"],
-            ["数据持久化", <ScoreDots score={2} />, "Prisma schema 就绪但运行时全是 JSON 文件"],
-            ["认证 / RBAC", <ScoreDots score={1} />, "login 是 stub，身份从请求头透传，任何人可任意角色操作"],
-            [<strong>LLM / 评测 / 复盘自动化</strong>, <ScoreDots score={0} />, <strong>全项目没有一行 LLM 调用代码，没有 eval 框架，没有根因分析实现</strong>],
-            ["可观测性 / 效果度量", <ScoreDots score={1} />, "仅 dashboard 聚合统计，无发布前后效果对比"],
+            ["数据模型", <ScoreDots score={5} />, "Prisma schema 覆盖全域，FK / 唯一约束在批4–批5 补齐"],
+            ["配置版本控制", <ScoreDots score={5} />, "SemVer 自动计算 + 不可变快照 + 分区级 / 整版本双粒度回滚 + diff 查看器"],
+            ["数据持久化", <ScoreDots score={5} />, "批0–批5 收官：运行时全面走 PostgreSQL（Prisma），JSON 存储层已删除"],
+            ["认证 / RBAC", <ScoreDots score={1} />, "MOCK 登录，身份从 x-actor-* 请求头透传，任何人可任意角色操作"],
+            [<strong>LLM / 评测 / 复盘自动化</strong>, <ScoreDots score={4} />, "5 个真实 LLM 集成点（试聊 / 归因 / 摘要 / AI 评测 / probe）；AI 评测含确定性断言 + LLM 判官；蒸馏与 L1 自动采集仍缺"],
+            ["可观测性 / 效果度量", <ScoreDots score={4} />, "7 天懒计算效果报告 + trace 落盘打分 + MaaS 真实用量聚合 + 证据链 / 演进线视图"],
           ]}
         />
       </Section>
@@ -360,19 +360,19 @@ export default function ArchitectureOverviewPage() {
               <Pill tone="bad">1</Pill>,
               <span><strong>没有 Trace，复盘无据可依</strong><br /><span className="text-xs text-zinc-400">最致命</span></span>,
               "每次交互记录完整 trace：query、检索了哪些文档及得分、调了哪些工具、最终回答。复盘第一步永远是看 trace",
-              "Feedback 只有 sessionData 自由文本，靠人手工粘贴会话片段；没有检索轨迹，无法回答「语料里有没有、检索到没有」",
+              "已实现（v1.5）：试聊自动落盘 trace（prompt / 回复 / 时延），👍/👎 打分并可沉淀评测用例；L1 生产会话采集仍缺",
             ],
             [
               <Pill tone="bad">2</Pill>,
               <strong>没有失败归因分类学（Error Analysis）</strong>,
               "对失败案例系统性归因（open coding → 失败模式分类），每类失败对应不同修复动作；「eval 之前先做 error analysis」",
-              "tags（KNOWLEDGE_GAP/TOOL_FAILURE）和 targetPartition 骨架有了，但归因过程纯靠人拍脑袋填",
+              "AI 归因（真实 LLM）自动产出失败归因与目标分区建议，人工可修正；骨架 + LLM 辅助已闭环，纯人工填报成为兜底",
             ],
             [
               <Pill tone="bad">3</Pill>,
               <span><strong>没有 Golden Set 和回归评测</strong><br /><span className="text-xs text-zinc-400">发布审批是「盲批」</span></span>,
               "失败案例沉淀为评测集；改动发布前跑回归评测（正确率/检索命中率/RAGAS 类指标）作为发布门禁",
-              "Release 审批只看人写的 changeNote 和 diff —— 不知道改动是否真修复了那张工单，更不知道有没有改坏之前能答的",
+              "已实现（v1.6）：trace 沉淀 Golden Set，发布前 AI 评测回放（确定性断言 + LLM 判官逐条 PASS/FAIL，FAILED 批准须留痕）；RAGAS 类量化指标未做",
             ],
             [
               <Pill tone="warn">4</Pill>,
@@ -384,14 +384,14 @@ export default function ArchitectureOverviewPage() {
               <Pill tone="warn">5</Pill>,
               <strong>工程基线不达生产标准</strong>,
               "真实认证、数据库持久化、CI/CD、审计入库",
-              "若近期是个人/小团队内部使用，此项优先级应低于差距 1-3 ——「匹配阶段」也是最佳实践",
+              "持久化（PG/Prisma）、CI、审计入库均已落地；真实认证仍是缺口 —— 本项差距收窄为「鉴权」一项",
             ],
           ]}
         />
         <Insight label="做得比业界平均水平好的地方">
-          四分区 + SemVer 版本快照 + 审批回滚，比多数团队「prompt 存在代码里随手改」规范；
-          Feedback 状态机与 Wiki 页面元数据（provenance/lifecycle/tier）在概念上领先，只欠落地；
-          统一错误体系 + Zod 全量校验 + <strong>181 个测试 / 94% 覆盖</strong>的工程纪律。
+          四分区 + SemVer 版本快照 + 双粒度回滚，比多数团队「prompt 存在代码里随手改」规范；
+          Feedback 状态机与 Wiki 页面元数据（provenance/lifecycle/tier）已随 PG 落地；
+          统一错误体系 + Zod 全量校验 + <strong>340 个测试</strong>的工程纪律。
         </Insight>
       </Section>
 
@@ -409,19 +409,19 @@ export default function ArchitectureOverviewPage() {
           <Card>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-500">可扩展性风险</p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              JSON 文件无法支撑多实例部署和并发写入；评测集与 trace 数据量上来后必然撑不住，届时 Prisma 落地升为高优。
+              PG / Prisma 已落地（批5），数据层不再是瓶颈；剩余风险在连接池配置、备份策略与多实例部署验证。
             </p>
           </Card>
           <Card>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-500">功能风险</p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              核心设计（蒸馏、自动采集、效果度量、Evaluator）未实现，平台价值打折 —— 「智能核」缺失。
+              效果度量与 Evaluator 已落地（v1.5–v1.6）；蒸馏引擎与 L1 自动采集仍未实现，数据飞轮的最后一环缺失。
             </p>
           </Card>
           <Card>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">工程风险</p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              无 CI/CD、无监控告警、无数据备份；多人同时编辑同一 Agent 可能相互覆盖。
+              CI 已具备（lint + test 连 PG 容器 + build）；监控告警与数据备份仍缺；多人同时编辑同一 Agent 可能相互覆盖（读-改-写无并发保护）。
             </p>
           </Card>
         </div>
@@ -429,16 +429,16 @@ export default function ArchitectureOverviewPage() {
 
       <Section
         title="关键缺口 Top 5（影响力 × 实现成本）"
-        description="下表直接影响「能否真正上线」。详细改进路线见 改进路线图 页。"
+        description="下表直接影响「能否真正上线」。详细改进路线见 改进路线图 页。2026-09-22 复评：数据层（PG/Prisma）与效果度量已落地，移出缺口清单。"
       >
         <Table
           head={["#", "缺口", "影响", "建议落点"]}
           rows={[
-            [<Pill tone="bad">P0</Pill>, "数据层：JSON 文件 → Postgres/Prisma", "无法多实例、无并发安全、无审计基础", "接通已就绪的 Prisma schema + 迁移"],
-            [<Pill tone="bad">P0</Pill>, "鉴权与 RBAC 强制", "当前任意人可改任意 Agent", "落地 NextAuth + 中间件 + API 级 ACL"],
+            [<Pill tone="bad">P0</Pill>, "鉴权与 RBAC 强制", "MOCK 登录 + 可伪造请求头，任意人可改任意 Agent", "NextAuth + 中间件 + API 级 ACL（批6）"],
             [<Pill tone="warn">P1</Pill>, "Wiki 蒸馏引擎", "两层知识架构的核心一半未实现", "WikiIngestJob 接 LLM + provenance"],
-            [<Pill tone="warn">P1</Pill>, "L1 反馈自动采集", "改进 loop 的输入仍靠手填", "会话评分 → 反馈自动入库"],
-            [<Pill tone="warn">P2</Pill>, "发布效果度量 + 回滚 UX", "改了不知道好坏，出问题不能一键回退", "7 天报告 + diff 查看器 + 分区回滚"],
+            [<Pill tone="warn">P1</Pill>, "L1 反馈自动采集", "改进 loop 的输入仍靠手动触发", "生产会话评分 → 反馈自动入库"],
+            [<Pill tone="warn">P1</Pill>, "灰度发布（Canary）", "审批通过即全量生效，无小流量验证", "版本灰度策略 + 观测指标对齐"],
+            [<Pill tone="warn">P2</Pill>, "监控告警与数据备份", "无告警、无备份，故障靠人肉发现", "接入监控基线 + PG 备份策略"],
           ]}
         />
         <div className="mt-8">
