@@ -8,6 +8,8 @@
  * - 分词：中文按单字 + 相邻双字 bigram，拉丁按词，全小写
  * - 打分：title ×3, tags ×2, summary ×1, content ×0.5；tf 饱和 tf/(tf+1.2)
  * - confidence：检索分归一化 0-1，与 page.baseConfidence 加权（0.6/0.4）
+ * - 零分页（与查询无任何词面重叠）不进入 results：否则高 baseConfidence 的不相关页
+ *   会凭 0.4×base 的置信度底数越过门限混入上下文
  * - 低于 confidenceThreshold 的不入上下文，记入 belowThreshold
  */
 import { prisma } from "@agent-up/db";
@@ -182,7 +184,7 @@ export async function searchWiki(params: SearchWikiParams): Promise<WikiSearchRe
       usedInContext: false,
     };
 
-    if (item.confidence >= confidenceThreshold && results.length < maxResults) {
+    if (item.score > 0 && item.confidence >= confidenceThreshold && results.length < maxResults) {
       entry.usedInContext = true;
       results.push(entry);
     } else {

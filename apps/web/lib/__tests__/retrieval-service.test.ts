@@ -59,10 +59,10 @@ describe("searchWiki", () => {
     });
 
     const r = await searchWiki({ query: "SSH 连接失败", vaultId: VAULT_ID, maxResults: 5, confidenceThreshold: 0.1 });
-    expect(r.results.length).toBe(2);
-    // SSH page should rank higher
+    // 零分页（page-disk 与查询无词面重叠）不进 results，即使 confidence 底数越过门限
+    expect(r.results.length).toBe(1);
     expect(r.results[0].pageId).toBe("page-ssh");
-    expect(r.results[0].score).toBeGreaterThan(r.results[1].score);
+    expect(r.belowThreshold.map((b) => b.pageId)).toContain("page-disk");
   });
 
   it("filters pages below confidenceThreshold into belowThreshold list", async () => {

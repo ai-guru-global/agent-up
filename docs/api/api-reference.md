@@ -71,7 +71,7 @@
 | GET / POST | `/api/skills` · GET / PUT / DELETE `/api/skills/[id]` | Skills CRUD |
 | GET / POST | `/api/wiki/vaults` · GET / PUT / DELETE `/api/wiki/vaults/[id]` | Wiki Vault CRUD |
 | GET / POST | `/api/wiki/vaults/[id]/pages` · GET / PUT / DELETE `/api/wiki/pages/[id]` | Wiki Page CRUD |
-| GET | `/api/wiki/vaults/[id]/search` | **Vault 内知识检索（BM25-lite，retrieval-service 生产接线）**：query `q` 必填 / `limit` 1-20 默认 5 / `threshold` 0-1 默认 0.35；返回 `results`（score / confidence / excerpt / usedInContext）与 `belowThreshold`、`fallbackTriggered`；vault 不存在 404，参数不合法 422 |
+| GET | `/api/wiki/vaults/[id]/search` | **Vault 内知识检索（BM25-lite，retrieval-service 生产接线）**：query `q` 必填 / `limit` 1-20 默认 5 / `threshold` 0-1 默认 0.35；零分候选（与查询无词面重叠）不入 `results`；返回 `results`（score / confidence / excerpt / usedInContext）与 `belowThreshold`、`fallbackTriggered`；vault 不存在 404，参数不合法 422 |
 | GET / POST | `/api/settings/roles` · PUT / DELETE `/api/settings/roles/[id]` | 角色管理 |
 | GET / POST | `/api/settings/permissions` | 权限管理 |
 | GET / POST | `/api/settings/product-groups` | 产品组管理 |

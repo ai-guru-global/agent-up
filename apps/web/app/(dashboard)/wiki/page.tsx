@@ -48,6 +48,25 @@ interface WikiPageItem {
   updatedAt: string;
 }
 
+interface WikiSearchHit {
+  pageId: string;
+  title: string;
+  slug: string;
+  score: number;
+  confidence: number;
+  excerpt: string;
+  usedInContext: boolean;
+}
+
+interface WikiSearchResp {
+  query: string;
+  strategy: string;
+  candidates: number;
+  results: WikiSearchHit[];
+  belowThreshold: { pageId: string; score: number; confidence: number }[];
+  fallbackTriggered: boolean;
+}
+
 export default function WikiPage() {
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +77,12 @@ export default function WikiPage() {
   /** 页面列表的失败原因；原实现失败时静默留白，用户无法区分「加载失败」与「确实没有页面」 */
   const [pagesError, setPagesError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+
+  /** 检索状态：searchResult 非空时右侧改为展示检索结果，隐藏全量页面列表 */
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResult, setSearchResult] = useState<WikiSearchResp | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   const fetchPages = useCallback(async (vaultId: string) => {
     setPagesLoading(true);
@@ -77,6 +102,37 @@ export default function WikiPage() {
       setPagesLoading(false);
     }
   }, []);
+
+  const runSearch = async () => {
+    if (!selectedVault) return;
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearching(true);
+    setSearchError("");
+    try {
+      const res = await fetch(
+        `/api/wiki/vaults/${selectedVault.id}/search?q=${encodeURIComponent(q)}`,
+      );
+      const json = await res.json();
+      if (json.success) {
+        setSearchResult(json.data as WikiSearchResp);
+      } else {
+        setSearchResult(null);
+        setSearchError(json.error || "检索失败");
+      }
+    } catch {
+      setSearchResult(null);
+      setSearchError("网络错误");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSearchResult(null);
+    setSearchError("");
+  };
 
   /**
    * autoSelect 仅用于首次进页：默认选中第一个知识库。
@@ -118,6 +174,7 @@ export default function WikiPage() {
 
   const selectVault = (vault: Vault) => {
     setSelectedVault(vault);
+    clearSearch();
     fetchPages(vault.id);
   };
 
@@ -125,7 +182,7 @@ export default function WikiPage() {
     <div>
       <PageHeader
         title="知识库"
-        description="Agent 的长期记忆：知识库里有什么料，决定了它能答出什么。左侧选择一个知识库，右侧查看其中的知识页（窄屏下改为上下排列：列表在上，页面在下）。默认已选中第一个知识库。"
+        description="Agent 的长期记忆：知识库里有什么料，决定了它能答出什么。左侧选择一个知识库，右侧查看其中的知识页，也可以用检索框试一次真实检索 —— 与 Agent 试聊时用的是同一条 BM25-lite 检索链路（打分 + 置信度门限）。"
         hint={
           <>
             知识库对应四分区模型里的「知识」分区。Agent 回答问题时会先按配置的检索策略在绑定的知识库里查资料，
@@ -286,7 +343,130 @@ export default function WikiPage() {
                 </div>
               </div>
 
-              {pagesError && (
+              <form
+                role="search"
+                className="mt-4 flex flex-wrap gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runSearch();
+                }}
+              >
+                <label className="sr-only" htmlFor="wiki-search-input">
+                  在「{selectedVault.name}」内检索知识页
+                </label>
+                <Input
+                  id="wiki-search-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="在这个知识库里检索，例如：SSH 连不上"
+                  className="min-w-48 flex-1"
+                />
+                <Button
+                  variant="primary"
+                  type="submit"
+                  loading={searching}
+                  loadingText="检索中..."
+                  disabled={!searchQuery.trim()}
+                >
+                  检索
+                </Button>
+                {searchResult && (
+                  <Button variant="secondary" type="button" onClick={clearSearch}>
+                    返回全部页面
+                  </Button>
+                )}
+              </form>
+
+              {searchError && (
+                <Alert
+                  tone="danger"
+                  title="检索失败"
+                  className="mt-4"
+                  onRetry={runSearch}
+                  retryHint="点这里会用同样的检索词再试一次。"
+                >
+                  {searchError}
+                  <span className="mt-1 block text-xs">
+                    检索走 GET /api/wiki/vaults/{selectedVault.id}/search。请确认服务已启动后重试。
+                  </span>
+                </Alert>
+              )}
+
+              {searching ? (
+                <div className="mt-4 space-y-2" role="status" aria-live="polite">
+                  <span className="sr-only">正在检索知识库</span>
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-20 rounded-md" />
+                  ))}
+                </div>
+              ) : searchResult ? (
+                <section aria-labelledby="wiki-search-heading" className="mt-4">
+                  <h3 id="wiki-search-heading" className="sr-only">
+                    检索结果
+                  </h3>
+                  <Hint>
+                    「{searchResult.query}」在 {searchResult.candidates} 个候选页中命中{" "}
+                    {searchResult.results.length} 页进入上下文（BM25-lite 打分 + 置信度门限）；
+                    另有 {searchResult.belowThreshold.length} 页低于门限或超出条数上限，未进入上下文。
+                  </Hint>
+                  {searchResult.results.length === 0 ? (
+                    <EmptyState
+                      className="mt-3"
+                      title="没有命中任何知识页"
+                      description={`「${searchResult.query}」没有匹配到高于门限的知识页。可能是知识库缺料、措辞与页面用词不一致，或置信度门限偏高 —— 此时 Agent 只能靠模型自身知识回答，无法引用本库内容。`}
+                      hint="可以换一种措辞再检索一次，或到页面列表检查各页的生命周期与置信度标记（草稿态、低置信度的页更难命中）。"
+                    />
+                  ) : (
+                    <ul className="mt-3 space-y-2">
+                      {searchResult.results.map((hit) => (
+                        <li key={hit.pageId}>
+                          <Card pad="sm">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-medium text-[var(--foreground)]">{hit.title}</h4>
+                              <Badge
+                                tone="accent"
+                                title="进入上下文：该页通过了置信度门限，Agent 试聊时会把这一页放进知识上下文"
+                              >
+                                进入上下文
+                              </Badge>
+                              <span
+                                className="cursor-help text-xs tabular-nums text-[var(--muted)]"
+                                title="score：BM25-lite 原始打分（标题权重最高）；confidence：检索分归一化 60% + 页面自评置信度 40%"
+                              >
+                                score {hit.score.toFixed(2)} · confidence{" "}
+                                {(hit.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            {hit.excerpt && (
+                              <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-[var(--muted)]">
+                                {hit.excerpt}
+                              </p>
+                            )}
+                            <div className="mt-2 font-mono text-xs text-[var(--subtle)]">{hit.slug}</div>
+                          </Card>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {searchResult.belowThreshold.length > 0 && (
+                    <div className="mt-3 rounded-md border border-dashed border-[var(--border)] p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        未进入上下文的页（低于置信度门限或超出条数上限）
+                      </p>
+                      <ul className="mt-1.5 space-y-0.5 text-xs tabular-nums text-[var(--muted)]">
+                        {searchResult.belowThreshold.map((b) => (
+                          <li key={b.pageId} className="font-mono">
+                            {b.pageId} · score {b.score.toFixed(2)} · confidence{" "}
+                            {(b.confidence * 100).toFixed(0)}%
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </section>
+              ) : null}
+
+              {!searching && !searchResult && !searchError && pagesError && (
                 <Alert
                   tone="danger"
                   title="页面列表加载失败"
@@ -301,7 +481,8 @@ export default function WikiPage() {
                 </Alert>
               )}
 
-              {pagesLoading ? (
+              {!searching && !searchResult && !searchError ? (
+                pagesLoading ? (
                 <div className="mt-4 space-y-2" role="status" aria-live="polite">
                   <span className="sr-only">正在加载知识页列表</span>
                   {[1, 2, 3].map((i) => (
@@ -414,6 +595,7 @@ export default function WikiPage() {
                     </dl>
                   </div>
                 </>
+                ) : null
               ) : null}
             </section>
           )}
