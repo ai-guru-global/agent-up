@@ -43,6 +43,11 @@ export const roles = [
       { permission: { id: "perm-3", resource: "agent", action: "publish" } },
       { permission: { id: "perm-4", resource: "release", action: "approve" } },
       { permission: { id: "perm-5", resource: "settings", action: "admin" } },
+      { permission: { id: "perm-6", resource: "feedback", action: "read" } },
+      { permission: { id: "perm-7", resource: "feedback", action: "write" } },
+      { permission: { id: "perm-8", resource: "wiki", action: "read" } },
+      { permission: { id: "perm-9", resource: "wiki", action: "write" } },
+      { permission: { id: "perm-10", resource: "audit", action: "read" } },
     ],
   },
   {
@@ -51,11 +56,15 @@ export const roles = [
     displayName: "产品组成员",
     isSystem: true,
     description: "可编辑本产品组的 Agent 配置",
-    _count: { members: 5 },
+    _count: { members: 2 },
     permissions: [
       { permission: { id: "perm-1", resource: "agent", action: "read" } },
       { permission: { id: "perm-2", resource: "agent", action: "write" } },
       { permission: { id: "perm-3", resource: "agent", action: "publish" } },
+      { permission: { id: "perm-6", resource: "feedback", action: "read" } },
+      { permission: { id: "perm-7", resource: "feedback", action: "write" } },
+      { permission: { id: "perm-8", resource: "wiki", action: "read" } },
+      { permission: { id: "perm-9", resource: "wiki", action: "write" } },
     ],
   },
   {
@@ -64,9 +73,11 @@ export const roles = [
     displayName: "CRE 查看者",
     isSystem: true,
     description: "可查看反馈和提交改进建议",
-    _count: { members: 8 },
+    _count: { members: 3 },
     permissions: [
       { permission: { id: "perm-1", resource: "agent", action: "read" } },
+      { permission: { id: "perm-6", resource: "feedback", action: "read" } },
+      { permission: { id: "perm-8", resource: "wiki", action: "read" } },
     ],
   },
 ];
