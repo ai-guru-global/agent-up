@@ -27,10 +27,12 @@ export async function POST(request: NextRequest) {
   const token = signActorToken(DEMO_ACTOR);
   if (!token && process.env.NODE_ENV !== "test") {
     // 没有 AUTH_SECRET 就发不出令牌，所有写操作会归因到「匿名」。
-    // 静默降级最难排查，这里显式吼一声。
+    // 生产环境走不到这里——instrumentation.ts 启动期已让进程退出；
+    // 这个分支只该在开发环境出现，出现即说明忘了配本地密钥。
     console.error(
       "[auth] AUTH_SECRET 未配置，登录成功但无法签发会话令牌；" +
-        "审计署名将落到 anonymous。生产环境必须配置 AUTH_SECRET。",
+        "审计署名将落到 anonymous。生产环境缺配置会在启动期直接退出，" +
+        "开发环境请在 apps/web/.env 配置。",
     );
   }
 

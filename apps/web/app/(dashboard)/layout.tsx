@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "../components/error-boundary";
 import { MockTag } from "@/components/ui";
@@ -83,9 +83,22 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const closeDrawer = () => setDrawerOpen(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      // 请求失败也要离开工作台：会话 cookie 是 HttpOnly 的，前端无法自行删除，
+      // 留在原地只会让用户以为「点了没反应」而反复点击。
+      router.push("/login");
+    }
+  };
 
   // 路由变化后抽屉自动收起：由每个 NavLink 的 onNavigate 直接调用 closeDrawer 完成。
   // 抽屉打开时是全屏遮罩，一切跳转都必经这些链接，因此无需再用 effect 监听 pathname
@@ -164,10 +177,21 @@ export default function DashboardLayout({
       </nav>
 
       <div className="shrink-0 border-t border-[var(--border)] px-5 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="text-xs text-[var(--muted)]">管理员</div>
-          {/* MOCK 标注：当前无真实身份体系，角色固定为 mock 管理员 */}
-          <MockTag note="当前无真实身份体系，登录后角色固定为 mock 管理员，拥有全部权限" />
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              title="清除会话 cookie 并返回登录页"
+              className="rounded text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--foreground)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)] disabled:opacity-50"
+            >
+              {loggingOut ? "登出中..." : "登出"}
+            </button>
+            {/* MOCK 标注：当前无真实身份体系，角色固定为 mock 管理员 */}
+            <MockTag note="当前无真实身份体系，登录后角色固定为 mock 管理员，拥有全部权限" />
+          </div>
         </div>
         <p className="mt-1 text-[10px] leading-relaxed text-[var(--subtle)]">
           数据源：本地 PostgreSQL（Prisma）中的种子数据

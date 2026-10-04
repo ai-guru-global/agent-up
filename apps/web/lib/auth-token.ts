@@ -31,6 +31,28 @@ function authSecret(): string | null {
   return secret ? secret : null;
 }
 
+/**
+ * 生产环境启动期自检：缺 AUTH_SECRET 就拒绝启动。
+ *
+ * 不在模块顶层 throw，是因为 next build 会把 NODE_ENV 置为 production——顶层抛错
+ * 等于要求构建期就配好运行时密钥，构建产物也就无法在环境间平移。改由
+ * instrumentation.ts 的 register() 调用：它只在服务进程启动时跑一次，
+ * 构建与静态导出都不会触发。
+ *
+ * 为什么值得让整个进程起不来：缺密钥时登录照样返回成功，只是签不出令牌，
+ * 于是所有写操作的审计署名静默落到 anonymous——问责链失效，而系统表面一切正常。
+ * 这种故障只会在线上第一次需要追溯时才暴露。
+ */
+export function assertAuthConfigured(): void {
+  if (process.env.NODE_ENV !== "production") return;
+  if (authSecret()) return;
+  throw new Error(
+    "[auth] 生产环境必须配置 AUTH_SECRET。缺失时会话令牌签不出来，" +
+      "写操作的审计署名会全部静默落到 anonymous，问责链等于失效。" +
+      "生成方式：openssl rand -hex 32",
+  );
+}
+
 function sessionTtlSeconds(): number {
   const hours = Number(process.env.AUTH_SESSION_TTL_HOURS);
   return (Number.isFinite(hours) && hours > 0 ? hours : 24) * 3600;
@@ -126,4 +148,16 @@ export function readSessionToken(headers: Headers): string | null {
 export function sessionCookieValue(token: string): string {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionTtlSeconds()}${secure}`;
+}
+
+/**
+ * 生成清除会话的 Set-Cookie 值。
+ *
+ * Path / SameSite / Secure 必须与签发时逐字一致：浏览器是按「名字 + Path + Domain」
+ * 认定同一个 cookie 的，属性对不上就会被当成另一枚新 cookie 写入，
+ * 原来那枚照样留着——这是「登出接口返回成功但用户并没登出」的经典成因。
+ */
+export function clearSessionCookieValue(): string {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }

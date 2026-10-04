@@ -45,7 +45,7 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `MIMO_BASE_URL` | 否 | `https://token-plan-cn.xiaomimimo.com/v1` | Token Plan 套餐专属 Base URL（以控制台展示为准） |
 | `MIMO_MODEL` | 否 | `mimo-v2.5-pro` | 模型 ID |
 | `DATABASE_URL` | dev/测试必填 | — | PostgreSQL 连接串（`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试） |
-| `AUTH_SECRET` | 生产必填 | — | 会话令牌 HMAC-SHA256 签名密钥（`lib/auth-token.ts`）。未配置时登录仍返回成功但签不出令牌，所有写操作的审计署名落到 `anonymous`。生成：`openssl rand -hex 32` |
+| `AUTH_SECRET` | 生产必填 | — | 会话令牌 HMAC-SHA256 签名密钥（`lib/auth-token.ts`）。**生产环境缺失时服务启动即退出**（`instrumentation.ts` 启动期校验），开发环境仍可无密钥运行（登录返回 `sessionIssued:false`，审计署名落 `anonymous`）。生成：`openssl rand -hex 32` |
 | `AUTH_SESSION_TTL_HOURS` | 否 | `24` | 会话有效期（小时）；非法值回落默认 |
 | `AUTH_TRUST_ACTOR_HEADERS` | 否 | 非 production 采纳 / production 拒绝 | 是否采纳明文 `x-actor-*` 请求头作为身份。`1`=强制采纳（仅当调用方已通过可信网关鉴权），`0`=强制拒绝 |
 

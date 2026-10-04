@@ -729,6 +729,12 @@ function route(
     });
   }
 
+  if (head === "auth" && second === "logout" && M === "POST") {
+    // 静态演示轨没有服务端会话可清，只需与真实轨同形返回。
+    // 幂等：不校验身份、总成功——与 app/api/auth/logout/route.ts 一致。
+    return ok({ loggedOut: true });
+  }
+
   // ----- dashboard -----
   if (head === "dashboard" && M === "GET") {
     const pendingFeedbackStatuses = ["NEW", "TRIAGED", "ASSIGNED", "IN_PROGRESS"];

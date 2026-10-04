@@ -1,6 +1,6 @@
 # API 接口说明（api-reference）
 
-> 维护日期：2026-10-04 · 覆盖 `apps/web/app/api/` 全部 **39 个 route 文件**
+> 维护日期：2026-10-04 · 覆盖 `apps/web/app/api/` 全部 **40 个 route 文件**
 > 实现约定以 `lib/utils.ts`（响应/校验）与 `lib/errors.ts`（错误体系）为准。
 
 ## 一、通用约定
@@ -38,7 +38,8 @@
 
 - **令牌存在但校验失败 → 直接判匿名，绝不回落到明文头。** 令牌验不过意味着有人在伪造，此时采纳它自述的角色等于把伪造升级成提权。
 - 令牌载荷必须含非空 `id` / `name` / `role` 且 `exp` 未过期（默认 TTL 24h，`AUTH_SESSION_TTL_HOURS` 可调）；签名有效但载荷非法同样判匿名。
-- 未配 `AUTH_SECRET` 时登录仍返回 200，但 `data.sessionIssued === false` 且不下发 cookie，此后全部写操作的审计署名为 `anonymous`。
+- 未配 `AUTH_SECRET` 时登录仍返回 200，但 `data.sessionIssued === false` 且不下发 cookie，此后全部写操作的审计署名为 `anonymous`。**生产环境（`NODE_ENV=production`）则更进一步：`instrumentation.ts` 启动期校验失败会让进程退出**，因此线上运行中的服务必然已配置密钥；该降级路径仅存在于开发环境。
+- 登出 `POST /api/auth/logout` 下发与签发属性逐字一致的清除 cookie（`Max-Age=0`），不校验令牌、总返回 200——登出必须幂等。
 - `SYSTEM_ACTOR`（`role: "platform_admin"`）只用于**进程内自发动作**（后台重算、懒生成），不来自任何请求，无法被外部注入。
 
 审计日志记录解析出的 actor；`AUTHORIZATION`(403) 错误码仍为 RBAC 预留——**当前 service 层不做权限判断**，令牌只解决「署名可信」，不解决「越权拦截」。
@@ -93,6 +94,7 @@
 | GET | `/api/dashboard` | 工作台聚合统计 |
 | GET | `/api/maas/usage` | **MaaS 每 Agent 真实用量**（只读聚合）：按 traces 汇总调用次数/tokens/平均时延/👍👎，按调用次数降序；`hasData=false` 时页面回退 mock 口径（仅覆盖试聊 Playground trace，非生产分布） |
 | POST | `/api/auth/login` | **MOCK 登录**（演示账号 `allengaller` / `123`，凭据硬编码、未接入真实用户库）。成功时下发签名会话令牌：`Set-Cookie: agentup_session=…; HttpOnly; SameSite=Lax`（生产追加 `Secure`），响应 `data` 含 `sessionIssued`——为 `false` 表示 `AUTH_SECRET` 未配置，登录成功但无会话，后续写操作署名为 `anonymous`。口令错误 401 |
+| POST | `/api/auth/logout` | **登出**：下发 `Set-Cookie: agentup_session=; Max-Age=0`（其余属性与签发时逐字一致，否则浏览器会当成另一枚新 cookie，原来那枚照样留着）。**不校验令牌、不查库、总返回 200**——登出必须幂等：令牌已过期或签名非法时把它清掉同样是正确结果，若在此返回 401，前端会卡进「本地存着 cookie 但服务端不认」的状态。cookie 是 HttpOnly 的，客户端无法自行删除，因此这是唯一的登出路径。响应 `data` 为 `{ loggedOut: true }` |
 
 ## 四、LLM 端点（真实调用小米 MiMo，5 个）
 

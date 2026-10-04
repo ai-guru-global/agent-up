@@ -5,6 +5,8 @@ import {
   verifyActorToken,
   readSessionToken,
   sessionCookieValue,
+  clearSessionCookieValue,
+  assertAuthConfigured,
   SESSION_COOKIE,
   TOKEN_HEADER,
 } from "@/lib/auth-token";
@@ -167,6 +169,74 @@ describe("sessionCookieValue 属性", () => {
         name: "张三",
         role: "cre_viewer",
       });
+    });
+  });
+});
+
+describe("clearSessionCookieValue 必须与签发时的属性逐字一致", () => {
+  /** 取 Set-Cookie 里除 Max-Age 外的属性列表——那部分才是浏览器认定「同一枚 cookie」的依据 */
+  const attrs = (value: string) =>
+    value
+      .split(";")
+      .slice(1)
+      .map((s) => s.trim())
+      .filter((s) => !s.startsWith("Max-Age="));
+
+  it("值为空且 Max-Age=0", () => {
+    withEnv({ NODE_ENV: "test" }, () => {
+      const value = clearSessionCookieValue();
+      expect(value.startsWith(`${SESSION_COOKIE}=;`)).toBe(true);
+      expect(value).toContain("Max-Age=0");
+    });
+  });
+
+  it.each(["test", "production"])(
+    "NODE_ENV=%s 下属性与 sessionCookieValue 完全一致（含 Secure 的有无）",
+    (env) => {
+      withEnv({ NODE_ENV: env, AUTH_SECRET: SECRET }, () => {
+        expect(attrs(clearSessionCookieValue())).toEqual(attrs(sessionCookieValue("tok-1")));
+      });
+    },
+  );
+
+  it("production 追加 Secure，非 production 不加", () => {
+    withEnv({ NODE_ENV: "production" }, () => {
+      expect(clearSessionCookieValue()).toContain("; Secure");
+    });
+    withEnv({ NODE_ENV: "test" }, () => {
+      expect(clearSessionCookieValue()).not.toContain("Secure");
+    });
+  });
+});
+
+describe("assertAuthConfigured 启动期硬失败", () => {
+  it("非 production 缺密钥也不抛（本地开发与构建期不应被运行时密钥卡住）", () => {
+    withEnv({ NODE_ENV: "test", AUTH_SECRET: undefined }, () => {
+      expect(() => assertAuthConfigured()).not.toThrow();
+    });
+  });
+
+  it("production 缺 AUTH_SECRET → 抛错拒绝启动", () => {
+    withEnv({ NODE_ENV: "production", AUTH_SECRET: undefined }, () => {
+      expect(() => assertAuthConfigured()).toThrow(/AUTH_SECRET/);
+    });
+  });
+
+  it("production 下 AUTH_SECRET 只有空白 → 同样抛错", () => {
+    withEnv({ NODE_ENV: "production", AUTH_SECRET: "   " }, () => {
+      expect(() => assertAuthConfigured()).toThrow(/AUTH_SECRET/);
+    });
+  });
+
+  it("production 且已配置 → 不抛", () => {
+    withEnv({ NODE_ENV: "production", AUTH_SECRET: SECRET }, () => {
+      expect(() => assertAuthConfigured()).not.toThrow();
+    });
+  });
+
+  it("抛错信息里给出生成命令，运维不用再去翻文档", () => {
+    withEnv({ NODE_ENV: "production", AUTH_SECRET: undefined }, () => {
+      expect(() => assertAuthConfigured()).toThrow(/openssl rand -hex 32/);
     });
   });
 });

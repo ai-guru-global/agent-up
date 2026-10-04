@@ -90,7 +90,7 @@ agent-up/
 │       │   │   ├── skills/         # Skills 管理
 │       │   │   ├── wiki/           # 知识库管理
 │       │   │   └── settings/       # 设置（角色/权限/审计日志）
-│       │   ├── api/                # API 路由（39 个 route 文件，含 5 个真实 LLM 端点）
+│       │   ├── api/                # API 路由（40 个 route 文件，含 5 个真实 LLM 端点）
 │       │   └── components/         # 共享组件（含 mermaid 渲染器）
 │       ├── demo/                   # 演示模式：内存 mock API + fetch 拦截（静态 Demo 用）
 │       ├── out/                    # 静态导出产物（pnpm build:demo，gitignored；demo-deploy/dist 为历史部署暂存）
@@ -127,7 +127,7 @@ agent-up/
 │   ├── superpowers/specs/          # 设计规格书（带状态/版本标记）
 │   ├── evaluation/                 # 项目评估 + Harness/Loop 参考
 │   ├── reports/                    # 阶段性交付报告（命名规范见目录 README）
-│   ├── api/                        # API 接口完整说明（39 route）
+│   ├── api/                        # API 接口完整说明（40 route）
 │   └── guides/                     # 部署指南 + 故障排查手册
 ├── GTM/                            # Go-To-Market 物料库（索引与口径见 GTM/README.md）
 ├── chrome-extension/               # Chrome 插件 PoC（反馈收集器，零主仓库改动）
@@ -142,7 +142,7 @@ JSON 文件存储层已在 Prisma 批5 删除（种子由 `pnpm db:seed` 灌入�
 
 ```mermaid
 flowchart LR
-    P["浏览器 · App Router 页面<br/>（见页面导航）"] --> A["API 路由层 · 39 个 route<br/>Zod 校验 · 结构化错误 · Actor 上下文"]
+    P["浏览器 · App Router 页面<br/>（见页面导航）"] --> A["API 路由层 · 40 个 route<br/>Zod 校验 · 结构化错误 · Actor 上下文"]
     A --> S["服务层 lib/services<br/>agent / release / feedback / skill / wiki<br/>trace / eval-case / ai-review / effectiveness / audit"]
     S --> DB[("PostgreSQL + Prisma")]
     S --> L["LLM 网关 llm-service<br/>env 凭据 · 统一超时"]
@@ -411,7 +411,7 @@ flowchart TB
 |------|------|
 | `docs/README.md` | 文档体系总索引 |
 | `GTM/README.md` | Go-To-Market 物料库（One-Pager / 面试话术 / 产品首页 / 海报 + 事实口径表） |
-| `docs/api/api-reference.md` | API 接口完整说明（39 route + 错误码 + LLM 端点细节） |
+| `docs/api/api-reference.md` | API 接口完整说明（40 route + 错误码 + LLM 端点细节） |
 | `docs/guides/deployment.md` | 部署指南（含演示前检查清单） |
 | `docs/guides/troubleshooting.md` | 故障排查手册（15 个已知问题） |
 | `docs/superpowers/specs/2026-07-06-agent-improvement-platform-mvp-design.md` | MVP 设计（三层 Loop 理念源头，已落地） |
@@ -438,7 +438,7 @@ flowchart TB
 
 认证（会话令牌签名，消费方 `apps/web/lib/auth-token.ts`）：
 
-- `AUTH_SECRET` — **生产必填**。HMAC-SHA256 签名密钥，生成：`openssl rand -hex 32`。未配置时登录仍返回成功但签不出令牌，所有写操作的审计署名落到 `anonymous`
+- `AUTH_SECRET` — **生产必填**。HMAC-SHA256 签名密钥，生成：`openssl rand -hex 32`。生产环境缺失时服务启动即退出（`instrumentation.ts` 启动期校验）；开发环境仍可无密钥运行，但审计署名落到 `anonymous`
 - `AUTH_SESSION_TTL_HOURS` — 会话有效期（小时），默认 `24`
 - `AUTH_TRUST_ACTOR_HEADERS` — 是否采纳明文 `x-actor-*` 请求头作为身份（chrome-extension 依赖此路径）。缺省：非 production 采纳、production 拒绝；`1`=强制采纳（仅当调用方已通过可信网关鉴权），`0`=强制拒绝
 
