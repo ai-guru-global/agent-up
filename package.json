@@ -8,6 +8,7 @@
     "db:generate": "turbo run db:generate",
     "db:push": "turbo run db:push",
     "db:migrate": "turbo run db:migrate",
+    "db:seed": "turbo run db:seed",
     "clean": "turbo run clean"
   },
   "devDependencies": {

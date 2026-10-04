@@ -1,6 +1,6 @@
 # API 接口说明（api-reference）
 
-> 维护日期：2026-09-22 · 覆盖 `apps/web/app/api/` 全部 **39 个 route 文件**
+> 维护日期：2026-10-04 · 覆盖 `apps/web/app/api/` 全部 **39 个 route 文件**
 > 实现约定以 `lib/utils.ts`（响应/校验）与 `lib/errors.ts`（错误体系）为准。
 
 ## 一、通用约定
@@ -24,10 +24,24 @@
 | `AUTHORIZATION` | 403 | 权限不足（RBAC 预留） |
 | `INTERNAL` | 500 / 502 / 503 / 504 | 未捕获错误 500；LLM 上游错误 502；LLM 未配置 503；LLM 超时 504 |
 
-### Actor 上下文
+### Actor 上下文（身份与审计署名）
 
-请求头 `x-actor-id` / `x-actor-name` / `x-actor-role` 标识调用者（当前 MOCK 登录固定注入管理员）；
-未携带时使用默认 actor。审计日志记录 actor。
+身份来源按优先级三选一，**不存在第四种**（实现见 `lib/context.ts` + `lib/auth-token.ts`）：
+
+| 优先级 | 来源 | 说明 |
+|--------|------|------|
+| 1 | 签名会话令牌 | Cookie `agentup_session` 或请求头 `x-actor-token`，格式 `v1.<base64url payload>.<base64url sig>`，HMAC-SHA256 签名（密钥 `AUTH_SECRET`），`timingSafeEqual` 比对。**唯一不可伪造的来源**；由 `POST /api/auth/login` 下发 |
+| 2 | 明文 `x-actor-id` / `x-actor-name` / `x-actor-role` | 仅在信任开关开启时采纳：`AUTH_TRUST_ACTOR_HEADERS=1` 强制开、`=0` 强制关、缺省则「非 production 开、production 关」。chrome-extension 与本地联调依赖此路径 |
+| 3 | `anonymous` | 前两者都拿不到可信身份时的兜底，`role: "anonymous"`——**未认证绝不等于超管** |
+
+关键语义：
+
+- **令牌存在但校验失败 → 直接判匿名，绝不回落到明文头。** 令牌验不过意味着有人在伪造，此时采纳它自述的角色等于把伪造升级成提权。
+- 令牌载荷必须含非空 `id` / `name` / `role` 且 `exp` 未过期（默认 TTL 24h，`AUTH_SESSION_TTL_HOURS` 可调）；签名有效但载荷非法同样判匿名。
+- 未配 `AUTH_SECRET` 时登录仍返回 200，但 `data.sessionIssued === false` 且不下发 cookie，此后全部写操作的审计署名为 `anonymous`。
+- `SYSTEM_ACTOR`（`role: "platform_admin"`）只用于**进程内自发动作**（后台重算、懒生成），不来自任何请求，无法被外部注入。
+
+审计日志记录解析出的 actor；`AUTHORIZATION`(403) 错误码仍为 RBAC 预留——**当前 service 层不做权限判断**，令牌只解决「署名可信」，不解决「越权拦截」。
 
 ### 分页
 
@@ -78,7 +92,7 @@
 | GET | `/api/settings/audit-logs` | 审计日志（append-only，只读） |
 | GET | `/api/dashboard` | 工作台聚合统计 |
 | GET | `/api/maas/usage` | **MaaS 每 Agent 真实用量**（只读聚合）：按 traces 汇总调用次数/tokens/平均时延/👍👎，按调用次数降序；`hasData=false` 时页面回退 mock 口径（仅覆盖试聊 Playground trace，非生产分布） |
-| POST | `/api/auth/login` | **MOCK 登录**（未接入真实认证；演示账号 `allengaller` / `123`） |
+| POST | `/api/auth/login` | **MOCK 登录**（演示账号 `allengaller` / `123`，凭据硬编码、未接入真实用户库）。成功时下发签名会话令牌：`Set-Cookie: agentup_session=…; HttpOnly; SameSite=Lax`（生产追加 `Secure`），响应 `data` 含 `sessionIssued`——为 `false` 表示 `AUTH_SECRET` 未配置，登录成功但无会话，后续写操作署名为 `anonymous`。口令错误 401 |
 
 ## 四、LLM 端点（真实调用小米 MiMo，5 个）
 
@@ -101,5 +115,5 @@
 
 ## 五、测试口径
 
-全部 API 有 Vitest 集成测试（`app/api/__tests__/`，10 个文件，含 trace-eval-ai-review / maas-usage / evidence-chain）：验证 status / body / 审计副作用；
+全部 API 有 Vitest 集成测试（`app/api/__tests__/`，18 个文件，含 trace-eval-ai-review / maas-usage / evidence-chain / wiki-search）：验证 status / body / 审计副作用；
 LLM 端点统一 mock `global.fetch`，测试**绝不发真实请求、不消耗 tokens**。

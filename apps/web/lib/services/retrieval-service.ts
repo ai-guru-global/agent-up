@@ -4,15 +4,17 @@
  * 对 PG 中的 WikiPage 做本地文本检索，
  * 为 Agent 试聊和评测重放提供知识上下文。
  *
- * 设计决策：
- * - 分词：中文按单字 + 相邻双字 bigram，拉丁按词，全小写
- * - 打分：title ×3, tags ×2, summary ×1, content ×0.5；tf 饱和 tf/(tf+1.2)
- * - confidence：检索分归一化 0-1，与 page.baseConfidence 加权（0.6/0.4）
- * - 零分页（与查询无任何词面重叠）不进入 results：否则高 baseConfidence 的不相关页
- *   会凭 0.4×base 的置信度底数越过门限混入上下文
- * - 低于 confidenceThreshold 的不入上下文，记入 belowThreshold
+ * 打分/排序算法在 lib/retrieval-bm25.ts（零依赖纯模块），服务端与静态演示轨
+ * 的 demo/mock-server.ts 共用同一份实现，避免两轨检索语义漂移。本模块只负责
+ * Prisma 取数与响应契约。
+ *
+ * 契约约定（wiki-search.test.ts / retrieval-service.test.ts 与 /wiki 页 UI 均依赖）：
+ * - candidates = 该 vault 的页面总数，不是"命中数"
+ * - belowThreshold = 未进入上下文的全部页面（零分页也在内），是面向用户的完整性清单
+ * - fallbackTriggered = results 为空
  */
 import { prisma } from "@agent-up/db";
+import { rankPages, type RankablePage } from "@/lib/retrieval-bm25";
 
 export interface SearchWikiParams {
   query: string;
@@ -46,66 +48,19 @@ export interface WikiSearchResponse {
   fallbackTriggered: boolean;
 }
 
-/** 分词：中文字符 + bigram，拉丁词，全小写 */
-export function tokenize(text: string): string[] {
-  const lower = text.toLowerCase();
-  const tokens: string[] = [];
-  // 匹配连续 CJK 字符或连续拉丁/数字字符
-  const segments = lower.match(/[\u4e00-\u9fff]+|[a-z0-9]+/g) ?? [];
-  for (const seg of segments) {
-    if (/[\u4e00-\u9fff]/.test(seg)) {
-      // CJK: individual chars + bigrams
-      for (let i = 0; i < seg.length; i++) {
-        tokens.push(seg[i]);
-        if (i + 1 < seg.length) tokens.push(seg.slice(i, i + 2));
-      }
-    } else {
-      // Latin/number: whole word
-      tokens.push(seg);
-    }
-  }
-  return tokens;
-}
+const FALLBACK = {
+  strategy: "BM25_LITE",
+  candidates: 0,
+  results: [] as WikiSearchResult[],
+  belowThreshold: [] as WikiSearchBelowThreshold[],
+  fallbackTriggered: true,
+};
 
-/** BM25-lite tf 饱和 */
-function tfSat(tf: number, k = 1.2): number {
-  return tf / (tf + k);
-}
-
-/** 统计 token 在文本中出现次数 */
-function countToken(token: string, text: string): number {
-  if (token.length <= 2) {
-    // CJK char/bigram: exact substring count
-    let count = 0;
-    let pos = 0;
-    while ((pos = text.indexOf(token, pos)) !== -1) {
-      count++;
-      pos += token.length;
-    }
-    return count;
-  }
-  // Latin word: word boundary match
-  const re = new RegExp(`\\b${token}\\b`, "gi");
-  return (text.match(re) ?? []).length;
-}
-
-interface WikiPage {
-  id: string;
-  vaultId: string;
-  title: string;
-  slug: string;
-  summary: string | null;
-  content: string;
-  tags: string[];
-  baseConfidence: number;
-}
-
-async function loadPages(vaultId: string): Promise<WikiPage[]> {
+async function loadPages(vaultId: string): Promise<RankablePage[]> {
   return prisma.wikiPage.findMany({
     where: { vaultId },
     select: {
       id: true,
-      vaultId: true,
       title: true,
       slug: true,
       summary: true,
@@ -114,22 +69,6 @@ async function loadPages(vaultId: string): Promise<WikiPage[]> {
       baseConfidence: true,
     },
   });
-}
-
-function scorePage(page: WikiPage, queryTokens: string[]): number {
-  const titleText = (page.title ?? "").toLowerCase();
-  const tagsText = (page.tags ?? []).join(" ").toLowerCase();
-  const summaryText = (page.summary ?? "").toLowerCase();
-  const contentText = (page.content ?? "").toLowerCase();
-
-  let score = 0;
-  for (const token of queryTokens) {
-    score += tfSat(countToken(token, titleText)) * 3;
-    score += tfSat(countToken(token, tagsText)) * 2;
-    score += tfSat(countToken(token, summaryText)) * 1;
-    score += tfSat(countToken(token, contentText)) * 0.5;
-  }
-  return score;
 }
 
 /**
@@ -142,55 +81,21 @@ export async function searchWiki(params: SearchWikiParams): Promise<WikiSearchRe
   const { query, vaultId, maxResults, confidenceThreshold } = params;
 
   if (!vaultId || !query.trim()) {
-    return { query, strategy: "BM25_LITE", candidates: 0, results: [], belowThreshold: [], fallbackTriggered: true };
+    return { query, ...FALLBACK };
   }
 
   const pages = await loadPages(vaultId);
   if (pages.length === 0) {
-    return { query, strategy: "BM25_LITE", candidates: 0, results: [], belowThreshold: [], fallbackTriggered: true };
+    return { query, ...FALLBACK };
   }
 
-  const queryTokens = tokenize(query);
-
-  // score all pages
-  const scored = pages.map((p) => ({ page: p, rawScore: scorePage(p, queryTokens) }));
-
-  // 归一化：最高分映射到 1.0（最低为 0），若最高分 0 则全部 0
-  const maxRaw = Math.max(...scored.map((s) => s.rawScore), 0);
-  const normalized = scored.map((s) => {
-    const retrievalConf = maxRaw > 0 ? s.rawScore / maxRaw : 0;
-    const base = s.page.baseConfidence ?? 0.5;
-    return {
-      page: s.page,
-      score: s.rawScore,
-      confidence: 0.6 * retrievalConf + 0.4 * base,
-    };
-  });
-
-  // 按 score 降序
-  normalized.sort((a, b) => b.score - a.score);
-
-  const results: WikiSearchResult[] = [];
-  const belowThreshold: WikiSearchBelowThreshold[] = [];
-
-  for (const item of normalized) {
-    const entry = {
-      pageId: item.page.id,
-      title: item.page.title ?? "",
-      slug: item.page.slug ?? "",
-      score: Math.round(item.score * 100) / 100,
-      confidence: Math.round(item.confidence * 100) / 100,
-      excerpt: (item.page.content ?? "").slice(0, 400),
-      usedInContext: false,
-    };
-
-    if (item.score > 0 && item.confidence >= confidenceThreshold && results.length < maxResults) {
-      entry.usedInContext = true;
-      results.push(entry);
-    } else {
-      belowThreshold.push({ pageId: entry.pageId, score: entry.score, confidence: entry.confidence });
-    }
-  }
+  const { results, belowThreshold } = rankPages(
+    pages,
+    query,
+    maxResults,
+    confidenceThreshold,
+    pages.length,
+  );
 
   return {
     query,

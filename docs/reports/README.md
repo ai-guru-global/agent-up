@@ -6,6 +6,7 @@
 
 | 日期 | 文档 | 类型 | 摘要 |
 |------|------|------|------|
+| 2026-10-04 | [项目整体评估与整改实施报告](./2026-10-04-project-evaluation-and-remediation.md) | 评估 / 差距分析 / 整改实施记录 | 基线 commit `116e2a1`；第一部分为实施前独立评估（P0 认证授权形同虚设、P1 审计归因丢失与双轨漂移、P2 死重/检索全量扫描/覆盖率盲区、P3 SPA 化与文档漂移）；第二部分为逐项整改实施记录与验证结果，含状态口径（✅ 已验证 / 🟡 受环境限制未跑测 / ⬜ 未实施含理由） |
 | 2026-08-26 | [Agent 自进化与持续改进行业调研](./2026-08-26-agent-self-evolution-and-continuous-improvement-industry-research.md) | 行业调研 / 理论综述 | 核心 Loop 范式（终止条件/成本控制/防死循环）；Harness 产品化四支柱；L1/L2/L3 分层改进对比（Reflexion/GEPA/Voyager/自进化综述）；LangSmith/Braintrust/Langfuse/Manus/Cursor 能力矩阵与行业共同短板；AgentUp P0-P4 落地路径 |
 | 2026-08-25 | [MiMo 真实 LLM 接入交付报告](./2026-08-25-mimo-llm-integration-delivery.md) | 交付沉淀 / 实施记录 | LLM 网关 + 4 个真实集成点（连通性 / AI 归因 / AI 摘要 / 试聊）；实测证据；踩坑记录（Next.js .env 位置 / 推理模型空 content）；测试矩阵 232/232（当期口径） |
 | 2026-09-05 | [评测闭环交付报告](./2026-09-05-eval-closed-loop-delivery.md) | 交付沉淀 / 实施记录 | 试聊 trace 落盘 → 👍/👎 打分 → 沉淀评测用例 → 发布前 AI 评测门禁（快照回放 + LLM 判官）；测试 251/251（22 文件，95.9% 语句覆盖 / 87 API 集成） |

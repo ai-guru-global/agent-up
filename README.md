@@ -2,7 +2,7 @@
 
 > better agent, better life
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-340_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-371_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
 
 基于三层 Loop 设计理念的 Agent 持续改进管理平台。面向专有云工单场景，支持各产品组维护改进各自的 Agent 配置（Prompt / 知识库 / 工具 / 路由），通过审批流程发布新版本。
 
@@ -67,7 +67,7 @@
 - **语言**: TypeScript (strict mode)
 - **样式**: Tailwind CSS 4
 - **校验**: Zod（30 个 schema 覆盖所有 API 入参）
-- **测试**: Vitest 3 + v8 coverage（340 个测试，34 个文件）
+- **测试**: Vitest 3 + v8 coverage（371 个测试，35 个文件）
 - **LLM**: 小米 MiMo（mimo-v2.5-pro，OpenAI 兼容协议 Token Plan）——已真实接入 5 个集成点
 - **数据库**: PostgreSQL 16 + Prisma ORM（批0–批5 已全量落地：所有业务运行时走 Prisma，JSON 存储层已删除，种子由 `pnpm db:seed` 写入）
 - **对象存储**: MinIO (S3 兼容)
@@ -127,7 +127,7 @@ agent-up/
 │   ├── superpowers/specs/          # 设计规格书（带状态/版本标记）
 │   ├── evaluation/                 # 项目评估 + Harness/Loop 参考
 │   ├── reports/                    # 阶段性交付报告（命名规范见目录 README）
-│   ├── api/                        # API 接口完整说明（38 route）
+│   ├── api/                        # API 接口完整说明（39 route）
 │   └── guides/                     # 部署指南 + 故障排查手册
 ├── GTM/                            # Go-To-Market 物料库（索引与口径见 GTM/README.md）
 ├── chrome-extension/               # Chrome 插件 PoC（反馈收集器，零主仓库改动）
@@ -190,10 +190,10 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 ### 测试
 
-**340 个测试，34 个测试文件：**
+**371 个测试，35 个测试文件：**
 
-- **单元测试**（`lib/__tests__/`，16 个文件）：versioning、errors、schemas、diff、context（ALS actor 上下文）、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、retrieval-service、utils、llm-service（mock fetch）、test-db（Prisma 冒烟 + `_resetDb` 清库基建）、worker-db（per-worker 独立 PG 测试库）
-- **API 集成测试**（`app/api/__tests__/`，17 个文件）：dashboard 概览聚合、agents、agent-rollback、agent-skills、releases（含审批流 + diff）、feedback（ingest 多渠道工单接入 + skills/wiki 闭环）、versions-rollback、settings-roles / settings-permissions-groups / settings-audit-logs、effectiveness 全链路、trace/eval 闭环（trace-eval-ai-review）、MaaS 用量聚合（maas-usage）、证据链（evidence-chain）、资产演进线（version-lineage）、vault 内知识检索（wiki-search）+ LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
+- **单元测试**（`lib/__tests__/`，17 个文件）：versioning、errors、schemas、diff、context（ALS actor 上下文）、auth-token（HMAC 签名会话令牌：载荷校验 / cookie 解析 / Set-Cookie 属性）、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、retrieval-service、utils、llm-service（mock fetch）、test-db（Prisma 冒烟 + `_resetDb` 清库基建）、worker-db（per-worker 独立 PG 测试库）
+- **API 集成测试**（`app/api/__tests__/`，18 个文件）：dashboard 概览聚合、agents、agent-rollback、agent-skills、releases（含审批流 + diff）、feedback（ingest 多渠道工单接入 + skills/wiki 闭环）、versions-rollback、settings-roles / settings-permissions-groups / settings-audit-logs、effectiveness 全链路、trace/eval 闭环（trace-eval-ai-review）、MaaS 用量聚合（maas-usage）、证据链（evidence-chain）、资产演进线（version-lineage）、vault 内知识检索（wiki-search）+ LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
 - **隔离**：每个测试经 `_resetDb` 清库后连真实 PostgreSQL（本地 `docker compose up -d postgres`，CI 连服务容器，per-worker 独立测试库互不干扰）
 
 ## 演示双轨（本地全栈 / 静态导出 Demo）
@@ -411,7 +411,7 @@ flowchart TB
 |------|------|
 | `docs/README.md` | 文档体系总索引 |
 | `GTM/README.md` | Go-To-Market 物料库（One-Pager / 面试话术 / 产品首页 / 海报 + 事实口径表） |
-| `docs/api/api-reference.md` | API 接口完整说明（38 route + 错误码 + LLM 端点细节） |
+| `docs/api/api-reference.md` | API 接口完整说明（39 route + 错误码 + LLM 端点细节） |
 | `docs/guides/deployment.md` | 部署指南（含演示前检查清单） |
 | `docs/guides/troubleshooting.md` | 故障排查手册（15 个已知问题） |
 | `docs/superpowers/specs/2026-07-06-agent-improvement-platform-mvp-design.md` | MVP 设计（三层 Loop 理念源头，已落地） |
@@ -428,7 +428,7 @@ flowchart TB
 参考 `.env.example`。**dev 与测试需要 PostgreSQL**（`docker compose up -d postgres`，并在 `packages/db/.env` 与 `apps/web/.env` 配置 `DATABASE_URL`），
 真实 LLM 功能另需在 `apps/web/.env`（Next.js 只读应用目录下的 .env）配置：
 
-- `MIMO_API_KEY` — 小米 MiMo Token Plan 凭据（`tp-` 前缀）；缺失时 4 个 LLM 集成点返回 503
+- `MIMO_API_KEY` — 小米 MiMo Token Plan 凭据（`tp-` 前缀）；缺失时 5 个 LLM 端点返回 503
 - `MIMO_BASE_URL` — Token Plan 套餐专属 Base URL（默认中国集群 `https://token-plan-cn.xiaomimimo.com/v1`）
 - `MIMO_MODEL` — 模型 ID（默认 `mimo-v2.5-pro`）
 
@@ -436,11 +436,13 @@ flowchart TB
 
 - `DATABASE_URL` — PostgreSQL 连接串（`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试）
 
-其他（暂未使用）：
+认证（会话令牌签名，消费方 `apps/web/lib/auth-token.ts`）：
 
-- `NEXTAUTH_URL` / `NEXTAUTH_SECRET` — NextAuth 接入位（暂未使用）
-- `S3_ENDPOINT` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET` — MinIO/S3 配置（暂未使用）
-- `WIKI_GIT_BASE_PATH` — Wiki Vault 仓库本地路径（暂未使用）
+- `AUTH_SECRET` — **生产必填**。HMAC-SHA256 签名密钥，生成：`openssl rand -hex 32`。未配置时登录仍返回成功但签不出令牌，所有写操作的审计署名落到 `anonymous`
+- `AUTH_SESSION_TTL_HOURS` — 会话有效期（小时），默认 `24`
+- `AUTH_TRUST_ACTOR_HEADERS` — 是否采纳明文 `x-actor-*` 请求头作为身份（chrome-extension 依赖此路径）。缺省：非 production 采纳、production 拒绝；`1`=强制采纳（仅当调用方已通过可信网关鉴权），`0`=强制拒绝
+
+> **已移除的历史键**：`NEXTAUTH_URL` / `NEXTAUTH_SECRET`（认证走自研签名令牌，从未接线 NextAuth）、`S3_*` 与 `WIKI_GIT_BASE_PATH`（Wiki Vault 快照/Git 仓库预留，代码中零消费方）。构建期与测试期开关（`DEMO_EXPORT` / `NEXT_PUBLIC_DEMO_MODE` / `VITEST_POOL_ID`）不走 `.env`，说明见 `docs/guides/deployment.md`。
 
 ## 常见问题（FAQ）
 
@@ -475,7 +477,7 @@ A：`allengaller` / `123`（MOCK 登录，登录后即管理员角色，详见 [
 
 本仓库当前为演示 / 面试形态项目；欢迎讨论与复用。提交或评审改动时遵循以下约定：
 
-1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（340 个测试，需本地 PostgreSQL：`docker compose up -d postgres`）
+1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（371 个测试，需本地 PostgreSQL：`docker compose up -d postgres`）
 2. 新增 mock 能力时遵循全站统一的 MOCK 标注规范（徽标 + 代码注释，见 [MOCK 声明](#mock-声明与演示用途)）
 3. 新增文档按 `YYYY-MM-DD-主题.md` 命名放入 `docs/` 对应目录（规范见 [文档索引](#文档索引)）
 4. commit message 用 Conventional Commits 风格：`feat|fix|docs|chore(scope): 中文摘要`，如 `fix(web): 修复 lint 扫描构建产物`

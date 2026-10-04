@@ -1,10 +1,15 @@
 import { createInitialState, type AnyRec, type DemoState } from "./seed";
+import { rankPages, type RankablePage } from "@/lib/retrieval-bm25";
 
 /**
  * 内存态 mock API router。
  * 完整镜像服务端 route handler 的请求/响应形状（lib/utils 的 success/error 封装、
  * 分页元数据、service 层的 join 字段），LLM 类端点返回预置回复。
  * 所有变更只落在内存，刷新页面（重新加载 bundle）即重置。
+ *
+ * 纯算法不在此重写：检索打分直接复用 lib/retrieval-bm25.ts（零依赖模块），
+ * 与服务端 retrieval-service 同一份实现。凡是能抽成无副作用纯函数的语义，
+ * 都应抽出去共用，而不是在这里手抄第二遍——手抄正是漏接端的成因。
  */
 
 export interface MockResult {
@@ -714,7 +719,14 @@ function route(
     if (!payload.username || !payload.password) return fail("请填写用户名和密码");
     if (payload.username !== "allengaller" || payload.password !== "123")
       return fail("用户名或密码错误", 401);
-    return ok({ userId: "user-001", username: "allengaller", name: "Allen Galler" });
+    // 静态演示轨没有服务端密钥，签不出会话令牌；sessionIssued:false 与真实轨
+    // 保持同形响应，免得前端按字段存在性分叉出两套逻辑。
+    return ok({
+      userId: "user-001",
+      username: "allengaller",
+      name: "Allen Galler",
+      sessionIssued: false,
+    });
   }
 
   // ----- dashboard -----
@@ -1802,6 +1814,49 @@ function route(
           );
           const { items: pageItems, pagination } = paginate(items, search);
           return ok({ items: pageItems, pagination });
+        }
+        if (fourth === "search" && M === "GET") {
+          // 镜像 app/api/wiki/vaults/[id]/search/route.ts：先校验（422）后查库（404），
+          // 校验规则与 lib/schemas.ts 的 wikiSearchQuerySchema 逐条对齐。
+          const q = search.get("q");
+          if (!q || q.length > 500) return fail("检索参数不合法", 422);
+          const limitRaw = search.get("limit");
+          const thresholdRaw = search.get("threshold");
+          const limit = limitRaw === null ? 5 : Number(limitRaw);
+          const threshold = thresholdRaw === null ? 0.35 : Number(thresholdRaw);
+          if (!Number.isInteger(limit) || limit < 1 || limit > 20)
+            return fail("检索参数不合法", 422);
+          if (Number.isNaN(threshold) || threshold < 0 || threshold > 1)
+            return fail("检索参数不合法", 422);
+          if (!vault) return fail("Vault 不存在", 404);
+
+          const pages: RankablePage[] = (state.wikiPages[third] ?? []).map(
+            (p) => ({
+              id: String(p.id),
+              title: String(p.title ?? ""),
+              slug: String(p.slug ?? ""),
+              summary: p.summary == null ? null : String(p.summary),
+              content: p.content == null ? null : String(p.content),
+              tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
+              baseConfidence:
+                typeof p.baseConfidence === "number" ? p.baseConfidence : 0.5,
+            }),
+          );
+          const { candidates, results, belowThreshold } = rankPages(
+            pages,
+            q,
+            limit,
+            threshold,
+            pages.length,
+          );
+          return ok({
+            query: q,
+            strategy: "BM25_LITE",
+            candidates,
+            results,
+            belowThreshold,
+            fallbackTriggered: results.length === 0,
+          });
         }
         if (!fourth && M === "GET") {
           if (!vault) return fail("Vault 不存在", 404);

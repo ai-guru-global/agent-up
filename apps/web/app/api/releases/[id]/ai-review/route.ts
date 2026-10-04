@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { success, handleApiError } from "@/lib/utils";
 import { runAiReview } from "@/lib/services/ai-review-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 /**
  * POST /api/releases/[id]/ai-review — 对一条待审批 Release 运行发布前 AI 评测。
@@ -10,12 +11,14 @@ import { runAiReview } from "@/lib/services/ai-review-service";
  * 结果写回 release.aiReview 并在审批页展示。仅供审批人参考，不阻断审批。
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
-    const release = await runAiReview(id);
+    const release = await withActor(resolveActor(request.headers), () =>
+      runAiReview(id),
+    );
     return success(release);
   } catch (err) {
     return handleApiError(err);

@@ -60,7 +60,11 @@ export function createInitialState(): DemoState {
   const wikiPagesByVault: Record<string, AnyRec[]> = {};
   for (const page of ds.wikiPages) {
     const vaultId = page.vaultId as string;
-    (wikiPagesByVault[vaultId] ??= []).push(page);
+    // 对齐 packages/db/prisma/seed.mjs 的落库规则（content 取 summary）：
+    // seed-data.mjs 本身不带 content 字段，不补齐则演示轨的页面正文恒为空，
+    // 检索打分与真实轨不一致，列表页的 content 关键字过滤也永远命中不了。
+    const withContent = { ...page, content: page.content ?? page.summary ?? "" };
+    (wikiPagesByVault[vaultId] ??= []).push(withContent);
   }
 
   const seed = {

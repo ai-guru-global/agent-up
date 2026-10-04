@@ -57,8 +57,12 @@ export default function LoginPage() {
             演示账号：allengaller / 123（硬编码于 api/auth/login，仅本地演示用）
           </p>
           <p className="mt-1 text-[11px] leading-relaxed text-[var(--subtle)]">
-            登录成功后不会写入任何会话凭证，页面只是跳转到工作台；直接访问 /dashboard
-            也能进入，本页仅用于走通认证流程的形态。
+            登录成功会写入一枚 HttpOnly 签名会话 cookie，服务端据此给写操作署名；
+            未配置 AUTH_SECRET 时签不出令牌，审计会落到「匿名」。
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-[var(--subtle)]">
+            注意：页面路由本身仍未设卡，直接访问 /dashboard 也能进入——当前只做了
+            身份认证与审计署名防伪，没有做访问授权。
           </p>
         </div>
 

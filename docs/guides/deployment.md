@@ -45,9 +45,21 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `MIMO_BASE_URL` | 否 | `https://token-plan-cn.xiaomimimo.com/v1` | Token Plan 套餐专属 Base URL（以控制台展示为准） |
 | `MIMO_MODEL` | 否 | `mimo-v2.5-pro` | 模型 ID |
 | `DATABASE_URL` | dev/测试必填 | — | PostgreSQL 连接串（`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试） |
-| `NEXTAUTH_URL` / `NEXTAUTH_SECRET` | 否 | — | NextAuth 接入位（暂未使用） |
-| `S3_*` | 否 | — | MinIO/S3（暂未使用） |
-| `WIKI_GIT_BASE_PATH` | 否 | — | Wiki Vault 仓库路径（暂未使用） |
+| `AUTH_SECRET` | 生产必填 | — | 会话令牌 HMAC-SHA256 签名密钥（`lib/auth-token.ts`）。未配置时登录仍返回成功但签不出令牌，所有写操作的审计署名落到 `anonymous`。生成：`openssl rand -hex 32` |
+| `AUTH_SESSION_TTL_HOURS` | 否 | `24` | 会话有效期（小时）；非法值回落默认 |
+| `AUTH_TRUST_ACTOR_HEADERS` | 否 | 非 production 采纳 / production 拒绝 | 是否采纳明文 `x-actor-*` 请求头作为身份。`1`=强制采纳（仅当调用方已通过可信网关鉴权），`0`=强制拒绝 |
+
+> **已从 `.env.example` 移除的历史键**：`NEXTAUTH_URL` / `NEXTAUTH_SECRET`（从未接线，认证走自研签名令牌而非 NextAuth）、`S3_*` 与 `WIKI_GIT_BASE_PATH`（Wiki Vault 快照/Git 仓库预留，代码中零消费方）。需要时按实际接线重新加入，不要保留「声明了但没人读」的配置。
+
+### 构建期与测试期开关（不走 `.env`）
+
+| 变量 | 设置方 | 作用 |
+|------|--------|------|
+| `DEMO_EXPORT` | `pnpm build:demo` 命令行 | 置 `1` 时 `next.config.ts` 切到 `output:"export"` + `trailingSlash` + `pageExtensions:["tsx"]`，产出纯静态 `out/`。`pageExtensions` 只留 `tsx` 意味着**全部 `route.ts` 处理器被排除在静态产物之外**——这是 `demo/mock-server.ts` 必须存在的原因 |
+| `NEXT_PUBLIC_DEMO_MODE` | `next.config.ts` 的 `env:{}` 注入 | 静态轨运行时标记，前端据此安装 `demo/install-fetch.ts` 的浏览器端 fetch 拦截 |
+| `VITEST_POOL_ID` | `lib/__tests__/setup/worker-db-env.ts` | 把 vitest worker 序号映射到独立测试库 `agentup_test_wN`，保证并行测试互不污染 |
+
+> Next.js `output:"export"` **禁止存在 `middleware.ts`**，这是请求级鉴权无法用中间件实现、改为在 `resolveActor` 内收口的根本原因。
 
 配置后**重启 dev server**；Next.js 启动日志出现 `Environments: .env` 即加载成功。
 

@@ -7,6 +7,7 @@ import {
   listEvalCases,
   createEvalCaseFromTrace,
 } from "@/lib/services/eval-case-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 /**
  * GET/POST /api/agents/[id]/eval-cases — 该 Agent 的评测用例库。
@@ -43,7 +44,11 @@ export async function POST(
     if (!validated.ok) return validated.response;
     const { traceId, expectation, assertions } = validated.data;
 
-    const evalCase = await createEvalCaseFromTrace(id, traceId, expectation, assertions);
+    // createEvalCaseFromTrace 用 getActor().id 写 createdBy 并记审计，
+    // 必须在 actor 作用域内调用，否则沉淀人与审计一律落到 system。
+    const evalCase = await withActor(resolveActor(request.headers), () =>
+      createEvalCaseFromTrace(id, traceId, expectation, assertions),
+    );
     return success(evalCase, 201);
   } catch (err) {
     return handleApiError(err);

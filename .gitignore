@@ -32,8 +32,12 @@ yarn-error.log*
 .turbo
 
 # Prisma
-apps/web/prisma/*.db
-apps/web/prisma/migrations/
+# schema/migrations 位于 packages/db/prisma/，必须入库（不在此忽略）。
+# 历史上这里忽略过 apps/web/prisma/*.db 与 apps/web/prisma/migrations/：
+# SQLite 时代已随批5 迁 PostgreSQL 彻底移除，该路径不再存在，
+# 而「忽略 migrations」是个陷阱——会让新建的迁移静默不入库。
+*.db
+*.db-journal
 
 # Vercel
 .vercel

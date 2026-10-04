@@ -4,6 +4,7 @@ import { success, handleApiError } from "@/lib/utils";
 import { getOrComputeEffectivenessReport } from "@/lib/services/effectiveness-service";
 import { toVersionResponse } from "@/lib/services/agent-service";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+import { withActor, resolveActor } from "@/lib/context";
 
 /**
  * GET /api/agents/[id]/versions/[versionId] — 单个 Version 详情
@@ -12,7 +13,7 @@ import { NotFoundError, ValidationError } from "@/lib/errors";
  * effectivenessReport 同样走 lazy fill 逻辑（≥7 天自动算）。
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; versionId: string }> },
 ) {
   const { id, versionId } = await params;
@@ -23,7 +24,10 @@ export async function GET(
       throw new ValidationError("该 Version 不属于此 Agent");
     }
 
-    const report = await getOrComputeEffectivenessReport(version);
+    // lazy fill 会记 version.effectiveness.computed 审计，故须在 actor 作用域内。
+    const report = await withActor(resolveActor(request.headers), () =>
+      getOrComputeEffectivenessReport(version),
+    );
     const item = report
       ? { ...toVersionResponse(version), effectivenessReport: report }
       : toVersionResponse(version);

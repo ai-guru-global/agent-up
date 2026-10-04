@@ -1,6 +1,6 @@
 # AgentUp 项目整体评估与行业最佳实践差距分析
 
-> 状态：**历史快照**（2026-07-31 时点；文中「无 LLM / 无 eval」类缺口部分已由 2026-08-25 MiMo 真实接入缩小）；最新交付见 [MiMo 交付报告](./2026-08-25-mimo-llm-integration-delivery.md)；行业方法论最新进展见 [2026-08-26 行业调研报告](./2026-08-26-agent-self-evolution-and-continuous-improvement-industry-research.md)
+> 状态：**历史快照**（2026-07-31 时点；文中「无 LLM / 无 eval」类缺口部分已由 2026-08-25 MiMo 真实接入缩小）；最新交付见 [MiMo 交付报告](./2026-08-25-mimo-llm-integration-delivery.md)；行业方法论最新进展见 [2026-08-26 行业调研报告](./2026-08-26-agent-self-evolution-and-continuous-improvement-industry-research.md)；**最新一轮整体评估见 [2026-10-04 项目整体评估与整改实施报告](./2026-10-04-project-evaluation-and-remediation.md)**（本报告的评估结论已被其取代）
 > 报告日期：2026-07-31
 > 报告类型：项目评估 / 行业差距分析 / 场景落地建议
 > 前序文档：

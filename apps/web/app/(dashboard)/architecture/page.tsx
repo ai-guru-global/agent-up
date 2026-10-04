@@ -84,8 +84,8 @@ flowchart TD
   center --> D4["Skills<br/>3/5"]
   center --> D5["Wiki<br/>3/5"]
   center --> D6["反馈环<br/>3/5"]
-  center --> D7["RBAC<br/>2/5"]
-  center --> D8["可观测性<br/>1/5"]
+  center --> D7["授权 / RBAC<br/>1/5"]
+  center --> D8["监控告警<br/>1/5"]
 
   style D2 fill:#dbeafe,stroke:#2563eb
   style D3 fill:#dbeafe,stroke:#2563eb
@@ -98,7 +98,7 @@ export default function ArchitectureOverviewPage() {
       <PageHeader
         title="架构总览"
         badge="项目评估"
-        subtitle="对 AgentUp（Agent 改进平台）做一次整体评估：设计理念科普、功能完整性与创意性、与行业最佳实践的差距。以三层 Loop 为骨架，把项目与业界 Harness / Loop 工程的核心设计对齐。全文对应报告：docs/reports/2026-07-31-project-evaluation-and-industry-gap-analysis.md。"
+        subtitle="对 AgentUp（Agent 改进平台）做一次整体评估：设计理念科普、功能完整性与创意性、与行业最佳实践的差距。以三层 Loop 为骨架，把项目与业界 Harness / Loop 工程的核心设计对齐。全文对应报告：docs/reports/2026-07-31-project-evaluation-and-industry-gap-analysis.md；最新一轮评估与整改实施记录见 docs/reports/2026-10-04-project-evaluation-and-remediation.md。"
       />
 
       <Section
@@ -225,7 +225,7 @@ export default function ArchitectureOverviewPage() {
 
       <Section
         title="功能完整性 · 八维评分"
-        description="结合代码与设计文档的实读结果评分。评分相对「设计目标」而非「同类产品」—— 5 表示设计目标已基本落地。评估基准：2026-09-22（Prisma 批5 收官后，v1.5–v1.8 能力已计入）。"
+        description="结合代码与设计文档的实读结果评分。评分相对「设计目标」而非「同类产品」—— 5 表示设计目标已基本落地。评估基准：2026-09-22（Prisma 批5 收官后，v1.5–v1.8 能力已计入）。2026-10-04 增量复评：签名会话令牌与审计真实署名落地后，原「认证 / RBAC」1/5 拆分为「认证（身份可信）」3/5 与「授权 / RBAC 强制」1/5 —— 身份可信不等于越权拦截。"
       >
         <Table
           head={["维度", "评分", "现状", "关键缺口"]}
@@ -262,15 +262,15 @@ export default function ArchitectureOverviewPage() {
             ],
             [
               "RBAC / 审计",
-              <ScoreDots score={3} />,
-              "数据模型完整（Role/Permission/UserRole/AuditLog），UI 可见；审计已全量真实写入（append-only，PG 单事实源）",
-              <span><strong>没有真鉴权</strong>（MOCK 登录 + 可伪造 x-actor-* 头）；RBAC 未在 API 强制</span>,
+              <ScoreDots score={4} />,
+              "数据模型完整（Role/Permission/UserRole/AuditLog），UI 可见；审计已全量真实写入（append-only，PG 单事实源），署名经 AsyncLocalStorage 贯穿异步续体、由 HMAC 签名会话令牌保证不可伪造",
+              <span><strong>授权仍缺席</strong>：service 层不做权限判断，Role/Permission 零运行时消费方；登录凭据仍是硬编码 MOCK</span>,
             ],
             [
               "数据持久化",
               <ScoreDots score={5} />,
               "批0–批5 全量落地：运行时全面走 PostgreSQL（Prisma），JSON 存储层已删除；种子由 pnpm db:seed 灌入，测试经 _resetDb 隔离",
-              "MinIO / S3 对象存储预留未接",
+              "对象存储（Wiki 快照）未接线：compose 仍定义 MinIO，但 S3_* 配置键已因零消费方从 .env.example 移除",
             ],
             [
               "可观测性 / 效果度量",
@@ -341,7 +341,8 @@ export default function ArchitectureOverviewPage() {
             ["数据模型", <ScoreDots score={5} />, "Prisma schema 覆盖全域，FK / 唯一约束在批4–批5 补齐"],
             ["配置版本控制", <ScoreDots score={5} />, "SemVer 自动计算 + 不可变快照 + 分区级 / 整版本双粒度回滚 + diff 查看器"],
             ["数据持久化", <ScoreDots score={5} />, "批0–批5 收官：运行时全面走 PostgreSQL（Prisma），JSON 存储层已删除"],
-            ["认证 / RBAC", <ScoreDots score={1} />, "MOCK 登录，身份从 x-actor-* 请求头透传，任何人可任意角色操作"],
+            ["认证（身份可信）", <ScoreDots score={3} />, "HMAC-SHA256 签名会话令牌（v1.payload.sig，timingSafeEqual 比对），登录下发 HttpOnly cookie；令牌校验失败直接判匿名、绝不回落明文 x-actor-* 头。缺真实用户库（凭据硬编码 MOCK）"],
+            ["授权 / RBAC 强制", <ScoreDots score={1} />, "Role/Permission 模型零运行时消费方，service 层不做权限判断，页面路由无守卫 —— 任何登录者仍可改任意 Agent"],
             [<strong>LLM / 评测 / 复盘自动化</strong>, <ScoreDots score={4} />, "5 个真实 LLM 集成点（试聊 / 归因 / 摘要 / AI 评测 / probe）；AI 评测含确定性断言 + LLM 判官；蒸馏与 L1 自动采集仍缺"],
             ["可观测性 / 效果度量", <ScoreDots score={4} />, "7 天懒计算效果报告 + trace 落盘打分 + MaaS 真实用量聚合 + 证据链 / 演进线视图"],
           ]}
@@ -384,7 +385,7 @@ export default function ArchitectureOverviewPage() {
               <Pill tone="warn">5</Pill>,
               <strong>工程基线不达生产标准</strong>,
               "真实认证、数据库持久化、CI/CD、审计入库",
-              "持久化（PG/Prisma）、CI、审计入库均已落地；真实认证仍是缺口 —— 本项差距收窄为「鉴权」一项",
+              "持久化（PG/Prisma）、CI、审计入库均已落地；认证已具备签名令牌与可信署名，缺真实用户库；<strong>授权强制仍完全缺席</strong>",
             ],
           ]}
         />
@@ -403,7 +404,7 @@ export default function ArchitectureOverviewPage() {
           <Card>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-red-500">安全风险</p>
             <p className="mt-2 text-[13px] leading-relaxed text-[var(--foreground)]">
-              无认证/授权，任何用户可篡改数据。内部单用户阶段可容忍，<strong>多人使用前必须补</strong>。
+              身份可信已解决（HMAC 签名会话令牌，审计署名不可伪造），但<strong>授权完全缺席</strong>：service 层不做权限判断，任何登录者可篡改任意数据。内部单用户阶段可容忍，<strong>多人使用前必须补 RBAC 强制</strong>。
             </p>
           </Card>
           <Card>
@@ -429,12 +430,12 @@ export default function ArchitectureOverviewPage() {
 
       <Section
         title="关键缺口 Top 5（影响力 × 实现成本）"
-        description="下表直接影响「能否真正上线」。详细改进路线见 改进路线图 页。2026-09-22 复评：数据层（PG/Prisma）与效果度量已落地，移出缺口清单。"
+        description="下表直接影响「能否真正上线」。详细改进路线见 改进路线图 页。2026-09-22 复评：数据层（PG/Prisma）与效果度量已落地，移出缺口清单。2026-10-04 复评：身份可信（签名会话令牌 + 审计真实署名）已落地，缺口收窄为「授权强制」一项。"
       >
         <Table
           head={["#", "缺口", "影响", "建议落点"]}
           rows={[
-            [<Pill tone="bad">P0</Pill>, "鉴权与 RBAC 强制", "MOCK 登录 + 可伪造请求头，任意人可改任意 Agent", "NextAuth + 中间件 + API 级 ACL（批6）"],
+            [<Pill tone="bad">P0</Pill>, "授权强制（RBAC）", "身份已可信（HMAC 签名令牌），但 service 层零权限判断、页面路由无守卫，任意登录者可改任意 Agent", "service 层接入 Role/Permission 校验 + 路由守卫（批6）。注意：不能用 middleware.ts —— 静态导出模式（output:export）明令禁止，须在 resolveActor / service 层收口"],
             [<Pill tone="warn">P1</Pill>, "Wiki 蒸馏引擎", "两层知识架构的核心一半未实现", "WikiIngestJob 接 LLM + provenance"],
             [<Pill tone="warn">P1</Pill>, "L1 反馈自动采集", "改进 loop 的输入仍靠手动触发", "生产会话评分 → 反馈自动入库"],
             [<Pill tone="warn">P1</Pill>, "灰度发布（Canary）", "审批通过即全量生效，无小流量验证", "版本灰度策略 + 观测指标对齐"],

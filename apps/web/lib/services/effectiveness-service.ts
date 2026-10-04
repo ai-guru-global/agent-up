@@ -11,8 +11,9 @@ import { recordAudit } from "@/lib/services/audit-service";
  * - **Lazy fill(懒填)**:不引入 cron / 定时任务,API 层 GET version 时若发现
  *   publishedAt 距今 ≥ windowDays 且 effectivenessReport 为空,则现场计算并写回。
  *   优点:零运维,缺点:第一次读会触发计算(可接受,版本历史页面访问频率低)。
- * - **幂等**:写回后下次 GET 直接读,不再算。多个并发 GET 靠 store.write 的
- *   「全量覆盖」语义,最后写入的胜出(因为纯函数,输出相同,无副作用差)。
+ * - **幂等**:写回后下次 GET 直接读,不再算。并发/重复调用先 refetch PostgreSQL
+ *   (`prisma.agentVersion.findUnique`)再判存在,已有报告直接返回;确实同时算出两份时
+ *   `update` 是整列覆盖,最后写入的胜出(纯函数,输出相同,无副作用差)。
  * - **窗口**:默认 7 天(`DEFAULT_WINDOW_DAYS`),覆盖版本上线一周后的效果窗口。
  *   未到窗口返回 null(效果数据还不足以做判断)。
  *

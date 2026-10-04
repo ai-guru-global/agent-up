@@ -3,6 +3,7 @@ import { success, handleApiError, validateBody } from "@/lib/utils";
 import { rateTraceSchema } from "@/lib/schemas";
 import { rateTrace } from "@/lib/services/trace-service";
 import { recordAudit } from "@/lib/services/audit-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 /**
  * POST /api/traces/[id]/rate — 给一条试聊 trace 打分（👍 UP / 👎 DOWN）。
@@ -20,10 +21,13 @@ export async function POST(
     if (!validated.ok) return validated.response;
     const { rating, note } = validated.data;
 
-    const trace = await rateTrace(id, rating, note);
-    recordAudit("trace.rate", "trace", id, {
-      agentId: trace.agentId,
-      rating,
+    const trace = await withActor(resolveActor(request.headers), async () => {
+      const rated = await rateTrace(id, rating, note);
+      recordAudit("trace.rate", "trace", id, {
+        agentId: rated.agentId,
+        rating,
+      });
+      return rated;
     });
 
     return success({

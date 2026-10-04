@@ -3,6 +3,7 @@ import { prisma } from "@agent-up/db";
 import { success, handleApiError } from "@/lib/utils";
 import { getOrComputeEffectivenessReport } from "@/lib/services/effectiveness-service";
 import { toVersionResponse } from "@/lib/services/agent-service";
+import { withActor, resolveActor } from "@/lib/context";
 
 /**
  * GET /api/agents/[id]/versions — 某 Agent 的版本历史（含不可变快照）
@@ -15,7 +16,7 @@ import { toVersionResponse } from "@/lib/services/agent-service";
  * 已存在则直接返回，不重复算。
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -29,16 +30,20 @@ export async function GET(
       return success({ items: [], total: 0 });
     }
 
-    // lazy fill：若 effectivenessReport 缺失 + 已过窗口，则算 + 写回
-    const items = [];
-    for (const v of versions) {
-      const report = await getOrComputeEffectivenessReport(v);
-      items.push(
-        report
-          ? { ...toVersionResponse(v), effectivenessReport: report }
-          : toVersionResponse(v),
-      );
-    }
+    // lazy fill：若 effectivenessReport 缺失 + 已过窗口，则算 + 写回。
+    // 写回会记 version.effectiveness.computed 审计，故须在 actor 作用域内。
+    const items = await withActor(resolveActor(request.headers), async () => {
+      const filled = [];
+      for (const v of versions) {
+        const report = await getOrComputeEffectivenessReport(v);
+        filled.push(
+          report
+            ? { ...toVersionResponse(v), effectivenessReport: report }
+            : toVersionResponse(v),
+        );
+      }
+      return filled;
+    });
 
     return success({ items, total: items.length });
   } catch (err) {
