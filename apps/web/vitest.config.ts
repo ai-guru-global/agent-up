@@ -35,7 +35,7 @@ export default defineConfig({
       // audit-service.ts 曾被单独排除。但它有 9 个专属用例（audit-service.test.ts），
       // 且被 15 个测试文件间接引用——把「问责层」排除在覆盖率门禁之外是反的。
       //
-      // 已知盲区（有意保留，勿盲目扩围）：app/api/**/route.ts（39 个）未纳入 include。
+      // 已知盲区（有意保留，勿盲目扩围）：app/api/**/route.ts（40 个）未纳入 include。
       // 阈值是全局聚合而非 per-file，未先测出基线就扩围可能把整体拉到 80 以下而挂 CI。
       // 纳入前必须先跑 `pnpm test -- --coverage` 量出实际数字，再决定是抬阈值还是加
       // per-glob 阈值；任何情况下都不应为了让扩围通过而下调现有阈值。
