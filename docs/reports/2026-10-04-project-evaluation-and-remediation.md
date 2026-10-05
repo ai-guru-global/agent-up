@@ -478,9 +478,16 @@ route 必须在 actor 作用域内**。
 2. **登录凭据仍是硬编码 MOCK**（`allengaller` / `123`）。签名令牌让身份不可伪造，但身份本身仍是假的：
    没有用户库、注册、密码存储。TTL 内令牌不可撤销，登出不存在服务端状态。
 
+   > → 2026-10-05 批④第一步：scrypt 口令哈希模块落地（`937f470`），设计裁决为
+   > **邮箱登录 + 固定演示口令**；查 User 表接线待 PG 环境到位。
+
 3. **`AUTH_SECRET` 未配置时静默降级为匿名审计**。登录仍返回成功（`sessionIssued: false`），
    写操作署名落到 `anonymous`。已在 login route 显式 `console.error`，但**没有启动期硬失败**——
    生产漏配只会体现在日志里。部署清单必须把 `AUTH_SECRET` 列为强制项。
+
+   > → 2026-10-05 批①已缓解（`f9cc256`）：production 启动期即退出。
+   > 关键实测：仅 throw 不够——Next.js 16 会把 instrumentation 的异常记成
+   > unhandledRejection 后照常监听端口，必须 `process.exit(1)`。静默降级仅存于开发环境。
 
 4. **`AUTH_TRUST_ACTOR_HEADERS` 在 production 置 `1` 会重新打开 P0 攻击面**。
    该开关是为 chrome-extension 与本地联调保留的，缺省在生产拒绝；但一旦置 1，
@@ -490,6 +497,9 @@ route 必须在 actor 作用域内**。
 5. **demo 轨新补的 wiki `search` 分支无测试覆盖**。仓库没有任何 mock-server 测试文件；
    该分支的正确性由「构建通过 + 与服务端共用同一份算法」背书，其 422/404 校验顺序没有用例断言。
    双轨漂移的**算法层**风险已消除，但**端点接线本身仍是手工镜像**，下次新增端点仍可能漏接。
+
+   > → 2026-10-05 批②已闭合（`d7ededd`）：mock-server 22 例边界测试，
+   > 含 422-before-404 顺序、limit/threshold 非法值全表、双轨同形字段集合断言。
 
 6. **覆盖率门禁的 route 层盲区仍在**。39 个 route handler、15 个页面、全部组件不在度量范围内。
    本轮移除的是「审计服务被单独豁免」这个方向性错误，盲区本体保留并写入配置注释。
@@ -502,9 +512,59 @@ route 必须在 actor 作用域内**。
    注意后半段**不是性能问题而是质量问题**：候选预筛解决不了它，需要的是分词策略调整
    （最小词长 / 停用字 / bigram 加权）。
 
+   > → 2026-10-05 批⑤第一步：改动前基线已量出（`7788731`，retrieval-bm25 基线 21 例，
+   > 锁定 tokenize/countToken/scorePage/rankPages 全部现行为）。分词策略改动本体待 PG 门禁
+   > （retrieval-service / wiki-service 全量回归）。编写基线时问题当场自证：
+   > miss 页「完全无关」被查询「安全组」经单字「全」命中得分，语料被迫改为真零重叠。
+
 8. **派生文档落后于代码**：`.qoder/repowiki/**` 的 98 个生成文件中至少 7 个仍描述已删除的
    `NEXTAUTH_*` / `packages/shared` / JSON 存储。需工具链重新生成，不是手改。
 
 9. **本机证据缺口**：371 个测试与覆盖率阈值均未本地实跑，全部依赖 CI 对真实 PostgreSQL 的执行。
    上表所有 🟡 项在 CI 绿之前**都不能视为已验证**——包括 §2 的 6 处 `withActor` 修复：
    代码改动通过 tsc / lint / build，但「审计行是否真的落到操作者名下」这一行为断言未经本机执行。
+
+---
+
+# 第三部分 · 第二轮整改：分批实施记录（2026-10-05 起）
+
+用户裁决：未完成项分 7 批实施，**每批单独提交并汇报**；PostgreSQL 由用户自行启动。
+批④两个设计决策经追问确认（2026-10-04）：**登录标识改用邮箱**（User 已有 unique email，
+零迁移）；**种子口令用固定演示口令**写死在 seed 并文档标注。
+
+## 批次进度
+
+| 批次 | 内容 | 状态 | 提交 |
+|------|------|------|------|
+| 批① | AUTH_SECRET 启动期硬失败 + 登出端点 | ✅ 完成 | `f9cc256` |
+| 批② | demo/mock-server 测试覆盖（22 例） | ✅ 完成 | `d7ededd` |
+| 批③ | seed 权限补全 + RBAC 强制 | 🟡 种子侧完成；服务层强制待 PG | `ee38d2f` |
+| 批④ | 真实用户库登录 | 🟡 scrypt 模块完成；查库接线待 PG | `937f470` |
+| 批⑤ | CJK 分词质量 | 🟡 基线测量完成；改动本体待 PG | `7788731` |
+| 批⑥ | 检索候选预筛（DB 侧） | ⏳ 待 PG | — |
+| 批⑦ | 覆盖率 route 层扩围 | ⏳ 待 PG（须先量真实基线，不下调阈值） | — |
+
+## 本轮关键实测发现
+
+1. **Next.js 16 的 instrumentation `throw` 拦不住服务**。把 `register()` 里的异常抛出后，
+   Next.js 将其记成 `unhandledRejection` 并**照常监听端口**——日志有错、服务照跑、令牌签不出，
+   比静默降级更具误导性。必须 catch 后 `process.exit(1)`。
+   实测矩阵：production 无密钥 → 进程退出 code=1；有密钥 → 正常 Ready；
+   `AUTH_SECRET= next build` 与 `AUTH_SECRET= DEMO_EXPORT=1 next build` 均 exit 0
+   （register 不在构建期触发，产物可在环境间平移）。
+2. **seed-data.mjs 的 `_count` 冗余计数成批撒谎**：perm-6..10 声称被 3/2/3/2/1 个角色持有、
+   实际授权为零；role-product/cre 的 `_count.members` 声称 5/8、userRoles 实为 2/3。
+   真实轨 `_count` 由 Prisma 关系计数现算不受影响，假数字只渲染给演示轨。
+   已按 `_count` 反推补全授权并修正成员计数，新增一致性守卫测试（6 例）固化
+   「冗余计数必须等于关系数组现算值」。
+3. **`countToken` 的 CJK 长串陷阱已文档化**：JS `\b` 基于 `\w`，CJK 非 `\w`，
+   因此 >2 字 CJK token 走词边界路径恒返回 0。模块内部因 tokenize 只产出 ≤2 字
+   CJK token 而不可达，但直接调用会静默得 0——已用测试锁定该行为防止误用。
+
+## 验证口径（截至本节写入时）
+
+- PG-free 本地子集：**12 文件 / 194 测试**全绿（上轮 8 文件 / 119 例基础上新增
+  demo-mock-server 22 例、retrieval-bm25 基线 21 例、seed-data 一致性 6 例、password-hash 17 例）
+- tsc / eslint / 双构建（全栈 + `DEMO_EXPORT=1` 静态导出）：每个提交前实测，全部 exit 0
+- 全量套件（371+ 例，批次新增后更多）与覆盖率基线：**仍待 PostgreSQL**；5432 端口
+  至本节写入时仍 CLOSED。风险 #9 的口径继续适用：PG/CI 绿之前不视为已验证。
