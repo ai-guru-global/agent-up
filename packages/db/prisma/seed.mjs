@@ -1,9 +1,12 @@
 /**
- * 全局种子脚本（批5）：把 seed-data.mjs 的演示数据写入 PostgreSQL。
+ * 全局种子脚本（批5）：把 seed-data.mjs 的演示数据写入 SQLite。
  *
  * - 幂等：先按逆 FK 序清空全部业务表，再插入（可重复执行）
  * - 零依赖：内联读取 packages/db/.env，无需 dotenv
  * - 运行：pnpm --filter @agent-up/db exec prisma db seed（或 node prisma/seed.mjs）
+ *
+ * SQLite 迁移（2026-10-05）：原 Json 列与标量数组列均改为 String，
+ * 一律经 J() 序列化后写入；值语义与迁移前一致（undefined → null）。
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -28,13 +31,15 @@ if (!process.env.DATABASE_URL) {
 
 const prisma = new PrismaClient();
 const T = (s) => new Date(s);
+/** 原 Json/数组列（现为 String）的统一序列化入口；undefined → null */
+const J = (v) => (v === undefined ? null : JSON.stringify(v));
 
 /** JSON 时代 routingConfig.defaultAction 已在批2 演进为 escalationPolicy（响应层契约） */
 function routingRows(agent) {
   const rc = agent.routingConfig;
   return {
     agentId: agent.id,
-    rules: rc.rules,
+    rules: J(rc.rules),
     humanThreshold: rc.humanThreshold,
     maxConversationTurns: rc.maxConversationTurns,
     idleTimeoutMinutes: rc.idleTimeoutMinutes,
@@ -76,7 +81,13 @@ async function seed() {
   const d = seedData;
 
   for (const u of d.users) {
-    await prisma.user.create({ data: { id: u.id, email: u.email, name: u.name } });
+    await prisma.user.create({
+      data: {
+        id: u.id, email: u.email, name: u.name,
+        // 批④种子侧：演示账号带 scrypt 口令哈希（见 seed-data.mjs users 注释）
+        ...(u.passwordHash ? { passwordHash: u.passwordHash } : {}),
+      },
+    });
   }
   for (const g of d.productGroups) {
     await prisma.productGroup.create({
@@ -132,8 +143,8 @@ async function seed() {
         id: p.id, vaultId: p.vaultId, title: p.title, slug: p.slug,
         content: p.summary, summary: p.summary,
         provenance: p.provenance, lifecycle: p.lifecycle, tier: p.tier,
-        baseConfidence: p.baseConfidence, sourceRefs: [],
-        wikilinks: p.wikilinks, categories: p.categories, tags: p.tags,
+        baseConfidence: p.baseConfidence, sourceRefs: J([]),
+        wikilinks: J(p.wikilinks), categories: J(p.categories), tags: J(p.tags),
         filePath: p.filePath, updatedAt: T(p.updatedAt),
       },
     });
@@ -144,7 +155,7 @@ async function seed() {
     await prisma.promptConfig.create({
       data: {
         agentId: a.id, systemPrompt: pc.systemPrompt, roleDefinition: pc.roleDefinition,
-        constraints: pc.constraints, outputFormat: pc.outputFormat, lastModifiedBy: a.createdBy,
+        constraints: J(pc.constraints), outputFormat: pc.outputFormat, lastModifiedBy: a.createdBy,
       },
     });
     const kc = a.knowledgeConfig;
@@ -158,7 +169,7 @@ async function seed() {
     const tc = a.toolsConfig;
     await prisma.toolsConfig.create({
       data: {
-        agentId: a.id, mcpTools: tc.mcpTools, wikiQueryTools: tc.wikiQueryTools,
+        agentId: a.id, mcpTools: J(tc.mcpTools), wikiQueryTools: J(tc.wikiQueryTools),
         maxConcurrentCalls: tc.maxConcurrentCalls, timeoutMs: tc.timeoutMs, retryCount: tc.retryCount,
         lastModifiedBy: a.createdBy,
       },
@@ -169,14 +180,22 @@ async function seed() {
   for (const s of d.skills) {
     const { _count, ...row } = s;
     await prisma.skill.create({
-      data: { ...row, dependencies: [], permissions: [], createdAt: T(s.createdAt), updatedAt: T(s.updatedAt) },
+      data: {
+        ...row,
+        triggerPatterns: J(s.triggerPatterns),
+        inputSchema: J(s.inputSchema),
+        outputSchema: J(s.outputSchema),
+        dependencies: J([]),
+        permissions: J([]),
+        createdAt: T(s.createdAt), updatedAt: T(s.updatedAt),
+      },
     });
   }
   for (const sv of d.skillVersions) {
     const skill = d.skills.find((s) => s.id === sv.skillId);
     const { _count, ...snapshot } = skill;
     await prisma.skillVersion.create({
-      data: { skillId: sv.skillId, version: sv.version, changelog: sv.changelog, snapshot, publishedAt: T(sv.publishedAt) },
+      data: { skillId: sv.skillId, version: sv.version, changelog: sv.changelog, snapshot: J(snapshot), publishedAt: T(sv.publishedAt) },
     });
   }
   for (const b of d.skillBindings) {
@@ -188,10 +207,10 @@ async function seed() {
   for (const r of d.releases) {
     await prisma.release.create({
       data: {
-        id: r.id, agentId: r.agentId, changeNote: r.changeNote, changedPartitions: r.changedPartitions,
+        id: r.id, agentId: r.agentId, changeNote: r.changeNote, changedPartitions: J(r.changedPartitions),
         status: r.status, submittedBy: r.submittedBy, submittedAt: T(r.submittedAt),
         approvedBy: r.approvedBy, approvedAt: r.approvedAt ? T(r.approvedAt) : null,
-        reviewComment: r.reviewComment, configSnapshot: r.configSnapshot ?? undefined,
+        reviewComment: r.reviewComment, configSnapshot: J(r.configSnapshot),
       },
     });
   }
@@ -199,10 +218,10 @@ async function seed() {
     await prisma.agentVersion.create({
       data: {
         id: v.id, agentId: v.agentId, version: v.version, major: v.major, minor: v.minor, patch: v.patch,
-        promptSnapshot: v.promptSnapshot, knowledgeSnapshot: v.knowledgeSnapshot,
-        toolsSnapshot: v.toolsSnapshot, routingSnapshot: v.routingSnapshot,
+        promptSnapshot: J(v.promptSnapshot), knowledgeSnapshot: J(v.knowledgeSnapshot),
+        toolsSnapshot: J(v.toolsSnapshot), routingSnapshot: J(v.routingSnapshot),
         releaseId: v.releaseId, publishedBy: v.publishedBy, publishedAt: T(v.publishedAt),
-        changeNote: v.changeNote, effectivenessReport: v.effectivenessReport ?? undefined,
+        changeNote: v.changeNote, effectivenessReport: J(v.effectivenessReport),
       },
     });
   }
@@ -210,7 +229,7 @@ async function seed() {
   await prisma.feedback.createMany({
     data: d.feedback.map((f) => ({
       id: f.id, agentId: f.agentId, source: f.source, title: f.title, content: f.content,
-      rating: f.rating, tags: f.tags, severity: f.severity, status: f.status,
+      rating: f.rating, tags: J(f.tags), severity: f.severity, status: f.status,
       targetPartition: f.targetPartition ?? null, submittedBy: f.submittedBy, submittedAt: T(f.submittedAt),
     })),
   });
@@ -219,8 +238,8 @@ async function seed() {
     await prisma.evalCase.create({
       data: {
         id: e.id, agentId: e.agentId, sourceTraceId: e.sourceTraceId, title: e.title,
-        expectation: e.expectation, assertions: e.assertions, systemPrompt: e.systemPrompt,
-        history: e.history, message: e.message, referenceReply: e.referenceReply,
+        expectation: e.expectation, assertions: J(e.assertions), systemPrompt: e.systemPrompt,
+        history: J(e.history), message: e.message, referenceReply: e.referenceReply,
         status: e.status, createdAt: T(e.createdAt), createdBy: e.createdBy,
       },
     });
@@ -229,7 +248,7 @@ async function seed() {
   await prisma.auditLog.createMany({
     data: d.auditLogs.map((l) => ({
       id: l.id, action: l.action, resource: l.resource, resourceId: l.resourceId,
-      userName: l.userName, userRole: l.userRole, createdAt: T(l.createdAt), details: l.details,
+      userName: l.userName, userRole: l.userRole, createdAt: T(l.createdAt), details: J(l.details),
     })),
   });
 }

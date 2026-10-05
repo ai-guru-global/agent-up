@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma } from "@agent-up/db";
 import { POST as agentChat } from "@/app/api/agents/[id]/chat/route";
 import { POST as rateTrace } from "@/app/api/traces/[id]/rate/route";
 import {
@@ -81,7 +81,7 @@ async function writeAgent(id: string) {
       agentId: id,
       systemPrompt: `你是助手 ${id}`,
       roleDefinition: null,
-      constraints: ["不回答无关问题"],
+      constraints: JSON.stringify(["不回答无关问题"]),
       outputFormat: null,
     },
   });
@@ -249,13 +249,13 @@ describe("发布前 AI 评测（replay + judge）", () => {
         id: releaseId,
         agentId,
         changeNote: "收紧高危操作提示",
-        changedPartitions: ["PROMPT"],
+        changedPartitions: JSON.stringify(["PROMPT"]),
         status: "PENDING",
         submittedBy: "tester",
         submittedAt: new Date("2026-08-20T00:00:00.000Z"),
-        configSnapshot: {
+        configSnapshot: JSON.stringify({
           prompt: { systemPrompt: "新版提示词：高危操作前提醒快照" },
-        } as unknown as Prisma.InputJsonValue,
+        }),
       },
     });
   }
@@ -269,7 +269,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
         title: "磁盘扩容后容量没变化",
         expectation: "必须先提醒创建快照",
         systemPrompt: "旧版提示词",
-        history: [],
+        history: JSON.stringify([]),
         message: "扩容后 df -h 没变化",
         referenceReply: "先做快照再 growpart/resize2fs",
         createdAt: new Date("2026-08-01T00:00:00.000Z"),
@@ -304,7 +304,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
 
     // 落盘可见：release 行已带 aiReview
     const persisted = await prisma.release.findUnique({ where: { id: "rel-e1" } });
-    const persistedReview = persisted?.aiReview as { status?: string } | null;
+    const persistedReview = JSON.parse(persisted?.aiReview as string) as { status?: string } | null;
     expect(persistedReview?.status).toBe("PASSED");
 
     // replay 请求的 system prompt 来自 release 快照（新提示词），而非用例旧提示词
@@ -387,7 +387,7 @@ describe("发布前 AI 评测（replay + judge）", () => {
         id: "rel-done",
         agentId: "i1",
         changeNote: "已通过",
-        changedPartitions: ["PROMPT"],
+        changedPartitions: JSON.stringify(["PROMPT"]),
         status: "APPROVED",
         submittedBy: "tester",
         submittedAt: new Date("2026-08-01T00:00:00.000Z"),
@@ -412,13 +412,13 @@ describe("确定性断言（code-based 判分器）", () => {
         id: releaseId,
         agentId,
         changeNote: "收紧高危操作提示",
-        changedPartitions: ["PROMPT"],
+        changedPartitions: JSON.stringify(["PROMPT"]),
         status: "PENDING",
         submittedBy: "tester",
         submittedAt: new Date("2026-09-08T00:00:00.000Z"),
-        configSnapshot: {
+        configSnapshot: JSON.stringify({
           prompt: { systemPrompt: "新版提示词：高危操作前提醒快照" },
-        } as unknown as Prisma.InputJsonValue,
+        }),
       },
     });
   }
@@ -436,10 +436,10 @@ describe("确定性断言（code-based 判分器）", () => {
         title: "磁盘扩容后容量没变化",
         expectation: "必须先提醒创建快照",
         systemPrompt: "旧版提示词",
-        history: [],
+        history: JSON.stringify([]),
         message: "扩容后 df -h 没变化",
         referenceReply: "先做快照再 growpart/resize2fs",
-        assertions: assertions as Prisma.InputJsonValue,
+        assertions: JSON.stringify(assertions),
         createdAt: new Date("2026-09-01T00:00:00.000Z"),
         createdBy: "tester",
       },

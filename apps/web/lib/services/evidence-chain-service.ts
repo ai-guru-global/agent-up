@@ -11,7 +11,7 @@
  * 诚实口径：证据链呈现的是「记录到的关联」（反馈→打分→用例→发布→评测→回滚的时间线），
  * 不是因果改进证明；响应固定携带 declaration 声明，页面原样展示。
  */
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJson, unpackJsonArray } from "@agent-up/db";
 import { NotFoundError } from "@/lib/errors";
 
 export interface EvidenceNode {
@@ -37,13 +37,6 @@ export interface EvidenceChain {
 }
 
 const PARTITION_ROLLBACK_NOTE = /回滚到 Version\s+(\S+)/;
-
-/** JsonValue → 自由形状对象（aiReview / audit.details 读取用） */
-function detailOf(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
 
 export async function getEvidenceChain(agentId: string): Promise<EvidenceChain> {
   const agent = await prisma.agent.findUnique({ where: { id: agentId } });
@@ -93,7 +86,7 @@ export async function getEvidenceChain(agentId: string): Promise<EvidenceChain> 
   // 回滚单本身由 ROLLBACK 审计节点表达，避免同一次回滚重复计两个节点
   const releases = await prisma.release.findMany({ where: { agentId, isRollback: false } });
   for (const rel of releases) {
-    const aiReview = detailOf(rel.aiReview) as { status?: string } | null;
+    const aiReview = unpackJson<Record<string, unknown> | null>(rel.aiReview, null);
     nodes.push({
       type: "RELEASE",
       id: rel.id,
@@ -101,7 +94,7 @@ export async function getEvidenceChain(agentId: string): Promise<EvidenceChain> 
       title: rel.changeNote,
       status: rel.status,
       detail: {
-        changedPartitions: [...rel.changedPartitions],
+        changedPartitions: unpackJsonArray<string>(rel.changedPartitions, []),
         aiReviewStatus: aiReview?.status ?? null,
       },
     });
@@ -117,14 +110,14 @@ export async function getEvidenceChain(agentId: string): Promise<EvidenceChain> 
       status: null,
       detail: {
         version: ver.version,
-        hasEffectivenessReport: ver.effectivenessReport != null,
+        hasEffectivenessReport: unpackJson<unknown>(ver.effectivenessReport, null) != null,
         releaseId: ver.releaseId,
       },
     });
   }
 
   for (const log of await prisma.auditLog.findMany({ where: { resourceId: agentId } })) {
-    const details = detailOf(log.details);
+    const details = unpackJson<Record<string, unknown> | null>(log.details, null);
     if (log.action === "agent.rollback") {
       nodes.push({
         type: "ROLLBACK",

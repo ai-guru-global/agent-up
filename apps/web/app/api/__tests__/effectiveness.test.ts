@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma, Prisma, type ConfigPartition } from "@agent-up/db";
+import { prisma, type ConfigPartition } from "@agent-up/db";
 import {
   computeEffectivenessReport,
   getOrComputeEffectivenessReport,
@@ -34,7 +34,7 @@ async function seedVersionWithReport(id: string, publishedAt: string, report: Ef
   await seedVersion(id, publishedAt);
   await prisma.agentVersion.update({
     where: { id },
-    data: { effectivenessReport: report as unknown as Prisma.InputJsonValue },
+    data: { effectivenessReport: JSON.stringify(report) },
   });
 }
 
@@ -140,7 +140,7 @@ describe("getOrComputeEffectivenessReport (lazy fill)", () => {
     // 持久化验证
     const onDisk = await prisma.agentVersion.findUnique({ where: { id: "old" } });
     expect(onDisk?.effectivenessReport).toBeDefined();
-    expect((onDisk?.effectivenessReport as { totalFeedbacks: number }).totalFeedbacks).toBe(2);
+    expect((JSON.parse(onDisk?.effectivenessReport as string) as { totalFeedbacks: number }).totalFeedbacks).toBe(2);
   });
 
   it("is idempotent: second call returns same report, no new audit", async () => {

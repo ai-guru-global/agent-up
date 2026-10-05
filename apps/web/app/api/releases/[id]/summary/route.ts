@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJson } from "@agent-up/db";
 import { success, handleApiError } from "@/lib/utils";
 import { NotFoundError } from "@/lib/errors";
 import { chatCompletion } from "@/lib/services/llm-service";
@@ -38,7 +38,7 @@ export async function POST(
         ? versions[baselineIdx + 1]
         : versions[0] ?? null;
 
-    const snapshot = (release.configSnapshot ?? {}) as Record<string, unknown>;
+    const snapshot = unpackJson<Record<string, unknown>>(release.configSnapshot, {});
     const truncate = (v: unknown) => {
       const s = JSON.stringify(v ?? null);
       return s.length > 2000 ? s.slice(0, 2000) + "…(截断)" : s;

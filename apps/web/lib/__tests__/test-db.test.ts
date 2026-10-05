@@ -18,11 +18,11 @@ describe("_resetDb", () => {
       data: {
         agentId: agent.id,
         systemPrompt: "你是测试助手",
-        history: [{ role: "user", content: "hi" }],
+        history: JSON.stringify([{ role: "user", content: "hi" }]),
         message: "hi",
         reply: "hello",
         model: "mimo-v2.5-pro",
-        usage: { promptTokens: 12, completionTokens: 34, totalTokens: 46 },
+        usage: JSON.stringify({ promptTokens: 12, completionTokens: 34, totalTokens: 46 }),
         latencyMs: 42,
       },
     });

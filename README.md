@@ -69,7 +69,7 @@
 - **校验**: Zod（30 个 schema 覆盖所有 API 入参）
 - **测试**: Vitest 3 + v8 coverage（371 个测试，35 个文件）
 - **LLM**: 小米 MiMo（mimo-v2.5-pro，OpenAI 兼容协议 Token Plan）——已真实接入 5 个集成点
-- **数据库**: PostgreSQL 16 + Prisma ORM（批0–批5 已全量落地：所有业务运行时走 Prisma，JSON 存储层已删除，种子由 `pnpm db:seed` 写入）
+- **数据库**: SQLite（单文件 `packages/db/prisma/dev.db`）+ Prisma ORM（2026-10-05 自 PostgreSQL 迁移；所有业务运行时走 Prisma，种子由 `pnpm db:seed` 写入）
 - **对象存储**: MinIO (S3 兼容)
 - **构建**: Turborepo monorepo + pnpm workspaces
 
@@ -131,20 +131,19 @@ agent-up/
 │   └── guides/                     # 部署指南 + 故障排查手册
 ├── GTM/                            # Go-To-Market 物料库（索引与口径见 GTM/README.md）
 ├── chrome-extension/               # Chrome 插件 PoC（反馈收集器，零主仓库改动）
-├── docker-compose.yml              # PostgreSQL + MinIO
 └── turbo.json                      # Turborepo 配置
 ```
 
 ## 系统架构
 
-当前运行形态是「数据库即真相源」：页面 → API 路由 → 服务层 → Prisma → PostgreSQL；LLM 调用统一走网关出站。
+当前运行形态是「数据库即真相源」：页面 → API 路由 → 服务层 → Prisma → SQLite；LLM 调用统一走网关出站。
 JSON 文件存储层已在 Prisma 批5 删除（种子由 `pnpm db:seed` 灌入）；MinIO 为后续预留。
 
 ```mermaid
 flowchart LR
     P["浏览器 · App Router 页面<br/>（见页面导航）"] --> A["API 路由层 · 40 个 route<br/>Zod 校验 · 结构化错误 · Actor 上下文"]
     A --> S["服务层 lib/services<br/>agent / release / feedback / skill / wiki<br/>trace / eval-case / ai-review / effectiveness / audit"]
-    S --> DB[("PostgreSQL + Prisma")]
+    S --> DB[("SQLite + Prisma")]
     S --> L["LLM 网关 llm-service<br/>env 凭据 · 统一超时"]
     L --> M["小米 MiMo<br/>OpenAI 兼容协议"]
     S -. 后续预留 .-> O[("MinIO / S3")]
@@ -174,9 +173,9 @@ pnpm dev
 
 访问 http://localhost:3000
 
-> **关于基础设施**：本仓库**当前**使用 PostgreSQL 持久化（Prisma），开发前需要启动数据库并灌入种子：
-> `docker compose up -d postgres` → `pnpm db:migrate` → `pnpm db:seed`。
-> `docker-compose.yml` 同时提供 MinIO（S3 兼容），为对象存储预留，当前业务未使用。
+> **关于基础设施**：本仓库**当前**使用 SQLite 单文件持久化（2026-10-05 自 PostgreSQL 迁移，零守护进程、无需 Docker）。开发前初始化数据库并灌入种子：
+> `pnpm db:generate` → `cd packages/db && npx prisma migrate deploy` → `pnpm db:seed`。
+> 库文件（`*.db`）已被 `.gitignore` 忽略；删除后重新执行上面两步即可完全重建。
 
 ### 常用命令
 
@@ -194,13 +193,13 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 
 - **单元测试**（`lib/__tests__/`，17 个文件）：versioning、errors、schemas、diff、context（ALS actor 上下文）、auth-token（HMAC 签名会话令牌：载荷校验 / cookie 解析 / Set-Cookie 属性）、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、retrieval-service、utils、llm-service（mock fetch）、test-db（Prisma 冒烟 + `_resetDb` 清库基建）、worker-db（per-worker 独立 PG 测试库）
 - **API 集成测试**（`app/api/__tests__/`，18 个文件）：dashboard 概览聚合、agents、agent-rollback、agent-skills、releases（含审批流 + diff）、feedback（ingest 多渠道工单接入 + skills/wiki 闭环）、versions-rollback、settings-roles / settings-permissions-groups / settings-audit-logs、effectiveness 全链路、trace/eval 闭环（trace-eval-ai-review）、MaaS 用量聚合（maas-usage）、证据链（evidence-chain）、资产演进线（version-lineage）、vault 内知识检索（wiki-search）+ LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
-- **隔离**：每个测试经 `_resetDb` 清库后连真实 PostgreSQL（本地 `docker compose up -d postgres`，CI 连服务容器，per-worker 独立测试库互不干扰）
+- **隔离**：每个测试经 `_resetDb` 清库后连本地 SQLite 文件（每并发 worker 一个独立 `.db` 文件，由 `lib/__tests__/setup/` 自动创建，互不干扰；无需任何数据库服务）
 
 ## 演示双轨（本地全栈 / 静态导出 Demo）
 
 同一代码库支持两种运行形态，均由 `demo/` 目录支撑：
 
-- **本地全栈（默认）**：`pnpm dev`，真实 Next.js route handler + PostgreSQL（Prisma）持久化，可选接真实 LLM。
+- **本地全栈（默认）**：`pnpm dev`，真实 Next.js route handler + SQLite（Prisma）持久化，可选接真实 LLM。
 - **纯静态 Demo**：`cd apps/web && pnpm build:demo`（`DEMO_EXPORT=1 next build`）→ 产物在 `out/`（gitignored），可托管到任意静态 CDN，无需 Node 服务端。
 
 `demo/` 目录是 Demo 模式核心：`mock-server.ts` 用内存态镜像全部 API 的响应形状（成功/错误封装、分页、join 字段），`install-fetch.ts` 在浏览器端幂等拦截同源 `/api/*` 请求，`seed.ts` 从 `@agent-up/db/prisma/seed-data.mjs` 共享种子数据集构建初始状态（与 `pnpm db:seed` 同源）；root layout 仅在 `NEXT_PUBLIC_DEMO_MODE=1` 时挂载 `DemoProvider`（含演示角标）。刷新页面即重置内存数据。
@@ -227,7 +226,7 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 | 代码内 | `// MOCK` / 文件头注释声明 mock 边界与下一里程碑 |
 
 - **登录**：MOCK 登录，未接入真实认证；演示账号 `allengaller` / `123`（登录后即为管理员角色）。
-- **数据源**：本地 PostgreSQL（Prisma），种子由 `pnpm db:seed` 写入（定义见 `packages/db/prisma/seed-data.mjs`）；MOCK 登录未接真实认证。
+- **数据源**：本地 SQLite 单文件（Prisma），种子由 `pnpm db:seed` 写入（定义见 `packages/db/prisma/seed-data.mjs`）；MOCK 登录未接真实认证。
 - **MaaS 集成**：`/maas` 页面产品矩阵与模型路由策略为演示口径；**每 Agent 用量块为真实数据**（聚合试聊 trace，无数据时回退演示口径并声明）；**连通性测试 / AI 归因 / AI 变更摘要 / 试聊 Playground 均为真实 LLM 调用（小米 MiMo）**，页面带 LIVE 徽标区分（见 [LLM 真实接入](#llm-真实接入小米-mimo)）。
 
 ## 核心概念
@@ -388,7 +387,7 @@ flowchart TB
 | **审计日志** | 所有写操作 append-only 审计 | `lib/services/audit-service.ts` |
 | **真 SemVer** | 按分区变更范围计算版本号（patch/minor） | `lib/versioning.ts` |
 | **反馈状态机** | 非法状态转移被拒（如 NEW→RESOLVED） | `feedback-service.ts` |
-| **Prisma 持久化** | 全业务运行时走 PostgreSQL；种子 `pnpm db:seed` 灌入 | `packages/db` |
+| **Prisma 持久化** | 全业务运行时走数据库（批0–批5 落地 PostgreSQL，2026-10-05 迁移 SQLite）；种子 `pnpm db:seed` 灌入 | `packages/db` |
 | **MOCK 标注规范** | 所有 mock 数据/页面显式标注（徽标 + 代码注释），真实调用标 LIVE，诚实边界清晰 | 侧边栏 / 登录页 / `/maas` |
 | **LLM 网关** | env 凭据零硬编码；超时/上游错误结构化；测试全 mock fetch 不发真实请求 | `lib/services/llm-service.ts` |
 
@@ -425,7 +424,7 @@ flowchart TB
 
 ## 环境变量
 
-参考 `.env.example`。**dev 与测试需要 PostgreSQL**（`docker compose up -d postgres`，并在 `packages/db/.env` 与 `apps/web/.env` 配置 `DATABASE_URL`），
+参考 `.env.example`。**dev 与测试需要配置 `DATABASE_URL`**（SQLite 单文件，`file:./dev.db`，需在 `packages/db/.env` 与 `apps/web/.env` 各配一份；`.env` 不入库），
 真实 LLM 功能另需在 `apps/web/.env`（Next.js 只读应用目录下的 .env）配置：
 
 - `MIMO_API_KEY` — 小米 MiMo Token Plan 凭据（`tp-` 前缀）；缺失时 5 个 LLM 端点返回 503
@@ -434,7 +433,7 @@ flowchart TB
 
 数据库（dev / 测试必需）：
 
-- `DATABASE_URL` — PostgreSQL 连接串（`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试）
+- `DATABASE_URL` — SQLite 连接串（`file:./dev.db`；`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试。相对路径按 schema 所在目录 `packages/db/prisma/` 解析）
 
 认证（会话令牌签名，消费方 `apps/web/lib/auth-token.ts`）：
 
@@ -448,7 +447,7 @@ flowchart TB
 
 **Q：需要先 `docker compose up` 启动 PostgreSQL / MinIO 吗？**
 
-A：需要 PostgreSQL：`docker compose up -d postgres`，然后执行 `pnpm db:migrate`（建表）与 `pnpm db:seed`（灌入演示种子）。MinIO 仍为后续预留，当前业务未使用。
+A：不需要。2026-10-05 起存储为 SQLite 单文件（`docker-compose.yml` 已随迁移删除，git 历史可找回）。初始化：`pnpm db:generate` → `cd packages/db && npx prisma migrate deploy`（建表）→ `pnpm db:seed`（灌入演示种子）。
 
 **Q：没配 `MIMO_API_KEY` 会怎样？**
 
@@ -470,14 +469,14 @@ A：`allengaller` / `123`（MOCK 登录，登录后即管理员角色，详见 [
 
 1. ~~接入真实 LLM~~ ✅ 已接入小米 MiMo（4 个集成点）；接入真实 DashScope / 百炼 API（多 Provider 可切换）为下一里程碑
 2. L1 trace（检索命中、工具调用、模型回答）回流为反馈证据，闭合「复盘有据 → 归因有理 → 加强有验」
-3. ~~Prisma 持久化~~ ✅ 批0–批5 全量落地（运行时全面走 PostgreSQL，JSON 存储层已删除，`pnpm db:seed` 灌种子）；NextAuth 真实认证与 RBAC 为下一里程碑
+3. ~~Prisma 持久化~~ ✅ 批0–批5 全量落地（2026-10-05 起运行时为 SQLite 单文件，PostgreSQL 版本见 git 历史）；NextAuth 真实认证与 RBAC 为下一里程碑
 4. ~~CI 流水线~~ ✅ `.github/workflows/ci.yml`（lint + test 连 PG 服务容器 + build）
 
 ## 参与贡献
 
 本仓库当前为演示 / 面试形态项目；欢迎讨论与复用。提交或评审改动时遵循以下约定：
 
-1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（371 个测试，需本地 PostgreSQL：`docker compose up -d postgres`）
+1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（447 个测试，本地 SQLite 文件自动创建，无需任何数据库服务）
 2. 新增 mock 能力时遵循全站统一的 MOCK 标注规范（徽标 + 代码注释，见 [MOCK 声明](#mock-声明与演示用途)）
 3. 新增文档按 `YYYY-MM-DD-主题.md` 命名放入 `docs/` 对应目录（规范见 [文档索引](#文档索引)）
 4. commit message 用 Conventional Commits 风格：`feat|fix|docs|chore(scope): 中文摘要`，如 `fix(web): 修复 lint 扫描构建产物`

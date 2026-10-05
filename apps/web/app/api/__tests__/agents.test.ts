@@ -42,7 +42,7 @@ beforeEach(async () => {
     data: { id: "rds-assistant", name: "RDS 助手", productGroupId: "ecs-group", createdBy: "seed" },
   });
   await prisma.promptConfig.create({
-    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: [] },
+    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: JSON.stringify([]) },
   });
 });
 

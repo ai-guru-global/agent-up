@@ -26,13 +26,13 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `pnpm dev` | 开发服务器（Turbopack） |
 | `pnpm build` | 全量生产构建 |
 | `pnpm lint` | ESLint（全绿，0 problems） |
-| `cd apps/web && pnpm test` | 334 个测试（单元 + API 集成；需先 `docker compose up -d postgres`） |
+| `cd apps/web && pnpm test` | 447 个测试（单元 + API 集成；连本地 SQLite 文件，自动创建，无需任何数据库服务） |
 | `cd apps/web && pnpm test -- --coverage` | 带覆盖率（阈值 lines/functions/statements ≥80，branches ≥70） |
 
 ### 数据与基础设施
 
-- **运行时存储**：PostgreSQL 16 + Prisma ORM（批0–批5 全量落地，JSON 存储层已删除）；演示种子由 `pnpm db:seed` 灌入（可重复执行，先清库再灌入）
-- **数据库准备**：`docker compose up -d postgres` → `pnpm db:migrate` → `pnpm db:seed`；测试经 `_resetDb` 清库连真实 PG（per-worker 独立测试库互不干扰）
+- **运行时存储**：SQLite 单文件（`packages/db/prisma/dev.db`）+ Prisma ORM（2026-10-05 自 PostgreSQL 迁移）；演示种子由 `pnpm db:seed` 灌入（可重复执行，先清库再灌入）
+- **数据库准备**：`pnpm db:generate` → `cd packages/db && npx prisma migrate deploy` → `pnpm db:seed`（零守护进程，无需 Docker）；测试经 `_resetDb` 清库连本地 SQLite 文件（per-worker 独立 .db 互不干扰）
 
 ## 二、环境变量
 
@@ -44,7 +44,7 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `MIMO_API_KEY` | LLM 功能必填 | — | 小米 MiMo Token Plan 凭据（`tp-` 前缀）；缺失时 4 个 LLM 集成点返回 503 |
 | `MIMO_BASE_URL` | 否 | `https://token-plan-cn.xiaomimimo.com/v1` | Token Plan 套餐专属 Base URL（以控制台展示为准） |
 | `MIMO_MODEL` | 否 | `mimo-v2.5-pro` | 模型 ID |
-| `DATABASE_URL` | dev/测试必填 | — | PostgreSQL 连接串（`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试） |
+| `DATABASE_URL` | dev/测试必填 | — | SQLite 连接串（`file:./dev.db`；`packages/db/.env` 供迁移与种子，`apps/web/.env` 供运行时与测试。相对路径按 schema 所在目录解析） |
 | `AUTH_SECRET` | 生产必填 | — | 会话令牌 HMAC-SHA256 签名密钥（`lib/auth-token.ts`）。**生产环境缺失时服务启动即退出**（`instrumentation.ts` 启动期校验），开发环境仍可无密钥运行（登录返回 `sessionIssued:false`，审计署名落 `anonymous`）。生成：`openssl rand -hex 32` |
 | `AUTH_SESSION_TTL_HOURS` | 否 | `24` | 会话有效期（小时）；非法值回落默认 |
 | `AUTH_TRUST_ACTOR_HEADERS` | 否 | 非 production 采纳 / production 拒绝 | 是否采纳明文 `x-actor-*` 请求头作为身份。`1`=强制采纳（仅当调用方已通过可信网关鉴权），`0`=强制拒绝 |
@@ -81,7 +81,7 @@ cd apps/web && npx next start  # 生产模式启动
 | 检查项 | 命令 / 动作 |
 |--------|------------|
 | 依赖与构建 | `pnpm install && pnpm build` 通过 |
-| 测试全绿 | `cd apps/web && pnpm test` → 315/315（需 PG：`docker compose up -d postgres`） |
+| 测试全绿 | `cd apps/web && pnpm test` → 447/447（本地 SQLite 文件，自动创建） |
 | 服务启动 | `pnpm dev` 后 `curl http://localhost:3000` 返回 200 |
 | LLM 凭据 | `/maas` 页 LIVE 区块显示模型与 Base URL；点「发起真实调用」有回复 |
 | 演示动线 | ① `/maas` 连通性 → ② 反馈页「AI 归因」→ ③ `/agents/ecs-assistant` 试聊 → ④ `/releases` 查看变更 + AI 摘要 + AI 评测 |

@@ -1,9 +1,19 @@
+// SQLite 版 schema（2026-10-05 自 PostgreSQL 迁移）。
+//
+// Prisma SQLite 连接器不支持 enum / Json / 标量数组（String[]），故：
+// - 原 18 个 enum 定义移至 packages/db/src/enums.ts（const 对象 + 同名 union type），
+//   列一律改为 String，值域校验由 lib/schemas.ts 的 Zod 承担；
+// - 原 Json 字段 → String，存 JSON.stringify 产物，读写经 @agent-up/db 的
+//   packJson / unpackJson 收口（解析失败回落 fallback，绝不抛）；
+// - 原标量数组 → String（JSON 文本）。
+// PostgreSQL 版本的历史见 git（migrations 5 个目录在本迁移中删除，可 revert 找回）。
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -29,28 +39,24 @@ model ProductGroupMember {
   productGroup   ProductGroup @relation(fields: [productGroupId], references: [id])
   userId         String
   user           User         @relation(fields: [userId], references: [id])
-  role           GroupRole    @default(MEMBER)
+  // 原 GroupRole enum
+  role           String       @default("MEMBER")
   joinedAt       DateTime     @default(now())
 
   @@unique([productGroupId, userId])
 }
 
-enum GroupRole {
-  LEAD
-  MEMBER
-}
-
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  passwordHash  String?
-  avatarUrl     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  roles              UserRole[]
-  productGroups      ProductGroupMember[]
+  roles         UserRole[]
+  productGroups ProductGroupMember[]
 }
 
 // ============================================================
@@ -63,7 +69,8 @@ model Agent {
   description    String?
   productGroupId String
   productGroup   ProductGroup @relation(fields: [productGroupId], references: [id])
-  status         AgentStatus  @default(DRAFT)
+  // 原 AgentStatus enum
+  status         String       @default("DRAFT")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   createdBy      String
@@ -91,12 +98,6 @@ model Agent {
   @@index([status])
 }
 
-enum AgentStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
-
 // ============================================================
 // Agent 四分区配置
 // ============================================================
@@ -107,7 +108,8 @@ model PromptConfig {
   agent          Agent    @relation(fields: [agentId], references: [id])
   systemPrompt   String
   roleDefinition String?
-  constraints    String[]
+  // 原 String[]，JSON 文本
+  constraints    String   @default("[]")
   outputFormat   String?
   version        Int      @default(1)
   lastModifiedBy String?
@@ -115,42 +117,32 @@ model PromptConfig {
 }
 
 model KnowledgeConfig {
-  id                  String         @id @default(cuid())
-  agentId             String         @unique
-  agent               Agent          @relation(fields: [agentId], references: [id])
-  wikiVaultId         String?        @unique
-  wikiVault           WikiVault?     @relation(fields: [wikiVaultId], references: [id])
-  searchStrategy      SearchStrategy @default(WIKI_FIRST)
-  fallbackToMcp       Boolean        @default(true)
-  maxWikiResults      Int            @default(5)
-  confidenceThreshold Float          @default(0.6)
+  id                  String     @id @default(cuid())
+  agentId             String     @unique
+  agent               Agent      @relation(fields: [agentId], references: [id])
+  wikiVaultId         String?    @unique
+  wikiVault           WikiVault? @relation(fields: [wikiVaultId], references: [id])
+  // 原 SearchStrategy enum
+  searchStrategy      String     @default("WIKI_FIRST")
+  fallbackToMcp       Boolean    @default(true)
+  maxWikiResults      Int        @default(5)
+  confidenceThreshold Float      @default(0.6)
   lastSyncAt          DateTime?
-  syncStatus          SyncStatus     @default(SYNCED)
-  version             Int            @default(1)
+  // 原 SyncStatus enum
+  syncStatus          String     @default("SYNCED")
+  version             Int        @default(1)
   lastModifiedBy      String?
-  lastModifiedAt      DateTime       @default(now())
-}
-
-enum SearchStrategy {
-  WIKI_FIRST
-  WIKI_ONLY
-  MCP_FIRST
-  HYBRID
-}
-
-enum SyncStatus {
-  SYNCED
-  SYNCING
-  OUT_OF_SYNC
-  ERROR
+  lastModifiedAt      DateTime   @default(now())
 }
 
 model ToolsConfig {
   id                 String   @id @default(cuid())
   agentId            String   @unique
   agent              Agent    @relation(fields: [agentId], references: [id])
-  mcpTools           Json     // McpToolConfig[]
-  wikiQueryTools     Json     // WikiQueryToolConfig[]
+  // 原 Json（McpToolConfig[]）
+  mcpTools           String
+  // 原 Json（WikiQueryToolConfig[]）
+  wikiQueryTools     String
   maxConcurrentCalls Int      @default(3)
   timeoutMs          Int      @default(30000)
   retryCount         Int      @default(2)
@@ -160,28 +152,31 @@ model ToolsConfig {
 }
 
 model RoutingConfig {
-  id                 String   @id @default(cuid())
-  agentId            String   @unique
-  agent              Agent    @relation(fields: [agentId], references: [id])
-  rules              Json     // RoutingRule[]
-  escalationPolicy   Json?
-  humanThreshold     Float    @default(0.3)
-  maxConversationTurns Int    @default(10)
-  idleTimeoutMinutes Int      @default(5)
-  version            Int      @default(1)
-  lastModifiedBy     String?
-  lastModifiedAt     DateTime @default(now())
+  id                   String   @id @default(cuid())
+  agentId              String   @unique
+  agent                Agent    @relation(fields: [agentId], references: [id])
+  // 原 Json（RoutingRule[]）
+  rules                String
+  // 原 Json?
+  escalationPolicy     String?
+  humanThreshold       Float    @default(0.3)
+  maxConversationTurns Int      @default(10)
+  idleTimeoutMinutes   Int      @default(5)
+  version              Int      @default(1)
+  lastModifiedBy       String?
+  lastModifiedAt       DateTime @default(now())
 }
 
 model AgentDraftConfig {
-  id              String   @id @default(cuid())
-  agentId         String   @unique
-  agent           Agent    @relation(fields: [agentId], references: [id])
-  promptConfig    Json?
-  knowledgeConfig Json?
-  toolsConfig     Json?
-  routingConfig   Json?
-  isDirty         Boolean  @default(false)
+  id              String    @id @default(cuid())
+  agentId         String    @unique
+  agent           Agent     @relation(fields: [agentId], references: [id])
+  // 以下四列原 Json?
+  promptConfig    String?
+  knowledgeConfig String?
+  toolsConfig     String?
+  routingConfig   String?
+  isDirty         Boolean   @default(false)
   lastSavedBy     String?
   lastSavedAt     DateTime?
 }
@@ -191,28 +186,22 @@ model AgentDraftConfig {
 // ============================================================
 
 model ConfigChange {
-  id          String          @id @default(cuid())
-  agentId     String
-  agent       Agent           @relation(fields: [agentId], references: [id])
+  id         String   @id @default(cuid())
+  agentId    String
+  agent      Agent    @relation(fields: [agentId], references: [id])
   // 回滚留痕会写入 "PROMPT_ROLLBACK" 等带后缀值，枚举装不下；故用文本列
-  partition   String
-  before      Json?
-  after       Json
-  diff        Json
-  changedBy   String
-  changedAt   DateTime        @default(now())
-  changeNote  String?
-  releaseId   String?
+  partition  String
+  // 以下三列原 Json?/Json
+  before     String?
+  after      String
+  diff       String
+  changedBy  String
+  changedAt  DateTime @default(now())
+  changeNote String?
+  releaseId  String?
 
   @@index([agentId, partition])
   @@index([changedAt])
-}
-
-enum ConfigPartition {
-  PROMPT
-  KNOWLEDGE
-  TOOLS
-  ROUTING
 }
 
 // ============================================================
@@ -220,34 +209,40 @@ enum ConfigPartition {
 // ============================================================
 
 model Feedback {
-  id              String           @id @default(cuid())
-  agentId         String
-  agent           Agent            @relation(fields: [agentId], references: [id])
+  id               String    @id @default(cuid())
+  agentId          String
+  agent            Agent     @relation(fields: [agentId], references: [id])
   // 运行时把渠道名（generic/ticket-webhook）直接存 source 并原样回显，渠道集合开放
   // （新渠道 = 加适配器不改存储），枚举建模不成立，改文本列
-  source          String           @default("MANUAL")
-  title           String
-  content         String
-  sessionData     Json?
-  rating          FeedbackRating
-  tags            FeedbackTag[]
-  severity        FeedbackSeverity @default(MINOR)
-  status          FeedbackStatus   @default(NEW)
-  assignedTo      String?
-  assignedAt      DateTime?
-  resolvedAt      DateTime?
-  resolvedBy      String?
-  resolution      String?
-  releaseId       String?
-  ingestJobId     String?
-  targetPartition ConfigPartition?
+  source           String    @default("MANUAL")
+  title            String
+  content          String
+  // 原 Json?
+  sessionData      String?
+  // 原 FeedbackRating enum
+  rating           String
+  // 原 FeedbackTag[]，JSON 文本
+  tags             String    @default("[]")
+  // 原 FeedbackSeverity enum
+  severity         String    @default("MINOR")
+  // 原 FeedbackStatus enum
+  status           String    @default("NEW")
+  assignedTo       String?
+  assignedAt       DateTime?
+  resolvedAt       DateTime?
+  resolvedBy       String?
+  resolution       String?
+  releaseId        String?
+  ingestJobId      String?
+  // 原 ConfigPartition? enum
+  targetPartition  String?
   // 多渠道工单接入的外部单号（幂等键）；响应层重组为 externalRef: {id, url}
-  externalRefId   String?
-  externalRefUrl  String?
-  submittedBy     String
-  submittedAt     DateTime         @default(now())
-  verifiedAt      DateTime?
-  verifiedBy      String?
+  externalRefId    String?
+  externalRefUrl   String?
+  submittedBy      String
+  submittedAt      DateTime  @default(now())
+  verifiedAt       DateTime?
+  verifiedBy       String?
   verificationNote String?
 
   @@index([agentId, status])
@@ -255,69 +250,35 @@ model Feedback {
   @@index([severity, status])
 }
 
-enum FeedbackRating {
-  POSITIVE
-  NEGATIVE
-  NEUTRAL
-}
-
-enum FeedbackTag {
-  ANSWER_QUALITY
-  KNOWLEDGE_GAP
-  TOOL_FAILURE
-  ROUTING_ERROR
-  HALLUCINATION
-  OUTDATED_INFO
-  TONE_ISSUE
-  INCOMPLETE
-  OFF_TOPIC
-}
-
-enum FeedbackSeverity {
-  CRITICAL
-  MAJOR
-  MINOR
-  SUGGESTION
-}
-
-enum FeedbackStatus {
-  NEW
-  TRIAGED
-  ASSIGNED
-  IN_PROGRESS
-  RESOLVED
-  VERIFIED
-  CLOSED
-  WONTFIX
-}
-
 // ============================================================
 // Release（发布审批）
 // ============================================================
 
 model Release {
-  id                String        @id @default(cuid())
+  id                String    @id @default(cuid())
   agentId           String
-  agent             Agent         @relation(fields: [agentId], references: [id])
+  agent             Agent     @relation(fields: [agentId], references: [id])
   changeNote        String
-  changedPartitions ConfigPartition[]
-  status            ReleaseStatus @default(PENDING)
+  // 原 ConfigPartition[]，JSON 文本
+  changedPartitions String    @default("[]")
+  // 原 ReleaseStatus enum
+  status            String    @default("PENDING")
   submittedBy       String
-  submittedAt       DateTime      @default(now())
+  submittedAt       DateTime  @default(now())
   approvedBy        String?
   approvedAt        DateTime?
   reviewComment     String?
 
-  // 关联配置快照
-  configSnapshot Json?
+  // 关联配置快照（原 Json?）
+  configSnapshot String?
 
-  // AI 评测结果快照（2026-09 断言门禁，运行时为自由形状 AiReviewResult）
-  aiReview Json?
+  // AI 评测结果快照（2026-09 断言门禁，运行时为自由形状 AiReviewResult；原 Json?）
+  aiReview String?
 
   // 整版本回滚单（JSON 时代的动态键上列；普通发布恒为 false/null）
-  isRollback           Boolean @default(false)
-  rollbackFromVersion  String?
-  rollbackToVersionId  String?
+  isRollback          Boolean @default(false)
+  rollbackFromVersion String?
+  rollbackToVersionId String?
 
   // 关联
   version AgentVersion?
@@ -326,36 +287,31 @@ model Release {
   @@index([submittedAt])
 }
 
-enum ReleaseStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CHANGES_REQUESTED
-}
-
 // ============================================================
 // Version（版本快照）
 // ============================================================
 
 model AgentVersion {
-  id              String  @id @default(cuid())
-  agentId         String
-  agent           Agent   @relation(fields: [agentId], references: [id])
-  version         String
-  major           Int
-  minor           Int
-  patch           Int
-  promptSnapshot    Json
-  knowledgeSnapshot Json
-  toolsSnapshot     Json
-  routingSnapshot   Json
-  releaseId       String  @unique
-  release         Release @relation(fields: [releaseId], references: [id])
-  wikiCommitSha   String?
-  publishedAt     DateTime @default(now())
-  publishedBy     String
-  changeNote      String
-  effectivenessReport Json?
+  id                  String   @id @default(cuid())
+  agentId             String
+  agent               Agent    @relation(fields: [agentId], references: [id])
+  version             String
+  major               Int
+  minor               Int
+  patch               Int
+  // 以下四列原 Json
+  promptSnapshot      String
+  knowledgeSnapshot   String
+  toolsSnapshot       String
+  routingSnapshot     String
+  releaseId           String   @unique
+  release             Release  @relation(fields: [releaseId], references: [id])
+  wikiCommitSha       String?
+  publishedAt         DateTime @default(now())
+  publishedBy         String
+  changeNote          String
+  // 原 Json?
+  effectivenessReport String?
 
   @@unique([agentId, version])
   @@index([agentId, publishedAt])
@@ -366,54 +322,38 @@ model AgentVersion {
 // ============================================================
 
 model Skill {
-  id              String        @id @default(cuid())
-  name            String        @unique
+  id              String    @id @default(cuid())
+  name            String    @unique
   displayName     String
   description     String
-  category        SkillCategory @default(GENERAL)
-  triggerPatterns String[]
-  inputSchema     Json
-  outputSchema    Json
-  runtime         SkillRuntime  @default(HTTP)
+  // 原 SkillCategory enum
+  category        String    @default("GENERAL")
+  // 原 String[]，JSON 文本
+  triggerPatterns String    @default("[]")
+  // 原 Json
+  inputSchema     String
+  outputSchema    String
+  // 原 SkillRuntime enum
+  runtime         String    @default("HTTP")
   endpoint        String?
   codeRef         String?
-  version         String        @default("1.0.0")
-  dependencies    String[]
-  permissions     String[]
-  status          SkillStatus   @default(DRAFT)
+  version         String    @default("1.0.0")
+  // 原 String[]，JSON 文本
+  dependencies    String    @default("[]")
+  permissions     String    @default("[]")
+  // 原 SkillStatus enum
+  status          String    @default("DRAFT")
   publishedAt     DateTime?
-  downloadCount   Int           @default(0)
+  downloadCount   Int       @default(0)
   authorId        String
   authorName      String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   bindings AgentSkillBinding[]
   versions SkillVersion[]
 
   @@index([category, status])
-}
-
-enum SkillCategory {
-  KNOWLEDGE_QUERY
-  DATA_FETCH
-  ACTION
-  TRANSFORM
-  GENERAL
-}
-
-enum SkillRuntime {
-  HTTP
-  FUNCTION
-  MCP
-  WORKFLOW
-}
-
-enum SkillStatus {
-  DRAFT
-  PUBLISHED
-  DEPRECATED
-  ARCHIVED
 }
 
 model SkillVersion {
@@ -422,7 +362,8 @@ model SkillVersion {
   skill       Skill    @relation(fields: [skillId], references: [id])
   version     String
   changelog   String?
-  snapshot    Json
+  // 原 Json
+  snapshot    String
   publishedAt DateTime @default(now())
 
   @@unique([skillId, version])
@@ -435,11 +376,12 @@ model AgentSkillBinding {
   agent         Agent    @relation(fields: [agentId], references: [id])
   skillId       String
   skill         Skill    @relation(fields: [skillId], references: [id])
-  config        Json?
+  // 原 Json?
+  config        String?
   enabled       Boolean  @default(true)
   priority      Int      @default(0)
-  // 运行时 binding 无该字段，空数组默认
-  allowedScopes String[] @default([])
+  // 运行时 binding 无该字段，空数组默认；原 String[]
+  allowedScopes String   @default("[]")
   boundAt       DateTime @default(now())
   boundBy       String
 
@@ -469,37 +411,40 @@ model WikiVault {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  pages      WikiPage[]
-  ingestJobs WikiIngestJob[]
+  pages           WikiPage[]
+  ingestJobs      WikiIngestJob[]
   knowledgeConfig KnowledgeConfig?
 
   @@index([isShared])
 }
 
 model WikiPage {
-  id             String        @id @default(cuid())
+  id             String    @id @default(cuid())
   vaultId        String
   // 运行时 deleteVault 语义 = 整库连页面一起消失（fs 递归删目录），级联才能成立
-  vault          WikiVault     @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  vault          WikiVault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   title          String
   slug           String
   content        String
   summary        String?
   // 运行时 zod schema 的枚举值即公开契约（UI 按此收发），三枚举对齐运行时
-  provenance     Provenance    @default(EXTRACTED)
-  lifecycle      PageLifecycle @default(DRAFT)
-  tier           PageTier      @default(SPECIALIZED)
-  baseConfidence Float         @default(0.5)
-  sourceRefs     Json
-  wikilinks      String[]
-  categories     String[]
-  tags           String[]
+  // 原 Provenance / PageLifecycle / PageTier enum
+  provenance     String    @default("EXTRACTED")
+  lifecycle      String    @default("DRAFT")
+  tier           String    @default("SPECIALIZED")
+  baseConfidence Float     @default(0.5)
+  // 原 Json
+  sourceRefs     String    @default("[]")
+  // 以下三列原 String[]，JSON 文本
+  wikilinks      String    @default("[]")
+  categories     String    @default("[]")
+  tags           String    @default("[]")
   filePath       String
   lastCommitSha  String?
-  inboundLinks   Int           @default(0)
-  outboundLinks  Int           @default(0)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  inboundLinks   Int       @default(0)
+  outboundLinks  Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   reviewedAt     DateTime?
   reviewedBy     String?
 
@@ -508,73 +453,30 @@ model WikiPage {
   @@index([vaultId, tier])
 }
 
-// 运行时存在两套并存的值域：UI 字典与种子数据用旧值（REVIEWED/SUPPORTING/INFERRED 等），
-// 路由 zod schema 用新值（IN_REVIEW/SPECIALIZED/EDGE_CASE 等）。枚举取并集，两套都能落库。
-enum Provenance {
-  EXTRACTED
-  INFERRED
-  AMBIGUOUS
-  SYNTHESIZED
-  AUTHORED
-  DISTILLED
-  IMPORTED
-}
-
-enum PageLifecycle {
-  DRAFT
-  REVIEWED
-  VERIFIED
-  DISPUTED
-  ARCHIVED
-  IN_REVIEW
-  STALE
-  DEPRECATED
-}
-
-enum PageTier {
-  CORE
-  SUPPORTING
-  PERIPHERAL
-  SPECIALIZED
-  EDGE_CASE
-}
-
 model WikiIngestJob {
-  id               String      @id @default(cuid())
+  id               String    @id @default(cuid())
   vaultId          String
-  vault            WikiVault   @relation(fields: [vaultId], references: [id], onDelete: Cascade)
-  jobType          WikiJobType
+  vault            WikiVault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  // 原 WikiJobType enum
+  jobType          String
   sourceType       String
   sourceId         String?
   sourceContent    String?
   sourceUrl        String?
-  generatedPageIds String[]
-  status           JobStatus   @default(PENDING)
-  result           Json?
+  // 原 String[]，JSON 文本
+  generatedPageIds String    @default("[]")
+  // 原 JobStatus enum
+  status           String    @default("PENDING")
+  // 原 Json?
+  result           String?
   error            String?
   startedAt        DateTime?
   completedAt      DateTime?
   triggeredBy      String
-  createdAt        DateTime    @default(now())
+  createdAt        DateTime  @default(now())
 
   @@index([vaultId, status])
   @@index([jobType, status])
-}
-
-enum WikiJobType {
-  INGEST
-  UPDATE
-  SYNTHESIZE
-  LINT
-  DEDUP
-}
-
-enum JobStatus {
-  PENDING
-  RUNNING
-  COMPLETED
-  FAILED
-  CANCELLED
 }
 
 // ============================================================
@@ -582,18 +484,18 @@ enum JobStatus {
 // ============================================================
 
 model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String  @id @default(cuid())
+  name        String  @unique
   displayName String
   description String?
-  isSystem    Boolean  @default(false)
+  isSystem    Boolean @default(false)
 
   permissions RolePermission[]
   members     UserRole[]
 }
 
 model Permission {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   resource    String
   action      String
   description String?
@@ -630,7 +532,8 @@ model AuditLog {
   action     String
   resource   String
   resourceId String
-  details    Json?
+  // 原 Json?
+  details    String?
   // 运行时审计流没有 userId 概念；落 actor.id（"system" 或请求头值），
   // 仅作查询别名（GET /api/settings/audit-logs?userId= 兼容），不建外键
   userId     String?
@@ -655,11 +558,13 @@ model Trace {
   agentId      String
   agent        Agent     @relation(fields: [agentId], references: [id])
   systemPrompt String
-  history      Json
+  // 原 Json
+  history      String
   message      String
   reply        String
   model        String
-  usage        Json
+  // 原 Json
+  usage        String
   latencyMs    Int
   createdAt    DateTime  @default(now())
   rating       String?
@@ -676,9 +581,11 @@ model EvalCase {
   sourceTraceId  String
   title          String
   expectation    String
-  assertions     Json?
+  // 原 Json?
+  assertions     String?
   systemPrompt   String
-  history        Json
+  // 原 Json
+  history        String
   message        String
   referenceReply String
   status         String   @default("ACTIVE")

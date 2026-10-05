@@ -1,4 +1,12 @@
-import { prisma, type Provenance, type PageLifecycle, type PageTier, type Prisma } from "@agent-up/db";
+import {
+  prisma,
+  packJson,
+  unpackJsonArray,
+  type Provenance,
+  type PageLifecycle,
+  type PageTier,
+  type Prisma,
+} from "@agent-up/db";
 import { NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 
@@ -40,11 +48,11 @@ function toPageResponse(row: Prisma.WikiPageGetPayload<Record<string, never>>) {
     lifecycle: row.lifecycle,
     tier: row.tier,
     baseConfidence: row.baseConfidence,
-    tags: [...row.tags],
-    categories: [...row.categories],
-    wikilinks: [...row.wikilinks],
+    tags: unpackJsonArray<string>(row.tags, []),
+    categories: unpackJsonArray<string>(row.categories, []),
+    wikilinks: unpackJsonArray<string>(row.wikilinks, []),
     filePath: row.filePath,
-    sourceRefs: Array.isArray(row.sourceRefs) ? row.sourceRefs : [],
+    sourceRefs: unpackJsonArray<unknown>(row.sourceRefs, []),
     inboundLinks: [] as unknown[],
     outboundLinks: [] as unknown[],
     createdAt: row.createdAt.toISOString(),
@@ -144,14 +152,33 @@ export async function listPages(params: {
     vaultId: params.vaultId,
     ...(params.lifecycle && params.lifecycle !== "ALL" && { lifecycle: params.lifecycle as PageLifecycle }),
     ...(params.tier && params.tier !== "ALL" && { tier: params.tier as PageTier }),
-    ...(params.tag && { tags: { has: params.tag } }),
-    ...(params.search && {
-      OR: [
-        { title: { contains: params.search, mode: "insensitive" } },
-        { content: { contains: params.search, mode: "insensitive" } },
-      ],
-    }),
   };
+
+  // SQLite 无标量列表 has 过滤与 insensitive 搜索（tags 已是 JSON 文本列）：
+  // 标签过滤与关键字搜索取数后内存做，total 取过滤后口径（演示规模足够）
+  if (params.tag || params.search) {
+    const q = params.search?.toLowerCase();
+    const all = await prisma.wikiPage.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    });
+    const filtered = all.filter((row) => {
+      if (params.tag && !unpackJsonArray<string>(row.tags, []).includes(params.tag))
+        return false;
+      if (
+        q &&
+        !(
+          row.title.toLowerCase().includes(q) ||
+          row.content.toLowerCase().includes(q)
+        )
+      )
+        return false;
+      return true;
+    });
+    const items = filtered.slice(params.skip, params.skip + params.take);
+    return { items: items.map(toPageResponse), total: filtered.length };
+  }
+
   const [rows, total] = await Promise.all([
     prisma.wikiPage.findMany({
       where,
@@ -211,11 +238,11 @@ export async function createPage(data: {
       lifecycle: (data.lifecycle ?? "DRAFT") as PageLifecycle,
       tier: (data.tier ?? "SPECIALIZED") as PageTier,
       baseConfidence: data.baseConfidence ?? 0.5,
-      tags: data.tags ?? [],
-      categories: data.categories ?? [],
-      wikilinks: data.wikilinks ?? [],
+      tags: packJson(data.tags ?? []) ?? "[]",
+      categories: packJson(data.categories ?? []) ?? "[]",
+      wikilinks: packJson(data.wikilinks ?? []) ?? "[]",
       filePath: `${data.slug}.md`,
-      sourceRefs: [],
+      sourceRefs: packJson([]) ?? "[]",
     },
   });
 
@@ -233,9 +260,15 @@ export async function updatePage(id: string, data: Record<string, unknown>) {
   });
   if (!existing) throw new NotFoundError("Page 不存在");
 
+  // 原 Json/数组列现为 String：调用方传对象/数组时先序列化（undefined 交由 Prisma 跳过）
+  const payload = { ...data };
+  for (const key of ["tags", "categories", "wikilinks", "sourceRefs"] as const) {
+    if (payload[key] !== undefined) payload[key] = packJson(payload[key]) ?? "[]";
+  }
+
   const updated = await prisma.wikiPage.update({
     where: { id },
-    data: data as Prisma.WikiPageUpdateInput,
+    data: payload as Prisma.WikiPageUpdateInput,
   });
   recordAudit("wiki.page.update", "wiki-page", id, {
     vaultId: existing.vaultId,

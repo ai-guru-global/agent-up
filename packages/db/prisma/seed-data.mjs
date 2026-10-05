@@ -9,6 +9,15 @@
 
 export const users = [
   { id: "user-zhao", email: "admin-zhao@example.com", name: "赵管理员" },
+  // 批④种子侧：演示登录账号（email 登录，固定演示口令 AgentUp#Demo2026，
+  // scrypt 格式见 apps/web/lib/password-hash.ts；口令公开文档化，仅演示环境用）
+  {
+    id: "user-allen",
+    email: "allengaller@example.com",
+    name: "Allen Galler",
+    passwordHash:
+      "scrypt$65536$8$1$eD1C5bZI46ovvPW1hK0E2g==$AitxUmkmLK+NYgIrKU7/MjNs5krMDLMtVRaJcaO/Ie4=",
+  },
   { id: "user-chen", email: "pm-chen@example.com", name: "陈产品" },
   { id: "user-wang", email: "cre-wang@example.com", name: "王客服" },
   { id: "user-zhang", email: "cre-zhang@example.com", name: "张客服" },
@@ -36,7 +45,7 @@ export const roles = [
     displayName: "平台管理员",
     isSystem: true,
     description: "拥有所有权限",
-    _count: { members: 1 },
+    _count: { members: 2 },
     permissions: [
       { permission: { id: "perm-1", resource: "agent", action: "read" } },
       { permission: { id: "perm-2", resource: "agent", action: "write" } },
@@ -113,6 +122,7 @@ export const productGroupMembers = [
 
 export const userRoles = [
   { id: "ur-1", userId: "user-zhao", roleId: "role-admin", assignedBy: "seed" },
+  { id: "ur-7", userId: "user-allen", roleId: "role-admin", assignedBy: "seed" },
   { id: "ur-2", userId: "user-chen", roleId: "role-product", assignedBy: "seed" },
   { id: "ur-3", userId: "user-li", roleId: "role-product", assignedBy: "seed" },
   { id: "ur-4", userId: "user-wang", roleId: "role-cre", assignedBy: "seed" },

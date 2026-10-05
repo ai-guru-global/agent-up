@@ -13,7 +13,7 @@
  * - belowThreshold = 未进入上下文的全部页面（零分页也在内），是面向用户的完整性清单
  * - fallbackTriggered = results 为空
  */
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJsonArray } from "@agent-up/db";
 import { rankPages, type RankablePage } from "@/lib/retrieval-bm25";
 
 export interface SearchWikiParams {
@@ -57,7 +57,7 @@ const FALLBACK = {
 };
 
 async function loadPages(vaultId: string): Promise<RankablePage[]> {
-  return prisma.wikiPage.findMany({
+  const rows = await prisma.wikiPage.findMany({
     where: { vaultId },
     select: {
       id: true,
@@ -69,6 +69,17 @@ async function loadPages(vaultId: string): Promise<RankablePage[]> {
       baseConfidence: true,
     },
   });
+  // tags 已是 JSON 文本列（SQLite 迁移）：必须先还原为数组，
+  // 否则整段 JSON 文本会被当作单个 tag 参与分词，打分语义彻底失真
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    summary: row.summary,
+    content: row.content,
+    tags: unpackJsonArray<string>(row.tags, []),
+    baseConfidence: row.baseConfidence,
+  }));
 }
 
 /**

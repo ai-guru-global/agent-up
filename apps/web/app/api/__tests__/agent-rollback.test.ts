@@ -98,7 +98,8 @@ describe("POST /api/agents/[id]/rollback/[versionId]", () => {
     const rb = await prisma.release.findFirst({ where: { isRollback: true } });
     expect(rb).toBeTruthy();
     expect(rb!.status).toBe("APPROVED");
-    const snapshot = rb!.configSnapshot as unknown as Record<string, unknown>;
+    // configSnapshot 现为 JSON 文本列（SQLite 迁移），读回需解析
+    const snapshot = JSON.parse(rb!.configSnapshot as string) as Record<string, unknown>;
     expect(rb!.configSnapshot).toBeTruthy();
     expect(snapshot.prompt).toBeTruthy();
     expect(snapshot.knowledge).toBeTruthy();

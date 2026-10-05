@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { prisma } from "@agent-up/db";
+import { prisma, packJson, unpackJson } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 
 /**
@@ -71,7 +71,7 @@ export function recordAudit(
           userRole: entry.userRole,
           userId: entry.userId ?? null,
           createdAt: new Date(entry.createdAt),
-          details: (entry.details ?? undefined) as never,
+          details: packJson(entry.details),
         },
       })
       .catch((err) => {
@@ -113,7 +113,7 @@ export async function listAudit(filters?: {
     userId: row.userId,
     createdAt: row.createdAt.toISOString(),
     ...(row.details
-      ? { details: row.details as Record<string, unknown> }
+      ? { details: unpackJson<Record<string, unknown>>(row.details, {}) }
       : {}),
   }));
 }

@@ -1,6 +1,9 @@
 import {
   prisma,
   Prisma,
+  packJson,
+  unpackJson,
+  unpackJsonArray,
   type AgentVersion,
   type Release,
 } from "@agent-up/db";
@@ -96,10 +99,10 @@ export async function submitRelease(agentId: string, changeNote: string) {
   });
   const baseline = latest
     ? {
-        prompt: (latest.promptSnapshot as Config) ?? null,
-        knowledge: (latest.knowledgeSnapshot as Config) ?? null,
-        tools: (latest.toolsSnapshot as Config) ?? null,
-        routing: (latest.routingSnapshot as Config) ?? null,
+        prompt: unpackJson<Config>(latest.promptSnapshot, null),
+        knowledge: unpackJson<Config>(latest.knowledgeSnapshot, null),
+        tools: unpackJson<Config>(latest.toolsSnapshot, null),
+        routing: unpackJson<Config>(latest.routingSnapshot, null),
         version: latest.version,
       }
     : { prompt: null, knowledge: null, tools: null, routing: null, version: null };
@@ -131,10 +134,10 @@ export async function submitRelease(agentId: string, changeNote: string) {
     data: {
       agentId,
       changeNote,
-      changedPartitions,
+      changedPartitions: packJson(changedPartitions) ?? "[]",
       status: "PENDING",
       submittedBy: getActor().id,
-      configSnapshot: configSnapshot as unknown as Prisma.InputJsonValue,
+      configSnapshot: packJson(configSnapshot),
     },
     include: { agent: AGENT_BRIEF },
   });
@@ -165,7 +168,7 @@ export async function reviewRelease(
     throw new ValidationError("CHANGES_REQUESTED 必须填写审批意见");
   }
   const aiReviewStatus =
-    (release.aiReview as { status?: string } | null | undefined)?.status ?? null;
+    unpackJson<{ status?: string } | null>(release.aiReview, null)?.status ?? null;
   if (action === "APPROVED" && aiReviewStatus === "FAILED" && !reviewComment?.trim()) {
     throw new ValidationError(
       "AI 评测未通过：批准前必须填写审批意见，说明采纳理由或人工复核结论",
@@ -177,8 +180,8 @@ export async function reviewRelease(
     if (action === "APPROVED") {
       await createVersionFromRelease(tx, {
         agentId: release.agentId,
-        changedPartitions: [...release.changedPartitions],
-        configSnapshot: release.configSnapshot,
+        changedPartitions: unpackJsonArray<Partition>(release.changedPartitions, []),
+        configSnapshot: unpackJson<unknown>(release.configSnapshot, null),
         releaseId: release.id,
         changeNote: release.changeNote,
       });
@@ -247,10 +250,10 @@ export async function createVersionFromRelease(
       major: next.major,
       minor: next.minor,
       patch: next.patch,
-      promptSnapshot: (snapshot.prompt ?? {}) as Prisma.InputJsonValue,
-      knowledgeSnapshot: (snapshot.knowledge ?? {}) as Prisma.InputJsonValue,
-      toolsSnapshot: (snapshot.tools ?? {}) as Prisma.InputJsonValue,
-      routingSnapshot: (snapshot.routing ?? {}) as Prisma.InputJsonValue,
+      promptSnapshot: packJson(snapshot.prompt ?? {}) ?? "{}",
+      knowledgeSnapshot: packJson(snapshot.knowledge ?? {}) ?? "{}",
+      toolsSnapshot: packJson(snapshot.tools ?? {}) ?? "{}",
+      routingSnapshot: packJson(snapshot.routing ?? {}) ?? "{}",
       releaseId: params.releaseId,
       publishedBy: getActor().id,
       changeNote: params.changeNote,
@@ -287,7 +290,7 @@ export async function createRollbackRelease(agentId: string, targetVersionId: st
   // 1) 覆盖 Agent 当前 4 分区为 target 的 snapshot（剥离 version/lastModifiedAt 元数据键）
   const configSnapshot: Record<string, unknown> = {};
   for (const p of partitions) {
-    const raw = (target[snapshotKey[p]] as Record<string, unknown> | null) ?? {};
+    const raw = unpackJson<Record<string, unknown>>(target[snapshotKey[p]], {});
     const { version: _v, lastModifiedAt: _l, ...payload } = raw;
     void _v; void _l;
     configSnapshot[p.toLowerCase()] = payload;
@@ -306,14 +309,14 @@ export async function createRollbackRelease(agentId: string, targetVersionId: st
       data: {
         agentId,
         changeNote: `回滚到 Version ${target.version}`,
-        changedPartitions: partitions,
+        changedPartitions: packJson(partitions) ?? "[]",
         status: "APPROVED",
         submittedBy: actor.id,
         submittedAt: ts,
         approvedBy: actor.id,
         approvedAt: ts,
         reviewComment: "回滚操作（紧急恢复，无需审批）",
-        configSnapshot: { ...configSnapshot, snapshotAt } as unknown as Prisma.InputJsonValue,
+        configSnapshot: packJson({ ...configSnapshot, snapshotAt }),
         isRollback: true,
         rollbackFromVersion: target.version,
         rollbackToVersionId: target.id,

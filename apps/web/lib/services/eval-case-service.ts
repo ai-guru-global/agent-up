@@ -9,7 +9,7 @@
  * EvalCase 是「回归评测」的语料库，两者都锚定 agentId，但生命周期不同
  * （case 可被删除/归档，feedback 有流转状态）。沉淀动作同时写审计日志。
  */
-import { prisma, type Prisma } from "@agent-up/db";
+import { prisma, packJson, unpackJsonArray, type Prisma } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
@@ -61,10 +61,10 @@ export function toEvalCase(row: EvalCaseRow): EvalCase {
     title: row.title,
     expectation: row.expectation,
     ...(row.assertions
-      ? { assertions: row.assertions as unknown as EvalAssertion[] }
+      ? { assertions: unpackJsonArray<EvalAssertion>(row.assertions, []) }
       : {}),
     systemPrompt: row.systemPrompt,
-    history: row.history as unknown as TraceRecord["history"],
+    history: unpackJsonArray<TraceRecord["history"][number]>(row.history, []),
     message: row.message,
     referenceReply: row.referenceReply,
     status: "ACTIVE",
@@ -101,10 +101,10 @@ export async function createEvalCaseFromTrace(
       title: summarizeTitle(trace.message),
       expectation: expectation?.trim() || DEFAULT_EXPECTATION,
       ...(assertions && assertions.length > 0
-        ? { assertions: assertions as unknown as Prisma.InputJsonValue }
+        ? { assertions: packJson(assertions) ?? "[]" }
         : {}),
       systemPrompt: trace.systemPrompt,
-      history: trace.history as unknown as Prisma.InputJsonValue,
+      history: packJson(trace.history) ?? "[]",
       message: trace.message,
       referenceReply: trace.reply,
       createdBy: getActor().id,

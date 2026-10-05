@@ -1,4 +1,13 @@
-import { prisma, type SkillCategory, type SkillRuntime, type SkillStatus, type Prisma } from "@agent-up/db";
+import {
+  prisma,
+  packJson,
+  unpackJson,
+  unpackJsonArray,
+  type SkillCategory,
+  type SkillRuntime,
+  type SkillStatus,
+  type Prisma,
+} from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
@@ -22,9 +31,9 @@ function toSkillResponse(row: SkillWithCount) {
     displayName: row.displayName,
     description: row.description,
     category: row.category,
-    triggerPatterns: [...row.triggerPatterns],
-    inputSchema: row.inputSchema,
-    outputSchema: row.outputSchema,
+    triggerPatterns: unpackJsonArray<string>(row.triggerPatterns, []),
+    inputSchema: unpackJson<Record<string, unknown>>(row.inputSchema, {}),
+    outputSchema: unpackJson<Record<string, unknown>>(row.outputSchema, {}),
     runtime: row.runtime,
     endpoint: row.endpoint,
     version: row.version,
@@ -45,7 +54,7 @@ function toBindingResponse(row: BindingWithSkill) {
     id: row.id,
     agentId: row.agentId,
     skillId: row.skillId,
-    config: row.config ?? null,
+    config: unpackJson<unknown>(row.config, null),
     enabled: row.enabled,
     priority: row.priority,
     boundBy: row.boundBy,
@@ -71,14 +80,26 @@ export async function listSkills(params: {
   const where: Prisma.SkillWhereInput = {
     ...(params.category && params.category !== "ALL" && { category: params.category as SkillCategory }),
     ...(params.status && params.status !== "ALL" && { status: params.status as SkillStatus }),
-    ...(params.search && {
-      OR: [
-        { name: { contains: params.search, mode: "insensitive" } },
-        { displayName: { contains: params.search, mode: "insensitive" } },
-        { description: { contains: params.search, mode: "insensitive" } },
-      ],
-    }),
   };
+
+  // SQLite 无 mode:"insensitive"：搜索取数后内存过滤，分页随之下沉（演示规模足够）
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    const all = await prisma.skill.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      include: SKILL_COUNT_INCLUDE,
+    });
+    const filtered = all.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.displayName.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q),
+    );
+    const items = filtered.slice(params.skip, params.skip + params.take);
+    return { items: items.map(toSkillResponse), total: filtered.length };
+  }
+
   const [rows, total] = await Promise.all([
     prisma.skill.findMany({
       where,
@@ -140,9 +161,9 @@ export async function createSkill(data: {
       displayName: data.displayName,
       description: data.description,
       category: (data.category ?? "GENERAL") as SkillCategory,
-      triggerPatterns: data.triggerPatterns ?? [],
-      inputSchema: (data.inputSchema ?? {}) as never,
-      outputSchema: (data.outputSchema ?? {}) as never,
+      triggerPatterns: packJson(data.triggerPatterns ?? []) ?? "[]",
+      inputSchema: packJson(data.inputSchema ?? {}) ?? "{}",
+      outputSchema: packJson(data.outputSchema ?? {}) ?? "{}",
       runtime: (data.runtime ?? "HTTP") as SkillRuntime,
       endpoint: data.endpoint ?? null,
       authorId: actor.id,
@@ -159,9 +180,22 @@ export async function updateSkill(id: string, data: Record<string, unknown>) {
   const existing = await prisma.skill.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError("Skill 不存在");
 
+  // 原 Json/数组列现为 String：调用方传对象/数组时先序列化（undefined 交由 Prisma 跳过）
+  const payload = { ...data };
+  if (payload.triggerPatterns !== undefined)
+    payload.triggerPatterns = packJson(payload.triggerPatterns) ?? "[]";
+  if (payload.dependencies !== undefined)
+    payload.dependencies = packJson(payload.dependencies) ?? "[]";
+  if (payload.permissions !== undefined)
+    payload.permissions = packJson(payload.permissions) ?? "[]";
+  if (payload.inputSchema !== undefined)
+    payload.inputSchema = packJson(payload.inputSchema) ?? "{}";
+  if (payload.outputSchema !== undefined)
+    payload.outputSchema = packJson(payload.outputSchema) ?? "{}";
+
   const updated = await prisma.skill.update({
     where: { id },
-    data: data as Prisma.SkillUpdateInput,
+    data: payload as Prisma.SkillUpdateInput,
     include: SKILL_COUNT_INCLUDE,
   });
   recordAudit("skill.update", "skill", id, data);
@@ -197,11 +231,11 @@ export async function bindSkill(
   // 幂等 upsert：重复绑同一 skill 合并 config 并重新启用
   const binding = await prisma.agentSkillBinding.upsert({
     where: { agentId_skillId: { agentId, skillId } },
-    update: { enabled: true, ...(config !== undefined && { config: config as never }) },
+    update: { enabled: true, ...(config !== undefined && { config: packJson(config) }) },
     create: {
       agentId,
       skillId,
-      config: (config ?? null) as never,
+      config: packJson(config ?? null),
       enabled: true,
       priority: 0,
       boundBy: getActor().id,

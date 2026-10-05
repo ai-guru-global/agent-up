@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJsonArray } from "@agent-up/db";
 import { success, handleApiError, validateBody } from "@/lib/utils";
 import { NotFoundError } from "@/lib/errors";
 import { agentChatSchema } from "@/lib/schemas";
@@ -36,7 +36,7 @@ export async function POST(
         ? {
             systemPrompt: agent.promptConfig.systemPrompt,
             roleDefinition: agent.promptConfig.roleDefinition,
-            constraints: agent.promptConfig.constraints,
+            constraints: unpackJsonArray<string>(agent.promptConfig.constraints, []),
             outputFormat: agent.promptConfig.outputFormat,
           }
         : null,

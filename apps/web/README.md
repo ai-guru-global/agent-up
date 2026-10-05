@@ -8,7 +8,7 @@ Next.js 16 (App Router, Turbopack) 全栈应用，Agent 改进平台的主界面
 
 ```bash
 pnpm dev          # 独立启动（http://localhost:3000），或在根目录 pnpm dev
-pnpm test         # 371 个测试（单元 + API 集成），经 _resetDb 清库隔离；需本地 PostgreSQL（docker compose up -d postgres）并已执行 pnpm db:seed
+pnpm test         # 447 个测试（单元 + API 集成），经 _resetDb 清库隔离；连本地 SQLite 文件（每 worker 独立 .db，自动创建），已执行 pnpm db:seed 仅为演示数据准备
 pnpm lint         # ESLint（全绿，0 problems）
 pnpm build        # 生产构建
 pnpm build:demo   # 演示模式静态导出（产物 out/）
@@ -18,7 +18,7 @@ MOCK 登录演示账号：`allengaller` / `123`。登录成功下发 HMAC-SHA256
 （`Set-Cookie: agentup_session=…`），响应体含 `sessionIssued` 标记——为 `false` 说明
 `AUTH_SECRET` 未配置，此时写操作的审计署名会落到 `anonymous`（生产环境缺配置则服务
 启动即退出，见 `instrumentation.ts`）。侧边栏底部「登出」会清除会话 cookie。
-数据源为本地 PostgreSQL（Prisma）；种子数据由 `pnpm db:seed` 写入（定义见 `packages/db/prisma/seed-data.mjs`）。
+数据源为本地 SQLite 单文件（Prisma，2026-10-05 迁移）；种子数据由 `pnpm db:seed` 写入（定义见 `packages/db/prisma/seed-data.mjs`）。
 
 真实 LLM 功能（连通性测试 / AI 归因 / AI 变更摘要 / 试聊）需在 `apps/web/.env` 配置
 `MIMO_API_KEY` / `MIMO_BASE_URL` / `MIMO_MODEL`（小米 MiMo Token Plan，见根目录 README）。

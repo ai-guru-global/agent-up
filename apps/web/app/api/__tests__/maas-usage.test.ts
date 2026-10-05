@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma } from "@agent-up/db";
 import { GET as getUsage } from "@/app/api/maas/usage/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
@@ -33,15 +33,15 @@ async function seedTrace(t: Partial<SeededTrace> & { id: string; agentId: string
       id: t.id,
       agentId: t.agentId,
       systemPrompt: "s",
-      history: [] as Prisma.InputJsonValue,
+      history: JSON.stringify([]),
       message: t.message ?? "m",
       reply: t.reply ?? "r",
       model: t.model ?? "mimo-v2.5-pro",
-      usage: (t.usage ?? {
+      usage: JSON.stringify(t.usage ?? {
         promptTokens: 100,
         completionTokens: 50,
         totalTokens: 150,
-      }) as Prisma.InputJsonValue,
+      }),
       latencyMs: t.latencyMs ?? 1000,
       createdAt: new Date(t.createdAt ?? "2026-09-09T00:00:00.000Z"),
       rating: t.rating ?? null,

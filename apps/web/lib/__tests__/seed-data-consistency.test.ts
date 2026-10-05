@@ -7,6 +7,7 @@ import {
   wikiPages,
   wikiVaults,
 } from "@agent-up/db/prisma/seed-data.mjs";
+import { verifyPassword } from "@/lib/password-hash";
 
 /**
  * 种子数据一致性守卫（纯静态断言，PG-free 可跑）。
@@ -67,6 +68,16 @@ describe("关系数组的引用完整性", () => {
   const roleIds = new Set((roles as AnyRec[]).map((r) => r.id));
   const userIds = new Set((users as AnyRec[]).map((u) => u.id));
   const vaultIds = new Set((wikiVaults as AnyRec[]).map((v) => v.id));
+
+  it("演示账号 user-allen 的种子口令哈希可被 verifyPassword 验证（批④回归锚）", async () => {
+    const allen = (users as AnyRec[]).find((u) => u.id === "user-allen");
+    expect(allen).toBeDefined();
+    const hash = allen!.passwordHash as string;
+    expect(hash).toMatch(/^scrypt\$65536\$8\$1\$/);
+    // 演示口令公开文档化（README / 登录页），仅演示环境用
+    await expect(verifyPassword("AgentUp#Demo2026", hash)).resolves.toBe(true);
+    await expect(verifyPassword("wrong-password", hash)).resolves.toBe(false);
+  });
 
   it("角色内嵌的每条 permission 引用都指向存在的权限，且嵌套字段与权限表一致", () => {
     for (const role of roles as AnyRec[]) {

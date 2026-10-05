@@ -1,4 +1,4 @@
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma } from "@agent-up/db";
 
 /**
  * 批1 PG 测试的最小种子（全局 db:seed 是批5 的活）。
@@ -105,7 +105,7 @@ export async function seedReleaseWithVersion(input: SeedVersionInput): Promise<v
       id: releaseId,
       agentId: input.agentId,
       changeNote: input.changeNote ?? "seed release",
-      changedPartitions: ["PROMPT"],
+      changedPartitions: JSON.stringify(["PROMPT"]),
       status: input.releaseStatus ?? "APPROVED",
       submittedBy: "seed",
       submittedAt: publishedAt,
@@ -121,10 +121,10 @@ export async function seedReleaseWithVersion(input: SeedVersionInput): Promise<v
       major: major ?? 0,
       minor: minor ?? 0,
       patch: patch ?? 0,
-      promptSnapshot: (input.snapshots?.prompt ?? {}) as unknown as Prisma.InputJsonValue,
-      knowledgeSnapshot: (input.snapshots?.knowledge ?? {}) as unknown as Prisma.InputJsonValue,
-      toolsSnapshot: (input.snapshots?.tools ?? {}) as unknown as Prisma.InputJsonValue,
-      routingSnapshot: (input.snapshots?.routing ?? {}) as unknown as Prisma.InputJsonValue,
+      promptSnapshot: JSON.stringify(input.snapshots?.prompt ?? {}),
+      knowledgeSnapshot: JSON.stringify(input.snapshots?.knowledge ?? {}),
+      toolsSnapshot: JSON.stringify(input.snapshots?.tools ?? {}),
+      routingSnapshot: JSON.stringify(input.snapshots?.routing ?? {}),
       releaseId,
       publishedBy: "seed",
       publishedAt,
@@ -137,7 +137,7 @@ export async function seedReleaseWithVersion(input: SeedVersionInput): Promise<v
 export async function seedAuditLogs(): Promise<void> {
   await prisma.auditLog.createMany({
     data: [
-      { id: "log-001", action: "agent.update", resource: "agent", resourceId: "ecs-assistant", userName: "pm-chen", userRole: "product_member", userId: "user-chen", createdAt: new Date("2026-07-14T09:00:00.000Z"), details: { partition: "persona", changeNote: "调整人设" } },
+      { id: "log-001", action: "agent.update", resource: "agent", resourceId: "ecs-assistant", userName: "pm-chen", userRole: "product_member", userId: "user-chen", createdAt: new Date("2026-07-14T09:00:00.000Z"), details: JSON.stringify({ partition: "persona", changeNote: "调整人设" }) },
       { id: "log-002", action: "role.create", resource: "role", resourceId: "role-custom", userName: "admin-li", userRole: "platform_admin", createdAt: new Date("2026-07-15T10:00:00.000Z") },
       { id: "log-003", action: "feedback.update", resource: "feedback", resourceId: "fb-001", userName: "wang-cre", userRole: "cre_viewer", userId: "user-wang", createdAt: new Date("2026-07-16T11:00:00.000Z") },
       { id: "log-004", action: "agent.update", resource: "agent", resourceId: "rds-assistant", userName: "pm-chen", userRole: "product_member", userId: "user-chen", createdAt: new Date("2026-07-17T12:00:00.000Z") },

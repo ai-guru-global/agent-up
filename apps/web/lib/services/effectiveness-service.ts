@@ -1,4 +1,4 @@
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma, packJson, unpackJson } from "@agent-up/db";
 import { recordAudit } from "@/lib/services/audit-service";
 
 /**
@@ -142,7 +142,10 @@ export async function getOrComputeEffectivenessReport(
         id: onDisk.id,
         agentId: onDisk.agentId,
         publishedAt: onDisk.publishedAt,
-        effectivenessReport: onDisk.effectivenessReport ?? null,
+        effectivenessReport: unpackJson<EffectivenessReport | null>(
+          onDisk.effectivenessReport,
+          null,
+        ),
       }
     : versionIn;
 
@@ -170,7 +173,7 @@ export async function getOrComputeEffectivenessReport(
   if (onDisk) {
     await prisma.agentVersion.update({
       where: { id: onDisk.id },
-      data: { effectivenessReport: report as unknown as Prisma.InputJsonValue },
+      data: { effectivenessReport: packJson(report) },
     });
     recordAudit("version.effectiveness.computed", "version", version.id, {
       agentId: version.agentId,

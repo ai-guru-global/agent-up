@@ -1,4 +1,4 @@
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJsonArray, unpackJson } from "@agent-up/db";
 import type { FeedbackStatus } from "@agent-up/db";
 import { success } from "@/lib/utils";
 
@@ -16,8 +16,8 @@ export async function GET() {
     totalFeedback,
     pendingFeedback,
     pendingReleases,
-    recentFeedback,
-    recentReleases,
+    recentFeedbackRows,
+    recentReleaseRows,
   ] = await Promise.all([
     prisma.agent.count(),
     prisma.agent.count({ where: { status: "ACTIVE" } }),
@@ -35,6 +35,20 @@ export async function GET() {
       include: { agent: { select: { id: true, name: true } } },
     }),
   ]);
+
+  // JSON 文本列（tags/sessionData/configSnapshot/aiReview/changedPartitions）
+  // 先还原为对象/数组，保持与迁移前完全一致的响应形状
+  const recentFeedback = recentFeedbackRows.map((row) => ({
+    ...row,
+    tags: unpackJsonArray<string>(row.tags, []),
+    sessionData: unpackJson<unknown>(row.sessionData, null),
+  }));
+  const recentReleases = recentReleaseRows.map((row) => ({
+    ...row,
+    changedPartitions: unpackJsonArray<string>(row.changedPartitions, []),
+    configSnapshot: unpackJson<unknown>(row.configSnapshot, null),
+    aiReview: unpackJson<unknown>(row.aiReview, null),
+  }));
 
   return success({
     agents: { total: totalAgents, active: activeAgents },

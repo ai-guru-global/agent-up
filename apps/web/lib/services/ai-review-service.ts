@@ -12,7 +12,7 @@
  * - 评测结论是给审批人的参考信号，不硬性阻断审批 —— LLM 判官可能误判，
  *   最终决定权仍在人。
  */
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma, packJson, unpackJson } from "@agent-up/db";
 import { NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { chatCompletion, isLlmConfigured, LlmUpstreamError, type LlmMessage } from "@/lib/services/llm-service";
@@ -245,9 +245,9 @@ export async function runAiReview(releaseId: string): Promise<Record<string, unk
   const persist = async (aiReview: AiReviewResult): Promise<Record<string, unknown>> => {
     await prisma.release.update({
       where: { id: releaseId },
-      data: { aiReview: aiReview as unknown as Prisma.InputJsonValue },
+      data: { aiReview: packJson(aiReview) },
     });
-    return { ...toReleaseResponse({ ...release, aiReview: aiReview as unknown as Prisma.JsonValue | null }) };
+    return { ...toReleaseResponse({ ...release, aiReview: packJson(aiReview) }) };
   };
 
   const skip = async (reason: string): Promise<Record<string, unknown>> => {
@@ -280,7 +280,8 @@ export async function runAiReview(releaseId: string): Promise<Record<string, unk
   const cases = caseRows.map(toEvalCase);
 
   // replay 用提交快照的 prompt 分区；快照缺失时退回 Agent 当前配置
-  const snapshot = (release.configSnapshot as Record<string, unknown> | null) ?? {};
+  const snapshot =
+    unpackJson<Record<string, unknown> | null>(release.configSnapshot, null) ?? {};
   const snapshotPrompt =
     (snapshot.prompt as Record<string, unknown> | null) ??
     (release.agent.promptConfig ? toPromptConfigResponse(release.agent.promptConfig) : {});

@@ -79,8 +79,8 @@
 
 ### 14. 数据库连接失败 / 页面报数据不可用
 
-- **原因**：PostgreSQL 未启动，或未执行迁移与种子。
-- **修复**：`docker compose up -d postgres` → `pnpm db:migrate` → `pnpm db:seed`；确认 `apps/web/.env` 的 `DATABASE_URL` 指向该实例后重启 dev server。
+- **原因**：`DATABASE_URL` 指向的 SQLite 库文件不存在或为空（未执行迁移与种子），或文件损坏。
+- **修复**：`pnpm db:generate` → `cd packages/db && npx prisma migrate deploy` → `pnpm db:seed`；确认 `apps/web/.env` 的 `DATABASE_URL`（`file:./dev.db`，相对 `packages/db/prisma/` 解析）后重启 dev server。文件损坏时删除 `packages/db/prisma/dev.db` 重复上述步骤即可完全重建（数据为本地演示种子，无生产数据）。
 
 ### 15. 开发数据被误改想还原
 

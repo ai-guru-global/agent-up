@@ -14,23 +14,28 @@ function req(id: string, query = ""): NextRequest {
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 
 async function seedPage(page: Record<string, unknown>) {
-  await prisma.wikiPage.create({
-    data: {
-      lifecycle: "VERIFIED",
-      tier: "CORE",
-      baseConfidence: 0.8,
-      wikilinks: [],
-      categories: [],
-      tags: [],
-      sourceRefs: [],
-      vaultId: VAULT_ID,
-      title: "页面",
-      slug: (page.id as string) ?? "page",
-      content: "",
-      filePath: `${(page.id as string) ?? "page"}.md`,
-      ...page,
-    } as never,
-  });
+  const data: Record<string, unknown> = {
+    lifecycle: "VERIFIED",
+    tier: "CORE",
+    baseConfidence: 0.8,
+    wikilinks: [],
+    categories: [],
+    tags: [],
+    sourceRefs: [],
+    vaultId: VAULT_ID,
+    title: "页面",
+    slug: (page.id as string) ?? "page",
+    content: "",
+    filePath: `${(page.id as string) ?? "page"}.md`,
+    ...page,
+  };
+  // SQLite 迁移：数组/Json 列现为 String，写入前序列化
+  for (const key of ["wikilinks", "categories", "tags", "sourceRefs"] as const) {
+    if (data[key] !== undefined && typeof data[key] !== "string") {
+      data[key] = JSON.stringify(data[key]);
+    }
+  }
+  await prisma.wikiPage.create({ data: data as never });
 }
 
 beforeEach(async () => {

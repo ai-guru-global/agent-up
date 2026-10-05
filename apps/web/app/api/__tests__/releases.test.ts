@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma } from "@agent-up/db";
 import { POST as submitRelease, PUT as reviewReleaseLegacy } from "@/app/api/agents/[id]/release/route";
 import { PUT as reviewRelease } from "@/app/api/releases/[id]/review/route";
 import { GET as listReleases } from "@/app/api/releases/route";
@@ -30,7 +30,7 @@ beforeEach(async () => {
   await seedAgent(AGENT_ID);
   // 提交链路需要可 diff 的配置分区
   await prisma.promptConfig.create({
-    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: ["不乱答"], version: 1 },
+    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: JSON.stringify(["不乱答"]), version: 1 },
   });
 });
 afterEach(async () => {
@@ -182,17 +182,17 @@ describe("发布门禁：AI 评测 FAILED 后批准须留痕（软门禁）", ()
         id: releaseId,
         agentId: AGENT_ID,
         changeNote: "带评测结论的提交",
-        changedPartitions: ["PROMPT"],
+        changedPartitions: JSON.stringify(["PROMPT"]),
         status: "PENDING",
         submittedBy: "tester",
-        configSnapshot: {
+        configSnapshot: JSON.stringify({
           prompt: { systemPrompt: "带门禁测试的提示词" },
           knowledge: null,
           tools: null,
           routing: null,
           snapshotAt: "2026-09-01T00:00:00.000Z",
-        } as unknown as Prisma.InputJsonValue,
-        ...(aiReview ? { aiReview: aiReview as unknown as Prisma.InputJsonValue } : {}),
+        }),
+        ...(aiReview ? { aiReview: JSON.stringify(aiReview) } : {}),
       },
     });
   }

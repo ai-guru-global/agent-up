@@ -14,7 +14,7 @@
  * - Trace.agentId 为 FK（RESTRICT）：调用方（chat 路由）已先校验 agent
  *   存在；deleteAgent 仅软归档，不会触发约束。
  */
-import { prisma, type Prisma } from "@agent-up/db";
+import { prisma, packJson, unpackJson, unpackJsonArray, type Prisma } from "@agent-up/db";
 import { NotFoundError } from "@/lib/errors";
 import type { LlmUsage } from "@/lib/services/llm-service";
 
@@ -46,11 +46,11 @@ function toTraceRecord(row: TraceRow): TraceRecord {
     id: row.id,
     agentId: row.agentId,
     systemPrompt: row.systemPrompt,
-    history: row.history as unknown as TraceRecord["history"],
+    history: unpackJsonArray<TraceRecord["history"][number]>(row.history, []),
     message: row.message,
     reply: row.reply,
     model: row.model,
-    usage: row.usage as unknown as LlmUsage,
+    usage: unpackJson<LlmUsage>(row.usage, { promptTokens: 0, completionTokens: 0, totalTokens: 0 }),
     latencyMs: row.latencyMs,
     createdAt: row.createdAt.toISOString(),
     rating: (row.rating as TraceRating | null) ?? null,
@@ -75,11 +75,11 @@ export async function recordTrace(input: {
       data: {
         agentId: input.agentId,
         systemPrompt: input.systemPrompt,
-        history: input.history as unknown as Prisma.InputJsonValue,
+        history: packJson(input.history) ?? "[]",
         message: input.message,
         reply: input.reply,
         model: input.model,
-        usage: input.usage as unknown as Prisma.InputJsonValue,
+        usage: packJson(input.usage) ?? "{}",
         latencyMs: input.latencyMs,
       },
     });

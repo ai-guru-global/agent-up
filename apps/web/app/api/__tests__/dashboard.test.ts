@@ -26,16 +26,16 @@ async function seedOverview() {
 
   await prisma.feedback.createMany({
     data: [
-      { id: "fb-1", agentId: "agent-a", title: "最新一条", content: "c", rating: "NEGATIVE", tags: ["ANSWER_QUALITY"], status: "NEW", submittedBy: "cre-wang", submittedAt: T("2026-07-03T09:00:00.000Z") },
-      { id: "fb-2", agentId: "agent-a", title: "已解决", content: "c", rating: "POSITIVE", tags: ["ANSWER_QUALITY"], status: "RESOLVED", submittedBy: "cre-wang", submittedAt: T("2026-07-01T09:00:00.000Z") },
-      { id: "fb-3", agentId: "agent-a", title: "待处理次新", content: "c", rating: "NEUTRAL", tags: ["INCOMPLETE"], status: "TRIAGED", submittedBy: "cre-wang", submittedAt: T("2026-07-02T09:00:00.000Z") },
+      { id: "fb-1", agentId: "agent-a", title: "最新一条", content: "c", rating: "NEGATIVE", tags: JSON.stringify(["ANSWER_QUALITY"]), status: "NEW", submittedBy: "cre-wang", submittedAt: T("2026-07-03T09:00:00.000Z") },
+      { id: "fb-2", agentId: "agent-a", title: "已解决", content: "c", rating: "POSITIVE", tags: JSON.stringify(["ANSWER_QUALITY"]), status: "RESOLVED", submittedBy: "cre-wang", submittedAt: T("2026-07-01T09:00:00.000Z") },
+      { id: "fb-3", agentId: "agent-a", title: "待处理次新", content: "c", rating: "NEUTRAL", tags: JSON.stringify(["INCOMPLETE"]), status: "TRIAGED", submittedBy: "cre-wang", submittedAt: T("2026-07-02T09:00:00.000Z") },
     ],
   });
 
   await prisma.release.createMany({
     data: [
-      { id: "rel-p", agentId: "agent-a", changeNote: "待审批变更", changedPartitions: ["PROMPT"], status: "PENDING", submittedBy: "pm-chen", submittedAt: T("2026-07-05T09:00:00.000Z") },
-      { id: "rel-app", agentId: "agent-b", changeNote: "已批准变更", changedPartitions: ["TOOLS"], status: "APPROVED", submittedBy: "pm-chen", submittedAt: T("2026-07-04T09:00:00.000Z") },
+      { id: "rel-p", agentId: "agent-a", changeNote: "待审批变更", changedPartitions: JSON.stringify(["PROMPT"]), status: "PENDING", submittedBy: "pm-chen", submittedAt: T("2026-07-05T09:00:00.000Z") },
+      { id: "rel-app", agentId: "agent-b", changeNote: "已批准变更", changedPartitions: JSON.stringify(["TOOLS"]), status: "APPROVED", submittedBy: "pm-chen", submittedAt: T("2026-07-04T09:00:00.000Z") },
     ],
   });
 }
@@ -84,7 +84,7 @@ describe("GET /api/dashboard", () => {
         title: `第 ${i} 条`,
         content: "c",
         rating: "NEGATIVE",
-        tags: ["ANSWER_QUALITY"],
+        tags: JSON.stringify(["ANSWER_QUALITY"]),
         status: "NEW",
         submittedBy: "cre-wang",
         submittedAt: T(`2026-07-10T0${i}:00:00.000Z`),

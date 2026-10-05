@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma } from "@agent-up/db";
 import { submitRelease, reviewRelease } from "@/lib/services/release-service";
 import { getAgentConfig, updatePromptConfig } from "@/lib/services/agent-service";
 import { NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
@@ -25,7 +25,7 @@ async function seedVersion(input: {
       id: input.releaseId,
       agentId: AGENT_ID,
       changeNote: "seed",
-      changedPartitions: ["PROMPT"],
+      changedPartitions: JSON.stringify(["PROMPT"]),
       status: "APPROVED",
       submittedBy: "seed",
     },
@@ -39,10 +39,10 @@ async function seedVersion(input: {
       major: major ?? 0,
       minor: minor ?? 0,
       patch: patch ?? 0,
-      promptSnapshot: input.promptSnapshot as Prisma.InputJsonValue,
-      knowledgeSnapshot: (input.knowledgeSnapshot ?? {}) as Prisma.InputJsonValue,
-      toolsSnapshot: (input.toolsSnapshot ?? {}) as Prisma.InputJsonValue,
-      routingSnapshot: (input.routingSnapshot ?? {}) as Prisma.InputJsonValue,
+      promptSnapshot: JSON.stringify(input.promptSnapshot),
+      knowledgeSnapshot: JSON.stringify(input.knowledgeSnapshot ?? {}),
+      toolsSnapshot: JSON.stringify(input.toolsSnapshot ?? {}),
+      routingSnapshot: JSON.stringify(input.routingSnapshot ?? {}),
       releaseId: input.releaseId,
       publishedBy: "seed",
       publishedAt: input.publishedAt ?? new Date("2026-01-01T00:00:00.000Z"),
@@ -57,7 +57,7 @@ beforeEach(async () => {
   await seedAgent(AGENT_ID);
   // 种子 prompt + knowledge 两个分区（tools/routing 无行 → after=null，语义同 JSON 空配置）
   await prisma.promptConfig.create({
-    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: ["不乱答"], version: 1 },
+    data: { agentId: AGENT_ID, systemPrompt: "你是 ECS 助手", constraints: JSON.stringify(["不乱答"]), version: 1 },
   });
   await prisma.knowledgeConfig.create({
     data: { agentId: AGENT_ID, searchStrategy: "WIKI_FIRST", version: 1 },

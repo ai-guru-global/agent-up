@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma } from "@agent-up/db";
 import { GET as getEvidenceChain } from "@/app/api/agents/[id]/evidence-chain/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
@@ -74,11 +74,11 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
         id: "tr-x1",
         agentId: "agent-x",
         systemPrompt: "s",
-        history: [] as Prisma.InputJsonValue,
+        history: JSON.stringify([]),
         message: "SSH 连不上怎么排查",
         reply: "r",
         model: "mimo-v2.5-pro",
-        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 } as Prisma.InputJsonValue,
+        usage: JSON.stringify({ promptTokens: 100, completionTokens: 50, totalTokens: 150 }),
         latencyMs: 900,
         createdAt: new Date("2026-09-02T10:00:00.000Z"),
         rating: "DOWN",
@@ -94,7 +94,7 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
         title: "SSH 排查",
         expectation: "应给出排查步骤",
         systemPrompt: "s",
-        history: [] as Prisma.InputJsonValue,
+        history: JSON.stringify([]),
         message: "SSH 连不上怎么排查",
         referenceReply: "r",
         createdBy: "cre-zhang",
@@ -107,11 +107,11 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
         id: "rel-x1",
         agentId: "agent-x",
         changeNote: "补风险提示",
-        changedPartitions: ["PROMPT"],
+        changedPartitions: JSON.stringify(["PROMPT"]),
         status: "PENDING",
         submittedBy: "pm-chen",
         submittedAt: new Date("2026-09-03T09:00:00.000Z"),
-        aiReview: { status: "FAILED", computedAt: "2026-09-03T09:05:00.000Z" } as Prisma.InputJsonValue,
+        aiReview: JSON.stringify({ status: "FAILED", computedAt: "2026-09-03T09:05:00.000Z" }),
       },
     });
     await prisma.release.create({
@@ -119,7 +119,7 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
         id: "rel-rb",
         agentId: "agent-x",
         changeNote: "回滚到 Version 0.1.0",
-        changedPartitions: ["PROMPT"],
+        changedPartitions: JSON.stringify(["PROMPT"]),
         status: "APPROVED",
         submittedBy: "pm-chen",
         submittedAt: new Date("2026-09-06T09:00:00.000Z"),
@@ -136,7 +136,7 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
     });
     await prisma.agentVersion.update({
       where: { id: "ver-x1" },
-      data: { effectivenessReport: { totalFeedbacks: 2 } as Prisma.InputJsonValue },
+      data: { effectivenessReport: JSON.stringify({ totalFeedbacks: 2 }) },
     });
 
     // 回滚审计（09-05，整版本回滚）
@@ -149,7 +149,7 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
         userName: "admin-zhao",
         userRole: "platform_admin",
         createdAt: new Date("2026-09-05T09:00:00.000Z"),
-        details: { rollbackFromVersion: "0.1.0", newVersion: "0.3.0" } as Prisma.InputJsonValue,
+        details: JSON.stringify({ rollbackFromVersion: "0.1.0", newVersion: "0.3.0" }),
       },
     });
 
@@ -221,7 +221,7 @@ describe("GET /api/agents/[id]/evidence-chain（任务证据链）", () => {
         userName: "pm-chen",
         userRole: "product_member",
         createdAt: new Date("2026-09-07T09:00:00.000Z"),
-        details: { partition: "PROMPT", changeNote: "回滚到 Version 0.1.0" } as Prisma.InputJsonValue,
+        details: JSON.stringify({ partition: "PROMPT", changeNote: "回滚到 Version 0.1.0" }),
       },
     });
 

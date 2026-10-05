@@ -10,7 +10,7 @@
  * D9（批4）：trace.agentId 是 FK，孤儿 trace 不可能存在，
  * 故 agentName 理论上恒非空；保留 null 分支仅为防御。
  */
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJson } from "@agent-up/db";
 
 export interface MaasAgentUsage {
   agentId: string;
@@ -40,9 +40,7 @@ export interface MaasUsageReport {
 type TraceRow = Awaited<ReturnType<typeof prisma.trace.findMany>>[number];
 
 function usageOf(t: TraceRow): Record<string, unknown> {
-  return t.usage && typeof t.usage === "object" && !Array.isArray(t.usage)
-    ? (t.usage as Record<string, unknown>)
-    : {};
+  return unpackJson<Record<string, unknown>>(t.usage, {});
 }
 
 export async function getMaasUsageReport(): Promise<MaasUsageReport> {

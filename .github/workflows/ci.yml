@@ -12,22 +12,8 @@ jobs:
     timeout-minutes: 15
 
     env:
-      DATABASE_URL: postgresql://agentup:agentup@localhost:5432/agentup?schema=public
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: agentup
-          POSTGRES_PASSWORD: agentup
-          POSTGRES_DB: agentup
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U agentup"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
+      # SQLite：单文件库，无需服务容器（2026-10-05 迁移，原 postgres service 已移除）
+      DATABASE_URL: "file:./ci.db"
 
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +39,7 @@ jobs:
         run: pnpm --filter @agent-up/db exec prisma generate
 
       - name: Apply Prisma migrations
-        # 测试依赖真实 PostgreSQL（服务容器）；deploy 只应用已提交的迁移，不会产生新迁移
+        # deploy 只应用已提交的 SQLite 基线迁移，不会产生新迁移
         run: pnpm --filter @agent-up/db exec prisma migrate deploy
 
       - name: Lint
@@ -61,7 +47,7 @@ jobs:
         run: pnpm lint
 
       - name: Test
-        # 测试连服务容器里的真实 PG（vitest 的 dotenv/config 找不到 .env 时回落到
+        # 测试连本地 SQLite 文件（vitest 的 dotenv/config 找不到 .env 时回落到
         # job 级 env 的 DATABASE_URL）；LLM 端点全 mock fetch，不发真实请求
         run: cd apps/web && pnpm test
 

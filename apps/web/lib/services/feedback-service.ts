@@ -1,9 +1,11 @@
 import {
   prisma,
+  packJson,
+  unpackJson,
+  unpackJsonArray,
   type FeedbackStatus,
   type FeedbackSeverity,
   type FeedbackRating,
-  type FeedbackTag,
   type Prisma,
 } from "@agent-up/db";
 import { getActor } from "@/lib/context";
@@ -55,11 +57,11 @@ function toFeedbackResponse(row: FeedbackWithAgent) {
     title: row.title,
     content: row.content,
     rating: row.rating,
-    tags: [...row.tags],
+    tags: unpackJsonArray<string>(row.tags, []),
     severity: row.severity,
     status: row.status,
     targetPartition: row.targetPartition,
-    sessionData: row.sessionData ?? null,
+    sessionData: unpackJson<unknown>(row.sessionData, null),
     submittedBy: row.submittedBy,
     submittedAt: row.submittedAt.toISOString(),
     ...(row.assignedTo !== null && {
@@ -93,8 +95,23 @@ export async function listFeedback(params: {
     ...(params.status && params.status !== "ALL" && { status: params.status as FeedbackStatus }),
     ...(params.severity && params.severity !== "ALL" && { severity: params.severity as FeedbackSeverity }),
     ...(params.rating && params.rating !== "ALL" && { rating: params.rating as FeedbackRating }),
-    ...(params.tag && { tags: { has: params.tag as FeedbackTag } }),
   };
+
+  // SQLite 无标量列表的 has 过滤（tags 已是 JSON 文本列）：标签过滤取数后内存做，
+  // total 取过滤后口径（演示规模足够，与 demo/mock-server 同行为）
+  if (params.tag) {
+    const all = await prisma.feedback.findMany({
+      where,
+      orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+      include: WITH_AGENT,
+    });
+    const filtered = all.filter((row) =>
+      unpackJsonArray<string>(row.tags, []).includes(params.tag as string),
+    );
+    const items = filtered.slice(params.skip, params.skip + params.take);
+    return { items: items.map(toFeedbackResponse), total: filtered.length };
+  }
+
   const [rows, total] = await Promise.all([
     prisma.feedback.findMany({
       where,
@@ -137,10 +154,10 @@ export async function createFeedback(input: {
       title: input.title,
       content: input.content,
       rating: input.rating,
-      tags: (input.tags ?? []) as FeedbackTag[],
+      tags: packJson(input.tags ?? []) ?? "[]",
       severity: input.severity ?? "MINOR",
       targetPartition: input.targetPartition ?? null,
-      sessionData: (input.sessionData ?? null) as never,
+      sessionData: packJson(input.sessionData),
       submittedBy: getActor().id,
     },
     include: WITH_AGENT,
@@ -256,7 +273,7 @@ export async function ingestFeedback(
       title: draft.title,
       content: draft.content,
       rating: draft.rating,
-      tags: (draft.tags ?? []) as FeedbackTag[],
+      tags: packJson(draft.tags ?? []) ?? "[]",
       severity: draft.severity ?? "MINOR",
       externalRefId: draft.externalRef.id,
       externalRefUrl: draft.externalRef.url,
@@ -284,7 +301,7 @@ export async function updateFeedback(id: string, input: {
   const fb = await prisma.feedback.findUnique({ where: { id }, select: { status: true } });
   if (!fb) throw new NotFoundError("Feedback 不存在");
 
-  const currentStatus = fb.status;
+  const currentStatus = fb.status as FeedbackStatus;
   if (input.status !== undefined) {
     assertTransition(currentStatus, input.status);
   }

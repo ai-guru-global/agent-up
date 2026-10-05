@@ -1,6 +1,9 @@
 import {
   prisma,
   Prisma,
+  packJson,
+  unpackJson,
+  unpackJsonArray,
   type AgentStatus,
   type SearchStrategy,
   type PromptConfig,
@@ -61,7 +64,7 @@ function toBindingResponse(row: BindingRow) {
     id: row.id,
     agentId: row.agentId,
     skillId: row.skillId,
-    config: row.config ?? null,
+    config: unpackJson<unknown>(row.config, null),
     enabled: row.enabled,
     priority: row.priority,
     boundBy: row.boundBy,
@@ -74,7 +77,7 @@ export function toPromptConfigResponse(row: PromptConfig) {
   return {
     systemPrompt: row.systemPrompt,
     roleDefinition: row.roleDefinition,
-    constraints: [...row.constraints],
+    constraints: unpackJsonArray<string>(row.constraints, []),
     outputFormat: row.outputFormat,
     version: row.version,
     lastModifiedAt: row.lastModifiedAt.toISOString(),
@@ -95,8 +98,8 @@ export function toKnowledgeConfigResponse(row: KnowledgeConfig) {
 
 export function toToolsConfigResponse(row: ToolsConfig) {
   return {
-    mcpTools: row.mcpTools,
-    wikiQueryTools: row.wikiQueryTools,
+    mcpTools: unpackJsonArray<Record<string, unknown>>(row.mcpTools, []),
+    wikiQueryTools: unpackJsonArray<Record<string, unknown>>(row.wikiQueryTools, []),
     maxConcurrentCalls: row.maxConcurrentCalls,
     timeoutMs: row.timeoutMs,
     retryCount: row.retryCount,
@@ -107,8 +110,8 @@ export function toToolsConfigResponse(row: ToolsConfig) {
 
 export function toRoutingConfigResponse(row: RoutingConfig) {
   return {
-    rules: row.rules,
-    escalationPolicy: row.escalationPolicy ?? null,
+    rules: unpackJsonArray<Record<string, unknown>>(row.rules, []),
+    escalationPolicy: unpackJson<unknown>(row.escalationPolicy, null),
     humanThreshold: row.humanThreshold,
     maxConversationTurns: row.maxConversationTurns,
     idleTimeoutMinutes: row.idleTimeoutMinutes,
@@ -152,15 +155,15 @@ export function toReleaseResponse(row: Release & { version?: AgentVersion | null
     id: row.id,
     agentId: row.agentId,
     changeNote: row.changeNote,
-    changedPartitions: [...row.changedPartitions],
+    changedPartitions: unpackJsonArray<string>(row.changedPartitions, []),
     status: row.status,
     submittedBy: row.submittedBy,
     submittedAt: row.submittedAt.toISOString(),
     approvedBy: row.approvedBy,
     approvedAt: row.approvedAt ? row.approvedAt.toISOString() : null,
     reviewComment: row.reviewComment,
-    configSnapshot: row.configSnapshot ?? null,
-    aiReview: row.aiReview ?? null,
+    configSnapshot: unpackJson<unknown>(row.configSnapshot, null),
+    aiReview: unpackJson<unknown>(row.aiReview, null),
     // JSON 契约：PENDING 时 version 为 null 键；回滚单带条件键组
     version: row.version
       ? {
@@ -187,17 +190,19 @@ export function toVersionResponse(row: AgentVersion) {
     major: row.major,
     minor: row.minor,
     patch: row.patch,
-    promptSnapshot: row.promptSnapshot,
-    knowledgeSnapshot: row.knowledgeSnapshot,
-    toolsSnapshot: row.toolsSnapshot,
-    routingSnapshot: row.routingSnapshot,
+    promptSnapshot: unpackJson<Record<string, unknown>>(row.promptSnapshot, {}),
+    knowledgeSnapshot: unpackJson<Record<string, unknown>>(row.knowledgeSnapshot, {}),
+    toolsSnapshot: unpackJson<Record<string, unknown>>(row.toolsSnapshot, {}),
+    routingSnapshot: unpackJson<Record<string, unknown>>(row.routingSnapshot, {}),
     releaseId: row.releaseId,
     wikiCommitSha: row.wikiCommitSha,
     publishedAt: row.publishedAt.toISOString(),
     publishedBy: row.publishedBy,
     changeNote: row.changeNote,
     // JSON 契约：report 未计算时键不出现（lazy fill 后才存在）
-    ...(row.effectivenessReport ? { effectivenessReport: row.effectivenessReport } : {}),
+    ...(row.effectivenessReport
+      ? { effectivenessReport: unpackJson<unknown>(row.effectivenessReport, null) }
+      : {}),
   };
 }
 
@@ -207,13 +212,25 @@ export async function listAgents(params: ListAgentsParams) {
       status: params.status as AgentStatus,
     }),
     ...(params.productGroupId && { productGroupId: params.productGroupId }),
-    ...(params.search && {
-      OR: [
-        { name: { contains: params.search, mode: "insensitive" } },
-        { description: { contains: params.search, mode: "insensitive" } },
-      ],
-    }),
   };
+
+  // SQLite 无 mode:"insensitive"，搜索改为取数后内存过滤（演示规模足够，
+  // 与 demo/mock-server 的列表行为一致）；total 随之取过滤后口径
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    const all = await prisma.agent.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      include: LIST_INCLUDE,
+    });
+    const filtered = all.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        (a.description ?? "").toLowerCase().includes(q),
+    );
+    const items = filtered.slice(params.skip, params.skip + params.take);
+    return { items: items.map(toAgentResponse), total: filtered.length };
+  }
 
   const [rows, total] = await Promise.all([
     prisma.agent.findMany({
@@ -364,7 +381,9 @@ async function updateConfigPartition(
           ...(data.roleDefinition !== undefined && {
             roleDefinition: data.roleDefinition as string | null,
           }),
-          ...(data.constraints !== undefined && { constraints: data.constraints as string[] }),
+          ...(data.constraints !== undefined && {
+            constraints: packJson(data.constraints) ?? "[]",
+          }),
           ...(data.outputFormat !== undefined && {
             outputFormat: data.outputFormat as string | null,
           }),
@@ -377,7 +396,9 @@ async function updateConfigPartition(
           ...(data.roleDefinition !== undefined && {
             roleDefinition: data.roleDefinition as string | null,
           }),
-          ...(data.constraints !== undefined && { constraints: data.constraints as string[] }),
+          ...(data.constraints !== undefined && {
+            constraints: packJson(data.constraints) ?? "[]",
+          }),
           ...(data.outputFormat !== undefined && {
             outputFormat: data.outputFormat as string | null,
           }),
@@ -442,8 +463,8 @@ async function updateConfigPartition(
         where: { agentId },
         create: {
           agentId,
-          mcpTools: (data.mcpTools ?? []) as Prisma.InputJsonValue,
-          wikiQueryTools: (data.wikiQueryTools ?? []) as Prisma.InputJsonValue,
+          mcpTools: packJson(data.mcpTools ?? []) ?? "[]",
+          wikiQueryTools: packJson(data.wikiQueryTools ?? []) ?? "[]",
           ...(data.maxConcurrentCalls !== undefined && {
             maxConcurrentCalls: data.maxConcurrentCalls as number,
           }),
@@ -455,10 +476,10 @@ async function updateConfigPartition(
         },
         update: {
           ...(data.mcpTools !== undefined && {
-            mcpTools: data.mcpTools as Prisma.InputJsonValue,
+            mcpTools: packJson(data.mcpTools) ?? "[]",
           }),
           ...(data.wikiQueryTools !== undefined && {
-            wikiQueryTools: data.wikiQueryTools as Prisma.InputJsonValue,
+            wikiQueryTools: packJson(data.wikiQueryTools) ?? "[]",
           }),
           ...(data.maxConcurrentCalls !== undefined && {
             maxConcurrentCalls: data.maxConcurrentCalls as number,
@@ -478,12 +499,10 @@ async function updateConfigPartition(
         where: { agentId },
         create: {
           agentId,
-          rules: (data.rules ?? []) as Prisma.InputJsonValue,
+          rules: packJson(data.rules ?? []) ?? "[]",
           ...(data.escalationPolicy !== undefined && {
             escalationPolicy:
-              data.escalationPolicy === null
-                ? Prisma.JsonNull
-                : (data.escalationPolicy as Prisma.InputJsonValue),
+              data.escalationPolicy === null ? null : packJson(data.escalationPolicy),
           }),
           ...(data.humanThreshold !== undefined && {
             humanThreshold: data.humanThreshold as number,
@@ -499,12 +518,10 @@ async function updateConfigPartition(
           lastModifiedBy: actor.id,
         },
         update: {
-          ...(data.rules !== undefined && { rules: data.rules as Prisma.InputJsonValue }),
+          ...(data.rules !== undefined && { rules: packJson(data.rules) ?? "[]" }),
           ...(data.escalationPolicy !== undefined && {
             escalationPolicy:
-              data.escalationPolicy === null
-                ? Prisma.JsonNull
-                : (data.escalationPolicy as Prisma.InputJsonValue),
+              data.escalationPolicy === null ? null : packJson(data.escalationPolicy),
           }),
           ...(data.humanThreshold !== undefined && {
             humanThreshold: data.humanThreshold as number,
@@ -543,7 +560,7 @@ export async function updateRoutingConfig(agentId: string, data: Record<string, 
 }
 
 /**
- * 记录一次配置分区变更（含 diff 明细），落 PG（config-changes 无运行时读者，不做 JSON 镜像）。
+ * 记录一次配置分区变更（含 diff 明细），落库（config-changes 无运行时读者，不做 JSON 镜像）。
  * changedBy 从 actor context 取。
  */
 export async function recordConfigChange(
@@ -560,9 +577,9 @@ export async function recordConfigChange(
     data: {
       agentId,
       partition,
-      before: before == null ? Prisma.JsonNull : (before as unknown as Prisma.InputJsonValue),
-      after: after as unknown as Prisma.InputJsonValue,
-      diff: diff as unknown as Prisma.InputJsonValue,
+      before: packJson(before),
+      after: packJson(after) ?? "null",
+      diff: packJson(diff) ?? "{}",
       changedBy: actor.id,
       changeNote: changeNote ?? null,
     },

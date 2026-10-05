@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJson } from "@agent-up/db";
 import { success, handleApiError } from "@/lib/utils";
 import { toReleaseResponse } from "@/lib/services/agent-service";
 import { NotFoundError } from "@/lib/errors";
@@ -40,10 +40,10 @@ export async function GET(
 
     const baselineSnapshots = baseline
       ? {
-          prompt: baseline.promptSnapshot ?? null,
-          knowledge: baseline.knowledgeSnapshot ?? null,
-          tools: baseline.toolsSnapshot ?? null,
-          routing: baseline.routingSnapshot ?? null,
+          prompt: unpackJson<unknown>(baseline.promptSnapshot, null),
+          knowledge: unpackJson<unknown>(baseline.knowledgeSnapshot, null),
+          tools: unpackJson<unknown>(baseline.toolsSnapshot, null),
+          routing: unpackJson<unknown>(baseline.routingSnapshot, null),
           version: baseline.version ?? null,
         }
       : { prompt: null, knowledge: null, tools: null, routing: null, version: null };

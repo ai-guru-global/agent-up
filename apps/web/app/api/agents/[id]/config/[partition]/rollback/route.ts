@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { success, error, validateBody, handleApiError } from "@/lib/utils";
 import { z } from "zod";
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJson } from "@agent-up/db";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import {
   getAgentConfig,
@@ -63,10 +63,10 @@ export async function POST(
         throw new ValidationError("该 Version 不属于此 Agent");
       }
 
-      // 取该分区的 snapshot
+      // 取该分区的 snapshot（快照列存 JSON 文本，先还原）
       const snapshotKey =
         `${partition}Snapshot` as "promptSnapshot" | "knowledgeSnapshot" | "toolsSnapshot" | "routingSnapshot";
-      const snapshot = version[snapshotKey] as Record<string, unknown> | null;
+      const snapshot = unpackJson<Record<string, unknown> | null>(version[snapshotKey], null);
       if (!snapshot) {
         throw new ValidationError(
           `Version ${version.version} 的 ${partition} 分区无快照`,
@@ -78,7 +78,7 @@ export async function POST(
 
       // 用快照覆盖（复用分区更新函数）
       // 注意：去掉 snapshot 里可能有的 version/lastModifiedAt 字段，让 updateConfigPartition 重新算
-      const { version: _v, lastModifiedAt: _l, ...restorePayload } = snapshot as Record<string, unknown>;
+      const { version: _v, lastModifiedAt: _l, ...restorePayload } = snapshot;
       const partitionKey = partition as Partition;
       let result: unknown;
       switch (partitionKey) {

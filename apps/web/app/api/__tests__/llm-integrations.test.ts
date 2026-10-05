@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { prisma, Prisma } from "@agent-up/db";
+import { prisma } from "@agent-up/db";
 import { GET as probeGet, POST as probePost } from "@/app/api/maas/probe/route";
 import { POST as feedbackInsight } from "@/app/api/feedback/[id]/insight/route";
 import { POST as releaseSummary } from "@/app/api/releases/[id]/summary/route";
@@ -114,11 +114,11 @@ describe("POST /api/releases/[id]/summary", () => {
         id: "rel-1",
         agentId: "a1",
         changeNote: "收紧价格类回答",
-        changedPartitions: ["PROMPT"],
+        changedPartitions: JSON.stringify(["PROMPT"]),
         status: "PENDING",
         submittedBy: "tester",
         submittedAt: new Date("2026-08-20T00:00:00.000Z"),
-        configSnapshot: { prompt: { systemPrompt: "新版提示词" } } as unknown as Prisma.InputJsonValue,
+        configSnapshot: JSON.stringify({ prompt: { systemPrompt: "新版提示词" } }),
       },
     });
     const res = await releaseSummary(new NextRequest("http://localhost", { method: "POST" }), {
@@ -152,7 +152,7 @@ describe("POST /api/agents/[id]/chat", () => {
         agentId: "a1",
         systemPrompt: "你是 ECS 助手",
         roleDefinition: null,
-        constraints: ["不回答无关问题"],
+        constraints: JSON.stringify(["不回答无关问题"]),
         outputFormat: null,
       },
     });

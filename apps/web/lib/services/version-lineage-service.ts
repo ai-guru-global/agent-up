@@ -12,7 +12,7 @@
  *
  * 不动现有 GET /api/agents/[id]/versions 的响应形状（向后兼容，决策 D6）。
  */
-import { prisma } from "@agent-up/db";
+import { prisma, unpackJson } from "@agent-up/db";
 import { NotFoundError } from "@/lib/errors";
 import { computeJsonDiff } from "@/lib/diff";
 
@@ -54,10 +54,11 @@ export interface VersionLineage {
   lineage: VersionLineageEntry[];
 }
 
-/** 剥离快照里的元数据键，只比较真实配置内容（JsonValue 行直接传入） */
+/** 剥离快照里的元数据键，只比较真实配置内容（列存 JSON 文本，先还原为对象） */
 function payloadOf(snapshot: unknown): Record<string, unknown> {
-  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return {};
-  const { version: _v, lastModifiedAt: _l, ...payload } = snapshot as Record<string, unknown>;
+  const parsed = unpackJson<unknown>(snapshot as string | null, null);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  const { version: _v, lastModifiedAt: _l, ...payload } = parsed as Record<string, unknown>;
   void _v;
   void _l;
   return payload;
