@@ -568,3 +568,56 @@ route 必须在 actor 作用域内**。
 - tsc / eslint / 双构建（全栈 + `DEMO_EXPORT=1` 静态导出）：每个提交前实测，全部 exit 0
 - 全量套件（371+ 例，批次新增后更多）与覆盖率基线：**仍待 PostgreSQL**；5432 端口
   至本节写入时仍 CLOSED。风险 #9 的口径继续适用：PG/CI 绿之前不视为已验证。
+
+---
+
+# 第四部分 · 存储层迁移：PostgreSQL → SQLite（2026-10-05）
+
+## 裁决与动因
+
+用户裁决本机不安装 PostgreSQL（原计划「用户自起 PG」多日未执行，5432 持续 CLOSED），
+在「JSON/MD 文件（倒退）」与「SQLite（可行轻量档）」之间选定 **SQLite**。
+直接动机：全量测试套件硬依赖真实 PG，**371+ 测试从未本机实跑**（本报告风险 #9），
+剩余整改批次（③第二步 / ④第二步 / ⑤② / ⑥ / ⑦）全部被卡。
+
+实施前经三路并行代码勘察摸清代价：**18 个 enum、约 30 个 Json 列、11 个标量数组列**，
+约 40+ 服务层读写触点；Prisma SQLite 连接器对上述三类类型均不支持——这是本迁移
+不可回避的工程量，方案获用户批准后执行。
+
+## 实施要点（`8532364`，59 文件 +1534/−1461）
+
+- **schema**：provider 改 `sqlite`；enum 移至 `packages/db/src/enums.ts`
+  （const 对象 + 同名 union type，既有 `import type` 写法零改动，值域与迁移前逐字一致，
+  Zod 仍是运行时校验权威）；Json/数组列 → String（JSON 文本），读写经新增
+  `packJson`/`unpackJson`（`packages/db/src/json-text.ts`）收口——解析失败回落
+  fallback 绝不抛，防住「diff 空结果」「detailOf 静默 null」两类已知静默故障。
+- **迁移基线**：5 个 PG 迁移删除（git 历史可 revert），单一 SQLite 基线重建。
+- **服务层**：13 服务 + 5 路由全部触点改写；`mode:"insensitive"`（3 处）与
+  `tags has` 过滤（2 处）改为取数后内存过滤（演示规模，与 demo 轨同行为）；
+  retrieval-service 补 tags 反序列化映射。**API 响应形状逐一保持不变**（demo 轨零改动）。
+- **批④种子侧顺带落地**：演示账号 `user-allen`（`allengaller@example.com`，role-admin）
+  + 预计算 scrypt 口令哈希（固定演示口令 `AgentUp#Demo2026`，公开文档化），
+  一致性守卫补「哈希可被 verifyPassword 验证」回归锚。
+- **测试基建**：每 worker 一个独立 SQLite 文件（绝对路径，防 Prisma 相对路径按
+  schema 目录解析的陷阱）；`_resetDb` 改按依赖序 deleteMany（26 模型，序同 seed.mjs）。
+- **外围**：docker-compose.yml 删除（postgres/minio 均无消费方）；CI 移除服务容器；
+  四份活文档切 SQLite 口径（历史 specs/plans/报告不改）。
+
+## 验证（全部本机实测）
+
+| 门禁 | 结果 |
+|------|------|
+| `pnpm --filter @agent-up/db build`（generate+tsc） | exit 0 |
+| `npx tsc --noEmit` / `npx eslint .` | 双 exit 0 |
+| **全量测试** | **39 文件 / 447 测试全绿——首次无需 PostgreSQL**（迁移前基线 371 中 11 例因测试夹具仍传数组/对象而失败，均已修，非生产行为问题） |
+| 真实服务冒烟 | dashboard 聚合 / agents 内存搜索（大小写+中文）/ wiki BM25 检索（tags 反序列化正确，score 14.77/3.41 排序合理）/ MOCK 登录 sessionIssued:true |
+| 双构建 | 全栈 + `DEMO_EXPORT=1` 均 exit 0（demo 轨仍 0 个 /api 路由） |
+
+## 风险状态变化
+
+- **风险 #9（本机证据缺口）：已闭合。** 全量套件自此本机可跑、可复跑。
+- **新增约束**：SQLite 单写者。若平台走向多用户并发写，需重新评估回 PostgreSQL
+  （PG 迁移历史完整保留在 git，revert 即回）。
+- 批⑥ scope 重定：pg_trgm 不可用，降级为「LIKE 预筛或裁撤」，待批⑤落地后按实测性能决定。
+- **全部被卡批次自此解锁**：③第二步（RBAC 强制）→ ④第二步（邮箱登录接线）→
+  ⑤第二步（分词改动，基线已在 `7788731`）→ ⑥（scope 重定）→ ⑦（覆盖率扩围，可先量真实基线）。
