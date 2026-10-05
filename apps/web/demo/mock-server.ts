@@ -716,14 +716,18 @@ function route(
 
   // ----- auth -----
   if (head === "auth" && second === "login" && M === "POST") {
-    if (!payload.username || !payload.password) return fail("请填写用户名和密码");
-    if (payload.username !== "allengaller" || payload.password !== "123")
-      return fail("用户名或密码错误", 401);
-    // 静态演示轨没有服务端密钥，签不出会话令牌；sessionIssued:false 与真实轨
-    // 保持同形响应，免得前端按字段存在性分叉出两套逻辑。
+    // 与真实轨同形：邮箱 + 口令，字段集合 userId/username/name/sessionIssued 一致。
+    // 静态演示轨没有服务端密钥与用户库，凭据对齐 seed 的演示账号，签不出会话令牌
+    // （sessionIssued:false），免得前端按字段存在性分叉出两套逻辑。
+    if (!payload.email || !payload.password) return fail("请填写邮箱和密码");
+    if (
+      payload.email !== "allengaller@example.com" ||
+      payload.password !== "AgentUp#Demo2026"
+    )
+      return fail("邮箱或密码错误", 401);
     return ok({
-      userId: "user-001",
-      username: "allengaller",
+      userId: "user-allen",
+      username: "allengaller@example.com",
       name: "Allen Galler",
       sessionIssued: false,
     });

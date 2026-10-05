@@ -25,8 +25,8 @@ beforeEach(() => {
 describe("认证端点：与真实轨同形", () => {
   it("正确凭据 → 200，data 字段集合与真实登录一致，sessionIssued 恒为 false", () => {
     const res = post("/api/auth/login", {
-      username: "allengaller",
-      password: "123",
+      email: "allengaller@example.com",
+      password: "AgentUp#Demo2026",
     });
     expect(res.status).toBe(200);
     const body = res.body as { success: boolean; data: Record<string, unknown> };
@@ -38,27 +38,27 @@ describe("认证端点：与真实轨同形", () => {
     );
     // 静态轨没有服务端密钥，签不出令牌；与真实轨「AUTH_SECRET 缺失」时同形
     expect(body.data.sessionIssued).toBe(false);
-    expect(body.data.username).toBe("allengaller");
+    expect(body.data.username).toBe("allengaller@example.com");
   });
 
   it("缺凭据 → 400，错误体只有 success/error 两个字段", () => {
-    const res = post("/api/auth/login", { username: "allengaller" });
+    const res = post("/api/auth/login", { email: "allengaller@example.com" });
     expect(res.status).toBe(400);
     expect(res.body).toEqual({
       success: false,
-      error: "请填写用户名和密码",
+      error: "请填写邮箱和密码",
     });
   });
 
   it("错误口令 → 401", () => {
     const res = post("/api/auth/login", {
-      username: "allengaller",
+      email: "allengaller@example.com",
       password: "wrong",
     });
     expect(res.status).toBe(401);
     expect(res.body).toEqual({
       success: false,
-      error: "用户名或密码错误",
+      error: "邮箱或密码错误",
     });
   });
 

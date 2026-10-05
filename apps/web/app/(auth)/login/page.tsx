@@ -7,15 +7,15 @@ import { Alert, Button, Field, Input } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError("请填写用户名和密码");
+    if (!email || !password) {
+      setError("请填写邮箱和密码");
       return;
     }
     setSubmitting(true);
@@ -25,7 +25,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
       const json = await res.json();
       if (json.success) {
@@ -48,21 +48,22 @@ export default function LoginPage() {
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">Agent 改进平台</p>
 
-        {/* MOCK 标注：认证未接入真实系统（NextAuth 预留位），此页为 mock 登录 */}
+        {/* 演示标注：已接真实用户库（User.passwordHash scrypt 校验），账号来自种子数据，无注册入口 */}
         <div className="mt-4 rounded-md border border-[var(--warn-border)] bg-[var(--warn-bg)] px-3 py-2">
           <p className="text-xs font-semibold text-[var(--warn)]">
-            MOCK 登录 · 未接入真实认证
+            演示登录 · 账号来自种子数据
           </p>
           <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--muted)]">
-            演示账号：allengaller / 123（硬编码于 api/auth/login，仅本地演示用）
+            演示账号：allengaller@example.com / AgentUp#Demo2026（seed
+            预置，仅本地演示用）
           </p>
           <p className="mt-1 text-[11px] leading-relaxed text-[var(--subtle)]">
-            登录成功会写入一枚 HttpOnly 签名会话 cookie，服务端据此给写操作署名；
-            未配置 AUTH_SECRET 时签不出令牌，审计会落到「匿名」。
+            登录成功会写入一枚 HttpOnly 签名会话 cookie，身份取自用户行与其角色，
+            服务端据此给写操作署名；未配置 AUTH_SECRET 时签不出令牌，审计会落到「匿名」。
           </p>
           <p className="mt-1 text-[11px] leading-relaxed text-[var(--subtle)]">
-            注意：页面路由本身仍未设卡，直接访问 /dashboard 也能进入——当前只做了
-            身份认证与审计署名防伪，没有做访问授权。
+            注意：页面路由本身仍未设卡，直接访问 /dashboard 也能进入——写操作的
+            角色权限校验在服务层（批③），页面级访问授权仍未做。
           </p>
         </div>
 
@@ -73,22 +74,22 @@ export default function LoginPage() {
             </Alert>
           )}
 
-          <Field label="用户名" required hint="演示环境请填 allengaller">
+          <Field label="邮箱" required hint="演示环境请填 allengaller@example.com">
             {({ id, describedBy }) => (
               <Input
                 id={id}
                 aria-describedby={describedBy}
-                name="username"
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="allengaller"
+                name="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="allengaller@example.com"
               />
             )}
           </Field>
 
-          <Field label="密码" required hint="演示环境请填 123">
+          <Field label="密码" required hint="演示环境请填 AgentUp#Demo2026">
             {({ id, describedBy }) => (
               <Input
                 id={id}

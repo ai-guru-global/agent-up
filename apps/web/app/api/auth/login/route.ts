@@ -1,30 +1,49 @@
 import { NextRequest } from "next/server";
 import { success, error, parseBody } from "@/lib/utils";
+import { prisma } from "@agent-up/db";
 import { signActorToken, sessionCookieValue } from "@/lib/auth-token";
+import { verifyPassword } from "@/lib/password-hash";
 
-// MOCK：硬编码演示凭据，未接入真实用户库；本地演示专用。
-// 换真实用户库时只需替换这段校验，令牌签发与校验逻辑（lib/auth-token.ts）无需改动。
-const VALID_USERNAME = "allengaller";
-const VALID_PASSWORD = "123";
-
-/** 演示账号对应的会话主体。role 与 SYSTEM_ACTOR 同级——这是 MOCK 单用户口径。 */
-const DEMO_ACTOR = {
-  id: "user-001",
-  name: "Allen Galler",
-  role: "platform_admin",
-};
+/**
+ * 邮箱 + 口令登录（2026-10-05 批④接真实用户库）。
+ *
+ * 账号来源：packages/db/prisma/seed-data.mjs 的种子用户（无注册入口，
+ * 演示账号 allengaller@example.com / AgentUp#Demo2026 已公开文档化）。
+ * 口令校验走 User.passwordHash（scrypt，lib/password-hash.ts）；
+ * 会话令牌的载荷身份取自用户行与其首个角色，令牌签发与校验逻辑
+ * （lib/auth-token.ts）与 MOCK 时代完全一致。
+ */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: NextRequest) {
-  const body = await parseBody<{ username: string; password: string }>(request);
-  if (!body?.username || !body?.password) {
-    return error("请填写用户名和密码");
+  const body = await parseBody<{ email?: string; password?: string }>(request);
+  const email = body?.email?.trim().toLowerCase();
+  const password = body?.password;
+  if (!email || !password) {
+    return error("请填写邮箱和密码");
+  }
+  if (!EMAIL_RE.test(email)) {
+    return error("邮箱格式不正确", 422);
   }
 
-  if (body.username !== VALID_USERNAME || body.password !== VALID_PASSWORD) {
-    return error("用户名或密码错误", 401);
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { roles: { include: { role: true }, take: 1 } },
+  });
+  // 无用户 / 未设口令 / 口令不符 → 同一响应，不做用户枚举
+  if (!user || !user.passwordHash) {
+    return error("邮箱或密码错误", 401);
+  }
+  if (!(await verifyPassword(password, user.passwordHash))) {
+    return error("邮箱或密码错误", 401);
   }
 
-  const token = signActorToken(DEMO_ACTOR);
+  const roleName = user.roles[0]?.role.name ?? "anonymous";
+  const token = signActorToken({
+    id: user.id,
+    name: user.name ?? user.email,
+    role: roleName,
+  });
   if (!token && process.env.NODE_ENV !== "test") {
     // 没有 AUTH_SECRET 就发不出令牌，所有写操作会归因到「匿名」。
     // 生产环境走不到这里——instrumentation.ts 启动期已让进程退出；
@@ -37,9 +56,10 @@ export async function POST(request: NextRequest) {
   }
 
   const res = success({
-    userId: DEMO_ACTOR.id,
-    username: VALID_USERNAME,
-    name: DEMO_ACTOR.name,
+    userId: user.id,
+    /** 保留旧字段名 username（值为邮箱），前端与 demo 轨字段集合不变 */
+    username: user.email,
+    name: user.name ?? user.email,
     /** 令牌是否真的签发成功，便于前端/运维识别「登录了但没会话」的错配 */
     sessionIssued: Boolean(token),
   });
