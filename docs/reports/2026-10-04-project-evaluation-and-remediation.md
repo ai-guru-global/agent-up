@@ -1036,6 +1036,10 @@ role=platform_admin）、`README.md:353`（API 表 Auth 行）、`README.md:466`
 重生成时被覆盖，且会掩盖「派生文档落后于代码」这一真实信号，因此**重生成留给用户执行**。
 （`code-up.yaml` 的门禁扫描范围是 `apps/web/lib/services` → `docs/distilled`，不含本报告的
 登记路径，故本节同样不会被文档门禁改写。）
+> 2026-10-06 追记：该债务已按文末「repowiki 重生成实测」一节实测到 CLI 通路的精确阻塞点
+> （服务端 `PAUSED / server_error_code=112` = 等人工确认，CLI 无 resume 入口），
+> 并把污染面重测为 **83 个文件中 30 个与当前代码矛盾**（`git ls-files -z` 口径）。
+> 处置结论不变：IDE 内重生成 + `wiki sync --export`，不手改。
 
 **(3) `apps/web` 包名保持 `web`，不改 `@agent-up/web`。** 理由是可复现性而非审美：历史计划文档里有
 **8 处 `pnpm --filter web …` 实测命令**（全部集中在
@@ -1147,3 +1151,52 @@ score>0 的最高分页都逼近 0.96，且 `0.4×base`  alone 已越过默认�
 **操作口径记录**：`next start` 强制 production → x-actor 信任头默认失效（设计使然），
 生产冒烟必须走 cookie 路径；且 `next build` 与 `DEMO_EXPORT=1 next build` 共用 `.next`
 目录，后者会覆盖前者产物——冒烟前需最后跑全栈构建。
+
+## repowiki 重生成实测（2026-10-06）——路径已打通到服务端，卡在 CLI 无法应答的确认门
+
+上一节把 `.qoder/repowiki/**` 判为「维持工具链重生成债、留给用户执行」。本节把那句
+「留给用户执行」补成**可复现的命令 + 精确阻塞点**：本次实测从 CLI 侧把重生成推到了服务端，
+但没有完成，原因是服务端任务在启动约 10 秒后进入 `PAUSED` 且 `server_error_code=112`，
+而 headless CLI 没有应答该确认的入口。
+
+**先厘清读写边界（为何本轮零风险）**：`.qoder/repowiki/**` 只是**导出物**，权威状态在本地库
+`~/.qoder/qoder-knowledge/knowledge-agent-up-95789951342a23ef/wiki/wiki.v1.db`；
+把生成物写回仓库的唯一动作是 `wiki sync --export`（本次**未执行**）。实测三次生成尝试后，
+本地库仍完好——`partition.baseline_commit=fd262e2…`、`section` 32 行、`updated_at` 全部停在
+`2026-09-27T02:58:34`，`run_control`/`run_lease` 为空；服务侧任务表
+`qodercli/repowiki/knowledge.db` 的 `agent_knowledge_task` 亦为空表。即 `--regenerate`
+（文档称会删除既有 wiki 数据）**从未走到删除那一步**，仓库工作树全程 `git status` 干净。
+
+**债务量的重测**（改用 `git ls-files -z` 逐文件计数；此前按 shell 词法切分路径会因中文名被
+git 加引号转义而漏读，数不可信）：受跟踪生成文件 **83**，其中 **24 提及 PostgreSQL**、
+**21 提及 docker-compose**、再并入「JSON 文件存储」这一已失效的持久化口径后
+**并集 30 个文件**与当前代码直接矛盾；基线 `fd262e2`（2026-08-30）落后 HEAD
+**102 个提交、226 个非文档文件改动**，`schema.prisma` 整份重写就在其中。
+上一节那个 **41** 是另一根轴（`NEXTAUTH` 7 + `packages/shared` 35），两组数字口径不同、
+各自成立，别互相替换。
+
+**三条路径的实测结果**：
+
+| 尝试 | 命令 | 结果 |
+|---|---|---|
+| 增量 | `qoder wiki --repo "$PWD" --language zh --update --disable-team-sync-upload` | ❌ 直接拒绝：`not eligible: no local wiki found for branch=main language=zh (never generated)`。本地库的唯一 `run_history` 是 `kind=pull / operation=import`（2026-09-27 从团队服务器导入），**导入不算本地全量生成**，故增量档在此仓库永久不可用 |
+| 全量（默认复用路径） | `qoder wiki --repo "$PWD" --language zh --disable-team-sync-upload -o json` | ❌ 5 秒失败，`status=WIKI_LOSS_COMMIT`（`Progress: 32/32 catalogs (Failed: 0)`）。已证 `fd262e2` 存在且 `git merge-base --is-ancestor fd262e2 HEAD` 为真——**不是 git 里丢了提交**，是复用/自动路径拿导入快照对不上账 |
+| 强制全量 | `qoder wiki --repo "$PWD" --language zh --regenerate --disable-team-sync-upload -o json` | 🟡 起跑成功（跳过 preflight）：`Wiki generation started` → 10 秒后 `{"status":"PAUSED","error_code":"112","server_error_code":"112","completedCatalogs":0,"totalCatalogs":0}`，此后 ≥9 分钟零进展、零文件写入 |
+
+**112 是什么**（二进制取证，非猜测）：`wiki-cli` 常量区里 `"code":"112"` 与 `"code":"110"`
+紧邻 `ask_use_tool`、`is_user_stop` 两个字符串；agent 图侧存在
+`[manual_confirm_node] waiting for manual confirm, sessionId=%s, requestId=%s, errorCode=%d`
+与 `graph.ManualConfirmNode.*`、`task/resume` 端点。合起来读：**PAUSED + errorCode = 任务停在
+「等人工确认（工具使用授权）」节点**，需要客户端回 `task/resume`；`qoder wiki` 只有生成与
+sync 两类子命令，无 resume/cancel，故 CLI 侧此门不可开。对照组实验：`/tmp` 下新建三文件小仓库
+跑同一命令，同样在约 10 秒 `PAUSED 112`、`totalCatalogs=0`——**与 agent-up 的规模、状态、
+中文路径都无关，是 CLI 通路上的一道通用门**（该临时仓库实验后已删除）。
+`--connect-only` 也没能改挂到 IDE 那个 `SharedClientCache/qoder.sock` 上（日志仍是
+`Lightweight service started`，自建服务），所以 IDE 的确认 UI 看不到这个任务。
+
+**因此本项的最终处置**（不变，但依据换成了实测而非推断）：重生成需在 **Qoder IDE 的 Repo Wiki
+面板**触发并当场应答确认；生成完成后回写仓库用
+`qoder wiki sync --export --repo "$PWD" --language zh`，随时可用
+`qoder wiki sync --download --repo "$PWD" --language zh` 拉回团队服务器那份作对照。
+`--disable-team-sync-upload` 只影响生成后的上传，不影响 export 到本地目录，
+所以「重生成但不发布」是可达的组合。手改生成文件依旧禁止。
