@@ -669,6 +669,7 @@ route 必须在 actor 作用域内**。
 | 批⑦ | 覆盖率 route 层扩围 | ✅ 完成（40 个路由全部纳入，阈值一行未动，实测 97.10 / 83.96 / 99.52） | `b6d1cce` |
 | 新增 | 置信度模型改造（`0.4×base` 底数项 / 绝对分档）——风险 #7 质量半边的真正解；idf 已被实测否决 | ⏸ 未排期（需改 21 例基线语义） | — |
 | 批⑧（建议） | wiki 正文入库（风险 #10：`content = summary` 兜底、`filePath` 悬空） | ⏳ 待用户裁决 | — |
+| 收尾 | 计划外遗留项复核（凭据文档口径 / repowiki 重生成债 / 包名定案） | ✅ 完成（无代码改动，见复核小节） | — |
 
 ## 批④第二步（`82de786`）
 
@@ -1005,6 +1006,41 @@ C 组是本批真正的收获：它回答了原注释担心的问题，而答案
 迁移时闭合的是「跑不通」（447 测试首次本机运行）；本批闭合的是「门禁看不见路由层」。
 **批⑦是本次批准计划（PG→SQLite 及被其解锁的五批）的最后一步，计划内项目全部完成。**
 剩余两项均在计划外、待用户裁决：批⑧ wiki 正文入库（风险 #10）、置信度模型改造（风险 #7 质量半边）。
+
+## 计划外遗留项复核（无代码改动）
+
+批准计划收尾后，对三项计划外遗留逐项实测复核。结论全部是「记录 / 口径」层面的处置，
+**不改任何代码**，因此无测试与构建增量。
+
+**(1) 配置与演示凭据的文档口径：已完备，无需补写。** `AUTH_SECRET` 双处覆盖——
+`README.md:440`（变量清单，含 `openssl rand -hex 32` 生成方式、「生产缺失即启动退出」语义）
+与 `docs/guides/deployment.md:48`（必填表）。演示口令
+`allengaller@example.com / AgentUp#Demo2026` 覆盖六处：`README.md:228`（登录能力条目，
+role=platform_admin）、`README.md:353`（API 表 Auth 行）、`README.md:466`（FAQ）、
+`apps/web/README.md:17`、`deployment.md:20`、登录页 UI
+（`app/(auth)/login/page.tsx:57` 提示行 + `:92` 密码框 hint）。
+`app/api/auth/login/route.ts:11` 亦注明该账号为公开演示凭据。
+口径核对：seed 里 `role-admin` 的 `name` 字段就是 `platform_admin`
+（`packages/db/prisma/seed-data.mjs:43-44`），故 README 的 role 表述与种子一致。
+
+**(2) `.qoder/repowiki/**`：维持工具链重生成债，本会话不手改。** 现测 **83 个受 git 跟踪的生成文件**
+中 **7 个提及 `NEXTAUTH`、35 个提及 `packages/shared`（任一者 41 个）**，而 `packages/` 目录下
+实际只剩 `db`。第一部分 §8 当年写的「至少 7 个」是**下限口径**——按 token 逐一复测后，污染面比
+那条记录本身大一倍量级，这属于复核发现，不改变处置结论：手改会在下次 code-up / skills-up
+重生成时被覆盖，且会掩盖「派生文档落后于代码」这一真实信号，因此**重生成留给用户执行**。
+（`code-up.yaml` 的门禁扫描范围是 `apps/web/lib/services` → `docs/distilled`，不含本报告的
+登记路径，故本节同样不会被文档门禁改写。）
+
+**(3) `apps/web` 包名保持 `web`，不改 `@agent-up/web`。** 理由是可复现性而非审美：历史计划文档里有
+**8 处 `pnpm --filter web …` 实测命令**（全部集中在
+`docs/superpowers/plans/2026-09-12-prisma-persistence-batch5.md`，含 tsc / vitest / lint / 双构建），
+改名会使这些已记录并可回放的命令当场失效；而 `pnpm --filter @agent-up/web` 在全仓 **0 命中**，
+维持现状没有额外的一致性代价。命名与唯一的同级包 `@agent-up/db` 不统一是已知瑕疵
+（`packages/` 现只剩 `db` 一项），收益不抵复现性损失，故显式保留并在此定案。
+顺带一条与 (2) 互证的实测：除本报告自身外，`@agent-up/ui` 在全仓只出现在
+`.qoder/repowiki/zh/content/共享包开发/共享包开发.md`（L49/71/86/153），
+`package.json` 与源码里零引用——它早已不存在，却仍被生成文档当作现役包描述，
+这正是 repowiki 需要重生成而非手改的具体证据。
 
 ## 本机验证（全部实测）
 
