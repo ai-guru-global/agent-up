@@ -16,6 +16,7 @@
  */
 import { prisma, packJson, unpackJson, unpackJsonArray, type Prisma } from "@agent-up/db";
 import { NotFoundError } from "@/lib/errors";
+import { requirePermission } from "@/lib/services/rbac";
 import type { LlmUsage } from "@/lib/services/llm-service";
 
 export type TraceRating = "UP" | "DOWN";
@@ -100,6 +101,8 @@ export async function rateTrace(
   rating: TraceRating,
   note?: string,
 ): Promise<TraceRecord> {
+  // 评分是最轻量的反馈形态，口径归 feedback:write（cre 角色只读，不能评分）
+  await requirePermission("feedback", "write");
   const row = await prisma.trace.findUnique({ where: { id } });
   if (!row) throw new NotFoundError("Trace 不存在");
   const updated = await prisma.trace.update({

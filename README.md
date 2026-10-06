@@ -80,7 +80,7 @@ agent-up/
 ├── apps/
 │   └── web/                        # Next.js 全栈应用
 │       ├── app/                    # App Router
-│       │   ├── (auth)/             # 登录页（MOCK 登录）
+│       │   ├── (auth)/             # 登录页（邮箱+口令，真实用户库）
 │       │   ├── (dashboard)/        # 工作台页面
 │       │   │   ├── agents/         # Agent 管理 + 四分区编辑器
 │       │   │   ├── releases/       # 发布审批 + diff 查看器
@@ -225,8 +225,8 @@ cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
 | 侧边栏 / 登录页 / `/maas` 页 | 琥珀色 **MOCK 徽标** + 中文说明 |
 | 代码内 | `// MOCK` / 文件头注释声明 mock 边界与下一里程碑 |
 
-- **登录**：MOCK 登录，未接入真实认证；演示账号 `allengaller` / `123`（登录后即为管理员角色）。
-- **数据源**：本地 SQLite 单文件（Prisma），种子由 `pnpm db:seed` 写入（定义见 `packages/db/prisma/seed-data.mjs`）；MOCK 登录未接真实认证。
+- **登录**：邮箱 + 口令登录（真实用户库，scrypt 校验，2026-10-05 批4 接线）；演示账号 `allengaller@example.com` / `AgentUp#Demo2026`（seed 预置，role=platform_admin）。
+- **数据源**：本地 SQLite 单文件（Prisma），种子由 `pnpm db:seed` 写入（定义见 `packages/db/prisma/seed-data.mjs`）；登录已接真实用户库（scrypt 校验，批4）。
 - **MaaS 集成**：`/maas` 页面产品矩阵与模型路由策略为演示口径；**每 Agent 用量块为真实数据**（聚合试聊 trace，无数据时回退演示口径并声明）；**连通性测试 / AI 归因 / AI 变更摘要 / 试聊 Playground 均为真实 LLM 调用（小米 MiMo）**，页面带 LIVE 徽标区分（见 [LLM 真实接入](#llm-真实接入小米-mimo)）。
 
 ## 核心概念
@@ -300,7 +300,7 @@ flowchart TB
 | 路由 | 说明 |
 |------|------|
 | `/` | 产品落地页 |
-| `/login` | 登录页（MOCK 登录，演示账号见 [MOCK 声明与演示用途](#mock-声明与演示用途)） |
+| `/login` | 登录页（真实用户库登录，演示账号见 [MOCK 声明与演示用途](#mock-声明与演示用途)） |
 | `/dashboard` | 工作台：Agent / 待处理反馈 / 待审批 / 活跃 Agent 四项概况 + 最新反馈与最新发布 |
 | `/agents` | Agent 列表：按名称 / 描述模糊搜索，按生命周期状态筛选 |
 | `/agents/[id]` | Agent 详情：四分区编辑器 + 试聊 Playground（真实 LLM）+ 版本历史与双粒度回滚 |
@@ -350,7 +350,7 @@ flowchart TB
 
 | 分类 | 端点 | 功能 |
 |------|------|------|
-| Auth | `POST /api/auth/login` | MOCK 登录（演示账号 `allengaller`/`123`，见 [MOCK 声明](#mock-声明与演示用途)） |
+| Auth | `POST /api/auth/login` | 邮箱+口令登录（查 User 表 scrypt 校验；演示账号 `allengaller@example.com`/`AgentUp#Demo2026`，见 [MOCK 声明](#mock-声明与演示用途)） |
 | Agent | `GET/POST /api/agents` | 列表 / 创建 |
 | | `GET/PUT/DELETE /api/agents/[id]` | 详情 / 更新 / 归档 |
 | | `GET/PUT /api/agents/[id]/config/[partition]` | 四分区配置读写 |
@@ -463,7 +463,7 @@ A：`pnpm db:seed`（种子脚本会先清空业务表再灌入种子数据，�
 
 **Q：演示账号是什么？**
 
-A：`allengaller` / `123`（MOCK 登录，登录后即管理员角色，详见 [MOCK 声明与演示用途](#mock-声明与演示用途)）。
+A：`allengaller@example.com` / `AgentUp#Demo2026`（真实用户库登录，账号来自 seed，详见 [MOCK 声明与演示用途](#mock-声明与演示用途)）。
 
 ## 下一步（真实化里程碑）
 

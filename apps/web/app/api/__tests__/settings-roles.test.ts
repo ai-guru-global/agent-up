@@ -8,13 +8,11 @@ import {
 import { prisma } from "@agent-up/db";
 import { flushAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedSettings } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedRbacAdmin, seedSettings } from "@/lib/__tests__/helpers/seed-db";
 
 const ACTOR_HEADERS = {
   "Content-Type": "application/json",
-  "x-actor-id": "u-test",
-  "x-actor-name": "tester", // HTTP 头值仅允许 Latin-1，中文姓名走 UI 内置 actor
-  "x-actor-role": "platform_admin",
+  ...adminActorHeaders,
 };
 
 function makeRequest(method: string, body?: unknown, path = "/api/settings/roles") {
@@ -33,6 +31,7 @@ function routeContext(id: string) {
 beforeEach(async () => {
   await _resetDb();
   await seedSettings();
+  await seedRbacAdmin();
 });
 
 describe("GET /api/settings/roles", () => {
@@ -75,7 +74,7 @@ describe("POST /api/settings/roles", () => {
     });
     await flushAudit();
     const audit = await prisma.auditLog.findFirstOrThrow({ where: { action: "role.create" } });
-    expect(audit).toMatchObject({ resource: "role", userName: "tester" });
+    expect(audit).toMatchObject({ resource: "role", userName: "Admin" });
   });
 
   it("description 缺省落 null", async () => {

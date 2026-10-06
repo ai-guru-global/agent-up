@@ -144,3 +144,65 @@ export async function seedAuditLogs(): Promise<void> {
     ],
   });
 }
+
+// ============================================================
+// 批③ RBAC 测试夹具：种子角色/权限 + 持全权限的管理员用户
+// ============================================================
+
+/** RBAC 测试管理员用户 id（经 x-actor-id 信任头传给路由） */
+export const RBAC_ADMIN_ID = "user-rbac-admin";
+
+/** 写路由测试通用请求头（测试环境信任 x-actor-*，RBAC 按此 id 查库解析权限） */
+export const adminActorHeaders: Record<string, string> = {
+  "x-actor-id": RBAC_ADMIN_ID,
+  "x-actor-name": "Admin",
+  "x-actor-role": "platform_admin",
+};
+
+/** 种子全套权限 + 管理员角色 + 绑定用户（幂等；在 _resetDb 之后调用） */
+export async function seedRbacAdmin(): Promise<void> {
+  const perms = [
+    ["agent", "read"],
+    ["agent", "write"],
+    ["agent", "publish"],
+    ["release", "approve"],
+    ["settings", "admin"],
+    ["feedback", "read"],
+    ["feedback", "write"],
+    ["wiki", "read"],
+    ["wiki", "write"],
+    ["audit", "read"],
+  ] as const;
+  for (const [resource, action] of perms) {
+    await prisma.permission.upsert({
+      where: { resource_action: { resource, action } },
+      create: { id: `perm-t-${resource}-${action}`, resource, action },
+      update: {},
+    });
+  }
+  const role = await prisma.role.upsert({
+    where: { id: "role-t-admin" },
+    create: {
+      id: "role-t-admin",
+      name: "rbac_test_admin",
+      displayName: "测试管理员",
+      isSystem: true,
+    },
+    update: {},
+  });
+  await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+  const all = await prisma.permission.findMany();
+  await prisma.rolePermission.createMany({
+    data: all.map((p) => ({ roleId: role.id, permissionId: p.id })),
+  });
+  await prisma.user.upsert({
+    where: { id: RBAC_ADMIN_ID },
+    create: { id: RBAC_ADMIN_ID, email: "rbac-admin@test.local", name: "Admin" },
+    update: {},
+  });
+  await prisma.userRole.upsert({
+    where: { id: "ur-t-rbac-admin" },
+    create: { id: "ur-t-rbac-admin", userId: RBAC_ADMIN_ID, roleId: role.id, assignedBy: "test" },
+    update: {},
+  });
+}

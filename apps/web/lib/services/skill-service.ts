@@ -10,6 +10,7 @@ import {
 } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ConflictError } from "@/lib/errors";
+import { requirePermission } from "@/lib/services/rbac";
 import { recordAudit } from "@/lib/services/audit-service";
 
 const SKILL_COUNT_INCLUDE = { _count: { select: { bindings: true, versions: true } } } as const;
@@ -151,6 +152,8 @@ export async function createSkill(data: {
   runtime?: string;
   endpoint?: string;
 }) {
+  // Skill 是平台级资产，管理口径归 settings:admin（与角色/权限/产品组同域）
+  await requirePermission("settings", "admin");
   const dup = await prisma.skill.findUnique({ where: { name: data.name }, select: { id: true } });
   if (dup) throw new ConflictError("同名 Skill 已存在");
 
@@ -177,6 +180,7 @@ export async function createSkill(data: {
 }
 
 export async function updateSkill(id: string, data: Record<string, unknown>) {
+  await requirePermission("settings", "admin");
   const existing = await prisma.skill.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError("Skill 不存在");
 
@@ -203,6 +207,7 @@ export async function updateSkill(id: string, data: Record<string, unknown>) {
 }
 
 export async function deleteSkill(id: string) {
+  await requirePermission("settings", "admin");
   const existing = await prisma.skill.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError("Skill 不存在");
 
@@ -220,6 +225,7 @@ export async function bindSkill(
   skillId: string,
   config?: Record<string, unknown>
 ) {
+  await requirePermission("agent", "write");
   const agent = await prisma.agent.findUnique({ where: { id: agentId }, select: AGENT_SELECT });
   if (!agent) throw new NotFoundError("Agent 不存在");
   const skill = await prisma.skill.findUnique({
@@ -248,6 +254,7 @@ export async function bindSkill(
 }
 
 export async function unbindSkill(agentId: string, skillId: string) {
+  await requirePermission("agent", "write");
   const agent = await prisma.agent.findUnique({ where: { id: agentId }, select: AGENT_SELECT });
   if (!agent) throw new NotFoundError("Agent 不存在");
 
@@ -270,6 +277,7 @@ export async function getAgentSkillBindings(agentId: string) {
 }
 
 export async function toggleSkillBinding(agentId: string, skillId: string, enabled: boolean) {
+  await requirePermission("agent", "write");
   const agent = await prisma.agent.findUnique({ where: { id: agentId }, select: AGENT_SELECT });
   if (!agent) throw new NotFoundError("Agent 不存在");
 

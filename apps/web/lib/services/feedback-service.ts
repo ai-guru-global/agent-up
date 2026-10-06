@@ -10,6 +10,7 @@ import {
 } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
+import { requirePermission } from "@/lib/services/rbac";
 import { recordAudit } from "@/lib/services/audit-service";
 
 /**
@@ -141,6 +142,7 @@ export async function createFeedback(input: {
   sessionData?: unknown;
   targetPartition?: "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING" | null;
 }) {
+  await requirePermission("feedback", "write");
   const agent = await prisma.agent.findUnique({
     where: { id: input.agentId },
     select: AGENT_SELECT,
@@ -244,6 +246,7 @@ export async function ingestFeedback(
 ) {
   const adapter = CHANNEL_ADAPTERS[input.channel];
   if (!adapter) throw new ValidationError(`未知接入渠道：${input.channel}`);
+  await requirePermission("feedback", "write");
   const agent = await prisma.agent.findUnique({
     where: { id: input.agentId },
     select: AGENT_SELECT,
@@ -298,6 +301,7 @@ export async function updateFeedback(id: string, input: {
   targetPartition?: "PROMPT" | "KNOWLEDGE" | "TOOLS" | "ROUTING" | null;
   verificationNote?: string | null;
 }) {
+  await requirePermission("feedback", "write");
   const fb = await prisma.feedback.findUnique({ where: { id }, select: { status: true } });
   if (!fb) throw new NotFoundError("Feedback 不存在");
 

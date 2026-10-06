@@ -6,7 +6,7 @@ import { POST as rollback } from "@/app/api/agents/[id]/config/[partition]/rollb
 import { GET as getConfig } from "@/app/api/agents/[id]/config/[partition]/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedRbacAdmin, seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
@@ -15,7 +15,7 @@ function makeRequest(method: string, body?: unknown): NextRequest {
   return new NextRequest("http://localhost/api", {
     method,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...adminActorHeaders },
   });
 }
 
@@ -24,6 +24,7 @@ function makeRequest(method: string, body?: unknown): NextRequest {
 beforeEach(async () => {
   resetActor();
   await _resetDb();
+  await seedRbacAdmin();
   await seedAgent(AGENT_ID);
   await seedAgent("rds-assistant", "RDS 助手");
   await seedReleaseWithVersion({

@@ -5,6 +5,7 @@ import { createProductGroupSchema } from "@/lib/schemas";
 import { ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { withActor, resolveActor } from "@/lib/context";
+import { requirePermission } from "@/lib/services/rbac";
 
 const groupInclude = { _count: { select: { agents: true, members: true } } };
 
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const group = await withActor(resolveActor(request.headers), async () => {
+      await requirePermission("settings", "admin");
       const dup = await prisma.productGroup.findUnique({
         where: { name: validated.data.name },
       });

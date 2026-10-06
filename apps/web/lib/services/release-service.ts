@@ -9,6 +9,7 @@ import {
 } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
+import { requirePermission } from "@/lib/services/rbac";
 import { recordAudit } from "@/lib/services/audit-service";
 import { computeJsonDiff, type DiffResult } from "@/lib/diff";
 import {
@@ -74,6 +75,7 @@ export function compareSemVer(a: string, b: string): number {
  * 四分区都没变则拒绝提交；configSnapshot 始终写入（含各分区完整 payload）。
  */
 export async function submitRelease(agentId: string, changeNote: string) {
+  await requirePermission("agent", "publish");
   const agent = await prisma.agent.findUnique({
     where: { id: agentId },
     include: {
@@ -159,6 +161,7 @@ export async function reviewRelease(
   action: "APPROVED" | "REJECTED" | "CHANGES_REQUESTED",
   reviewComment?: string,
 ) {
+  await requirePermission("release", "approve");
   const release = await prisma.release.findUnique({ where: { id: releaseId } });
   if (!release) throw new NotFoundError("Release 不存在");
   if (release.status !== "PENDING") {
@@ -270,6 +273,7 @@ export async function createVersionFromRelease(
  * - 审计 action = "agent.rollback"，details 含目标版本与 4 分区
  */
 export async function createRollbackRelease(agentId: string, targetVersionId: string) {
+  await requirePermission("release", "approve");
   const agent = await prisma.agent.findUnique({ where: { id: agentId }, select: { id: true } });
   if (!agent) throw new NotFoundError("Agent 不存在");
 

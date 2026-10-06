@@ -12,6 +12,7 @@
 import { prisma, packJson, unpackJsonArray, type Prisma } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+import { requirePermission } from "@/lib/services/rbac";
 import { recordAudit } from "@/lib/services/audit-service";
 import { getTrace, type TraceRecord } from "@/lib/services/trace-service";
 
@@ -93,6 +94,7 @@ export async function createEvalCaseFromTrace(
   if (trace.agentId !== agentId) {
     throw new ValidationError("该 Trace 不属于此 Agent，无法沉淀为它的评测用例");
   }
+  await requirePermission("agent", "write");
 
   const row = await prisma.evalCase.create({
     data: {
@@ -120,6 +122,7 @@ export async function createEvalCaseFromTrace(
 }
 
 export async function deleteEvalCase(id: string): Promise<void> {
+  await requirePermission("agent", "write");
   const row = await prisma.evalCase.findUnique({ where: { id }, select: { id: true } });
   if (!row) throw new NotFoundError("评测用例不存在");
   await prisma.evalCase.delete({ where: { id } });

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import { adminActorHeaders, seedRbacAdmin } from "@/lib/__tests__/helpers/seed-db";
 import { prisma } from "@agent-up/db";
 import { GET as listAgents, POST as createAgent } from "@/app/api/agents/route";
 import {
@@ -25,13 +26,14 @@ function makeRequest(
   return new NextRequest("http://localhost/api", {
     method,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json", ...adminActorHeaders, ...headers },
   });
 }
 
 beforeEach(async () => {
   resetActor();
   await _resetDb();
+  await seedRbacAdmin();
   await prisma.productGroup.create({
     data: { id: "ecs-group", name: "ecs-group", displayName: "ECS 产品组" },
   });
@@ -156,7 +158,7 @@ describe("PUT /api/agents/[id]", () => {
 describe("DELETE /api/agents/[id]", () => {
   it("archives agent", async () => {
     const res = await deleteAgent(
-      new NextRequest("http://localhost"),
+      new NextRequest("http://localhost", { headers: adminActorHeaders }),
       { params: Promise.resolve({ id: AGENT_ID }) },
     );
     expect(res.status).toBe(200);

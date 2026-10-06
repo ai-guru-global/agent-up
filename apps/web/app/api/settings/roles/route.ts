@@ -4,6 +4,7 @@ import { success, validateBody, handleApiError } from "@/lib/utils";
 import { createRoleSchema } from "@/lib/schemas";
 import { recordAudit } from "@/lib/services/audit-service";
 import { withActor, resolveActor } from "@/lib/context";
+import { requirePermission } from "@/lib/services/rbac";
 
 const roleInclude = {
   permissions: {
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const role = await withActor(resolveActor(request.headers), async () => {
+      await requirePermission("settings", "admin");
       const created = await prisma.role.create({
         data: {
           name: validated.data.name,

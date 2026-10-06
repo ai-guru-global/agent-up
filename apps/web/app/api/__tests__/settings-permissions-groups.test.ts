@@ -11,13 +11,11 @@ import {
 import { prisma } from "@agent-up/db";
 import { flushAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedSettings } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedRbacAdmin, seedSettings } from "@/lib/__tests__/helpers/seed-db";
 
 const ACTOR_HEADERS = {
   "Content-Type": "application/json",
-  "x-actor-id": "u-test",
-  "x-actor-name": "tester", // HTTP 头值仅允许 Latin-1
-  "x-actor-role": "platform_admin",
+  ...adminActorHeaders,
 };
 
 function makeRequest(method: string, body?: unknown, path = "/api/settings/permissions") {
@@ -31,6 +29,7 @@ function makeRequest(method: string, body?: unknown, path = "/api/settings/permi
 beforeEach(async () => {
   await _resetDb();
   await seedSettings();
+  await seedRbacAdmin();
 });
 
 describe("GET /api/settings/permissions", () => {
@@ -39,20 +38,20 @@ describe("GET /api/settings/permissions", () => {
     expect(res.status).toBe(200);
     const { data } = await res.json();
     const read = data.find((p: { id: string }) => p.id === "perm-1");
-    expect(read).toMatchObject({ resource: "agent", action: "read", _count: { roles: 3 } });
+    expect(read).toMatchObject({ resource: "agent", action: "read", _count: { roles: 4 } });
     const approve = data.find((p: { id: string }) => p.id === "perm-4");
-    expect(approve._count.roles).toBe(1);
+    expect(approve._count.roles).toBe(2);
   });
 });
 
 describe("POST /api/settings/permissions", () => {
   it("创建权限：201 + 审计", async () => {
     const res = await createPermission(
-      makeRequest("POST", { resource: "wiki", action: "write", description: "编辑知识页" })
+      makeRequest("POST", { resource: "report", action: "export", description: "导出报表" })
     );
     expect(res.status).toBe(201);
     const { data } = await res.json();
-    expect(data).toMatchObject({ resource: "wiki", action: "write", description: "编辑知识页", _count: { roles: 0 } });
+    expect(data).toMatchObject({ resource: "report", action: "export", description: "导出报表", _count: { roles: 0 } });
     await flushAudit();
     expect(
       await prisma.auditLog.findFirstOrThrow({ where: { action: "permission.create" } })
@@ -106,7 +105,7 @@ describe("POST /api/settings/product-groups", () => {
     await flushAudit();
     expect(
       await prisma.auditLog.findFirstOrThrow({ where: { action: "product_group.create" } })
-    ).toMatchObject({ resource: "product-group", userName: "tester" });
+    ).toMatchObject({ resource: "product-group", userName: "Admin" });
   });
 
   it("name 重复 409", async () => {

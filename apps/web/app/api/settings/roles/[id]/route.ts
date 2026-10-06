@@ -5,6 +5,7 @@ import { updateRoleSchema } from "@/lib/schemas";
 import { NotFoundError, AuthorizationError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { withActor, resolveActor } from "@/lib/context";
+import { requirePermission } from "@/lib/services/rbac";
 
 const roleInclude = {
   permissions: {
@@ -41,6 +42,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const role = await withActor(resolveActor(request.headers), async () => {
+      await requirePermission("settings", "admin");
       const existing = await prisma.role.findUnique({ where: { id } });
       if (!existing) throw new NotFoundError("角色不存在");
       const updated = await prisma.role.update({
@@ -68,6 +70,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const { id } = await params;
   try {
     await withActor(resolveActor(request.headers), async () => {
+      await requirePermission("settings", "admin");
       const existing = await prisma.role.findUnique({ where: { id } });
       if (!existing) throw new NotFoundError("角色不存在");
       if (existing.isSystem) throw new AuthorizationError("系统角色不可删除");

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma } from "@agent-up/db";
+import { adminActorHeaders, seedRbacAdmin } from "@/lib/__tests__/helpers/seed-db";
 import { POST as agentChat } from "@/app/api/agents/[id]/chat/route";
 import { POST as rateTrace } from "@/app/api/traces/[id]/rate/route";
 import {
@@ -59,6 +60,7 @@ function stubLlmWithJudge() {
 beforeEach(async () => {
   resetActor();
   await _resetDb();
+  await seedRbacAdmin();
   process.env.MIMO_API_KEY = "tp-test";
   stubLlmWithJudge();
 });
@@ -124,6 +126,7 @@ describe("试聊 trace 闭环", () => {
     const up = await rateTrace(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({ rating: "UP", note: "回答清晰" }),
       }),
       { params: Promise.resolve({ id: traceId }) },
@@ -136,6 +139,7 @@ describe("试聊 trace 闭环", () => {
     const down = await rateTrace(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({ rating: "DOWN" }),
       }),
       { params: Promise.resolve({ id: traceId }) },
@@ -145,6 +149,7 @@ describe("试聊 trace 闭环", () => {
     const bad = await rateTrace(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({ rating: "MAYBE" }),
       }),
       { params: Promise.resolve({ id: traceId }) },
@@ -154,6 +159,7 @@ describe("试聊 trace 闭环", () => {
     const ghost = await rateTrace(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({ rating: "UP" }),
       }),
       { params: Promise.resolve({ id: "no-such-trace" }) },
@@ -170,6 +176,7 @@ describe("评测用例沉淀", () => {
     const create = await createEvalCase(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({
           traceId,
           expectation: "先确认现象再给排查步骤",
@@ -201,6 +208,7 @@ describe("评测用例沉淀", () => {
     const missing = await createEvalCase(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({ traceId: "ghost" }),
       }),
       { params: Promise.resolve({ id: "c1" }) },
@@ -210,6 +218,7 @@ describe("评测用例沉淀", () => {
     const crossAgent = await createEvalCase(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({ traceId }),
       }),
       { params: Promise.resolve({ id: "c2" }) },
@@ -223,21 +232,28 @@ describe("评测用例沉淀", () => {
     const create = await createEvalCase(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({ traceId }),
       }),
       { params: Promise.resolve({ id: "d1" }) },
     );
     const { id } = (await create.json()).data as { id: string };
 
-    const del = await removeEvalCase(new NextRequest("http://localhost"), {
-      params: Promise.resolve({ id }),
-    });
+    const del = await removeEvalCase(
+      new NextRequest("http://localhost", { headers: adminActorHeaders }),
+      {
+        params: Promise.resolve({ id }),
+      },
+    );
     expect(del.status).toBe(200);
     expect((await del.json()).data.deleted).toBe(true);
 
-    const again = await removeEvalCase(new NextRequest("http://localhost"), {
-      params: Promise.resolve({ id }),
-    });
+    const again = await removeEvalCase(
+      new NextRequest("http://localhost", { headers: adminActorHeaders }),
+      {
+        params: Promise.resolve({ id }),
+      },
+    );
     expect(again.status).toBe(404);
   });
 });
@@ -453,6 +469,7 @@ describe("确定性断言（code-based 判分器）", () => {
     const create = await createEvalCase(
       new NextRequest("http://localhost", {
         method: "POST",
+        headers: adminActorHeaders,
         body: JSON.stringify({
           traceId,
           expectation: "给出排查步骤",
@@ -479,6 +496,7 @@ describe("确定性断言（code-based 判分器）", () => {
       createEvalCase(
         new NextRequest("http://localhost", {
           method: "POST",
+          headers: adminActorHeaders,
           body: JSON.stringify({ traceId, assertions }),
         }),
         { params: Promise.resolve({ id: "k1" }) },

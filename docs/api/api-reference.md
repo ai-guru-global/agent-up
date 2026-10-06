@@ -21,8 +21,31 @@
 | `NOT_FOUND` | 404 | 资源不存在 |
 | `VALIDATION` | 422 | Zod 校验失败 / 业务规则拒绝（如非法状态转移 NEW→RESOLVED） |
 | `CONFLICT` | 409 | 重复审批、并发覆盖 |
-| `AUTHORIZATION` | 403 | 权限不足（RBAC 预留） |
+| `AUTHORIZATION` | 403 | 权限不足（RBAC，2026-10-05 批3 起实际强制，见下节） |
 | `INTERNAL` | 500 / 502 / 503 / 504 | 未捕获错误 500；LLM 上游错误 502；LLM 未配置 503；LLM 超时 504 |
+
+### RBAC 写权限矩阵（批3，服务层强制）
+
+写操作在服务层经 `requirePermission(resource, action)` 强制：actor.id → UserRole →
+Role → RolePermission 解析（多角色并集，令牌里的 role 字符串仅作审计展示、**不作授权依据**）；
+`system`（进程内自发动作）豁免；匿名/未知用户失败关闭。权限数据源即
+`GET /api/settings/permissions` 与种子 `seed-data.mjs`。
+
+| 操作 | 所需权限 |
+|------|---------|
+| Agent 创建/更新/归档、四分区配置更新、分区回滚 | `agent:write` |
+| 提交发布、AI 评测 | `agent:publish` |
+| 发布审批（通过/驳回/退回修改）、整版本回滚 | `release:approve` |
+| 反馈创建 / 工单接入 / 状态流转 / 试聊评分沉淀前打分 | `feedback:write` |
+| Wiki Vault / Page 增删改 | `wiki:write` |
+| Skill 增删改（平台级资产） | `settings:admin` |
+| Agent 绑定/解绑/启停 Skill、评测用例沉淀与删除 | `agent:write` |
+| 角色 / 权限 / 产品组管理 | `settings:admin` |
+| 审计日志查看 | `audit:read` |
+
+**保持开放**（动作型/读型端点）：chat、MaaS probe、全部 GET 列表与详情、
+知识检索、AI 评测结果查看。页面路由本身仍无守卫——授权只在服务层。
+静态演示轨（demo/mock-server）无 RBAC（单管理员体验，两轨在 403 语义上分叉是已知口径）。
 
 ### Actor 上下文（身份与审计署名）
 

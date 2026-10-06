@@ -5,6 +5,7 @@ import { createPermissionSchema } from "@/lib/schemas";
 import { ConflictError } from "@/lib/errors";
 import { recordAudit } from "@/lib/services/audit-service";
 import { withActor, resolveActor } from "@/lib/context";
+import { requirePermission } from "@/lib/services/rbac";
 
 export async function GET() {
   const permissions = await prisma.permission.findMany({
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const perm = await withActor(resolveActor(request.headers), async () => {
+      await requirePermission("settings", "admin");
       const dup = await prisma.permission.findUnique({
         where: {
           resource_action: {

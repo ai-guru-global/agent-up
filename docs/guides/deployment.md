@@ -17,7 +17,7 @@ pnpm install          # 根目录，安装全部 workspace 依赖
 pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 ```
 
-登录（MOCK）：`allengaller` / `123`，登录后即管理员角色。
+登录：`allengaller@example.com` / `AgentUp#Demo2026`（真实用户库 scrypt 校验，seed 预置，即管理员角色）。
 
 ### 常用命令
 

@@ -15,6 +15,7 @@ import {
 } from "@agent-up/db";
 import { getActor } from "@/lib/context";
 import { NotFoundError } from "@/lib/errors";
+import { requirePermission } from "@/lib/services/rbac";
 import { recordAudit } from "@/lib/services/audit-service";
 import { computeJsonDiff } from "@/lib/diff";
 
@@ -275,6 +276,7 @@ export async function createAgent(input: {
   description?: string;
   productGroupId: string;
 }) {
+  await requirePermission("agent", "write");
   const group = await prisma.productGroup.findUnique({
     where: { id: input.productGroupId },
     select: PRODUCT_GROUP_SELECT,
@@ -303,6 +305,7 @@ export async function updateAgent(
     status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
   },
 ) {
+  await requirePermission("agent", "write");
   const existing = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError(`Agent ${id} 不存在`);
 
@@ -321,6 +324,7 @@ export async function updateAgent(
 }
 
 export async function deleteAgent(id: string) {
+  await requirePermission("agent", "write");
   const existing = await prisma.agent.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError(`Agent ${id} 不存在`);
 
@@ -362,6 +366,7 @@ async function updateConfigPartition(
   partition: Partition,
   data: Record<string, unknown>,
 ) {
+  await requirePermission("agent", "write");
   const agent = await prisma.agent.findUnique({
     where: { id: agentId },
     select: { id: true },

@@ -7,7 +7,7 @@ import {
 } from "@/app/api/feedback/route";
 import { GET as listSkills, POST as createSkill } from "@/app/api/skills/route";
 import { GET as listVaults, POST as createVault } from "@/app/api/wiki/vaults/route";
-import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedRbacAdmin, seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
 
@@ -17,13 +17,14 @@ function makeRequest(method: string, body?: unknown): NextRequest {
   return new NextRequest("http://localhost/api", {
     method,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...adminActorHeaders },
   });
 }
 
 // 批5 起存储全量在 PG：agent 需在 PG 建档，POST /api/feedback 才能通过存在性校验
 beforeEach(async () => {
   await _resetDb();
+  await seedRbacAdmin();
   await seedAgent(AGENT_ID);
 });
 

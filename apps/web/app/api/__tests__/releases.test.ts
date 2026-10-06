@@ -7,7 +7,7 @@ import { GET as listReleases } from "@/app/api/releases/route";
 import { GET as getRelease } from "@/app/api/releases/[id]/route";
 import { resetActor } from "@/lib/context";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedRbacAdmin, seedAgent, seedReleaseWithVersion } from "@/lib/__tests__/helpers/seed-db";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
@@ -20,13 +20,14 @@ function makeRequest(
   return new NextRequest("http://localhost/api", {
     method,
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json", ...adminActorHeaders, ...headers },
   });
 }
 
 beforeEach(async () => {
   resetActor();
   await _resetDb();
+  await seedRbacAdmin();
   await seedAgent(AGENT_ID);
   // 提交链路需要可 diff 的配置分区
   await prisma.promptConfig.create({
@@ -39,6 +40,23 @@ afterEach(async () => {
 
 describe("POST /api/agents/[id]/release", () => {
   it("submits a release (201) with actor + audit", async () => {
+    // 发布者身份来自请求头；RBAC 按 actor.id 查库，需给 user-1 授 agent:publish
+    const role = await prisma.role.create({
+      data: { id: "role-t-pub", name: "t_publisher", displayName: "测试发布者" },
+    });
+    const perm = await prisma.permission.findUniqueOrThrow({
+      where: { resource_action: { resource: "agent", action: "publish" } },
+    });
+    await prisma.rolePermission.create({
+      data: { roleId: role.id, permissionId: perm.id },
+    });
+    await prisma.user.create({
+      data: { id: "user-1", email: "u1@test.local", name: "tester" },
+    });
+    await prisma.userRole.create({
+      data: { id: "ur-t-pub", userId: "user-1", roleId: role.id, assignedBy: "test" },
+    });
+
     const req = makeRequest(
       "POST",
       { changeNote: "首次发布" },

@@ -2,14 +2,17 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as listAuditLogs } from "@/app/api/settings/audit-logs/route";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedAuditLogs } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedAuditLogs, seedRbacAdmin } from "@/lib/__tests__/helpers/seed-db";
 
 function makeRequest(query = "") {
-  return new NextRequest(`http://localhost/api/settings/audit-logs${query}`);
+  return new NextRequest(`http://localhost/api/settings/audit-logs${query}`, {
+    headers: adminActorHeaders,
+  });
 }
 
 beforeEach(async () => {
   await _resetDb();
+  await seedRbacAdmin();
   await seedAuditLogs(); // log-001..log-004，createdAt 递增
 });
 

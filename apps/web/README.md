@@ -14,7 +14,7 @@ pnpm build        # 生产构建
 pnpm build:demo   # 演示模式静态导出（产物 out/）
 ```
 
-MOCK 登录演示账号：`allengaller` / `123`。登录成功下发 HMAC-SHA256 签名的会话令牌
+演示登录账号（真实用户库，seed 预置）：`allengaller@example.com` / `AgentUp#Demo2026`。登录成功下发 HMAC-SHA256 签名的会话令牌
 （`Set-Cookie: agentup_session=…`），响应体含 `sessionIssued` 标记——为 `false` 说明
 `AUTH_SECRET` 未配置，此时写操作的审计署名会落到 `anonymous`（生产环境缺配置则服务
 启动即退出，见 `instrumentation.ts`）。侧边栏底部「登出」会清除会话 cookie。

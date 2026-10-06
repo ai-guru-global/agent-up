@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { POST as ingestFeedback } from "@/app/api/feedback/ingest/route";
 import { prisma } from "@agent-up/db";
 import { resetActor } from "@/lib/context";
-import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedRbacAdmin, seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { listAudit, flushAudit } from "@/lib/services/audit-service";
 import { _resetDb } from "@/lib/data/test-db";
 
@@ -24,6 +24,7 @@ function ingest(body: unknown) {
     new NextRequest("http://localhost/api/feedback/ingest", {
       method: "POST",
       body: JSON.stringify(body),
+      headers: adminActorHeaders,
     }),
   );
 }
@@ -32,6 +33,7 @@ function ingest(body: unknown) {
 beforeEach(async () => {
   resetActor();
   await _resetDb();
+  await seedRbacAdmin();
 });
 
 describe("POST /api/feedback/ingest（多渠道工单适配器）", () => {

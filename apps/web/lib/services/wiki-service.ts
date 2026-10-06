@@ -8,6 +8,7 @@ import {
   type Prisma,
 } from "@agent-up/db";
 import { NotFoundError, ConflictError } from "@/lib/errors";
+import { requirePermission } from "@/lib/services/rbac";
 import { recordAudit } from "@/lib/services/audit-service";
 
 const AGENT_SELECT = { id: true, name: true } as const;
@@ -100,6 +101,7 @@ export async function createVault(data: {
   gitBranch?: string;
   isShared?: boolean;
 }) {
+  await requirePermission("wiki", "write");
   const created = await prisma.wikiVault.create({
     data: {
       name: data.name,
@@ -117,6 +119,7 @@ export async function createVault(data: {
 }
 
 export async function updateVault(id: string, data: Record<string, unknown>) {
+  await requirePermission("wiki", "write");
   const existing = await prisma.wikiVault.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError("Vault 不存在");
 
@@ -130,6 +133,7 @@ export async function updateVault(id: string, data: Record<string, unknown>) {
 }
 
 export async function deleteVault(id: string) {
+  await requirePermission("wiki", "write");
   const existing = await prisma.wikiVault.findUnique({ where: { id }, select: { id: true } });
   if (!existing) throw new NotFoundError("Vault 不存在");
 
@@ -218,6 +222,7 @@ export async function createPage(data: {
   categories?: string[];
   wikilinks?: string[];
 }) {
+  await requirePermission("wiki", "write");
   const vault = await prisma.wikiVault.findUnique({ where: { id: data.vaultId }, select: { id: true } });
   if (!vault) throw new NotFoundError("Vault 不存在");
 
@@ -254,6 +259,7 @@ export async function createPage(data: {
 }
 
 export async function updatePage(id: string, data: Record<string, unknown>) {
+  await requirePermission("wiki", "write");
   const existing = await prisma.wikiPage.findUnique({
     where: { id },
     select: { id: true, vaultId: true, title: true },
@@ -278,6 +284,7 @@ export async function updatePage(id: string, data: Record<string, unknown>) {
 }
 
 export async function deletePage(id: string) {
+  await requirePermission("wiki", "write");
   const existing = await prisma.wikiPage.findUnique({
     where: { id },
     select: { id: true, vaultId: true },

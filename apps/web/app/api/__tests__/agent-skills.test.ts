@@ -7,7 +7,7 @@ import {
 } from "@/app/api/agents/[id]/skills/route";
 import { createSkill } from "@/lib/services/skill-service";
 import { _resetDb } from "@/lib/data/test-db";
-import { seedAgent } from "@/lib/__tests__/helpers/seed-db";
+import { adminActorHeaders, seedRbacAdmin, seedAgent } from "@/lib/__tests__/helpers/seed-db";
 import { flushAudit, listAudit } from "@/lib/services/audit-service";
 
 const AGENT_ID = "ecs-assistant";
@@ -16,7 +16,7 @@ function makeRequest(
   method: string,
   path: string,
   body?: unknown,
-  actorHeaders?: Record<string, string>,
+  actorHeaders: Record<string, string> = adminActorHeaders,
 ): NextRequest {
   return new NextRequest(`http://localhost${path}`, {
     method,
@@ -30,6 +30,7 @@ function makeRequest(
 
 beforeEach(async () => {
   await _resetDb();
+  await seedRbacAdmin();
   await seedAgent(AGENT_ID);
 });
 
@@ -62,6 +63,19 @@ describe("agents/[id]/skills 路由", () => {
       makeRequest("POST", `/api/agents/${AGENT_ID}/skills`, { skillId: skill.id }),
       { params: Promise.resolve({ id: AGENT_ID }) },
     );
+
+    // RBAC 按 actor.id 查库：给 user-chen 授 agent:write，保留「请求头署名」测试意图
+    const pmRole = await prisma.role.create({
+      data: { id: "role-t-pm", name: "t_pm", displayName: "测试产品" },
+    });
+    const permW = await prisma.permission.findUniqueOrThrow({
+      where: { resource_action: { resource: "agent", action: "write" } },
+    });
+    await prisma.rolePermission.create({ data: { roleId: pmRole.id, permissionId: permW.id } });
+    await prisma.user.create({ data: { id: "user-chen", email: "chen@t.local", name: "pm-chen" } });
+    await prisma.userRole.create({
+      data: { id: "ur-t-chen", userId: "user-chen", roleId: pmRole.id, assignedBy: "test" },
+    });
 
     // HTTP 头仅限 Latin-1：actor 名用 ASCII
     const res = await unbindSkillRoute(
