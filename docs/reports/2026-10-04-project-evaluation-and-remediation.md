@@ -1013,7 +1013,7 @@ C 组是本批真正的收获：它回答了原注释担心的问题，而答案
 | 全量测试 | **44 文件 / 502 测试全绿**（迁移基线 447 + RBAC 矩阵 7 + 登录 6 + 批⑤新增 4 + 批⑦新增 38） |
 | 覆盖率门禁（`pnpm test -- --coverage`） | exit 0：Statements·Lines **97.1%**（4458/4591）、Branches **83.96%**（1026/1222）、Functions **99.52%**（209/210）；include 已含 40 个 `app/api/**/route.ts`，阈值 80/80/80/70 未动 |
 | `npx tsc --noEmit` / `npx eslint .` | 双 exit 0（批⑦复跑：tsc exit 0，4 份测试文件 + vitest.config.ts lint exit 0） |
-| 双构建 | 全栈 + `DEMO_EXPORT=1` 均 exit 0（批⑤后复跑，仍双 exit 0） |
+| 双构建 | 全栈 + `DEMO_EXPORT=1` 均 exit 0（批⑦复跑，新增 4 份测试文件后仍双 exit 0）。全栈轨残留 2 条 Turbopack **warning**（`instrumentation.ts:20` 的 `process.exit` 不宜在 Edge Runtime 使用——批① 刻意为之；`@prisma/client` 的 `export *` 遇到 CJS 模块），均为既有项、非本批引入，不影响 exit 0 |
 | 生产模式 cookie E2E（`next start`） | 匿名建 Agent → 403 结构化；allen 登录 → 200 `sessionIssued:true`；cookie 建 Agent → **201 `createdBy=user-allen`**；cookie 读 audit-logs → 200（修复前 500）；匿名读 → 403；错口令 → 401 |
 
 **操作口径记录**：`next start` 强制 production → x-actor 信任头默认失效（设计使然），
