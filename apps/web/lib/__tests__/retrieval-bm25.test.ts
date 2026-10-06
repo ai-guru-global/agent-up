@@ -5,6 +5,7 @@ import {
   scorePage,
   tfSat,
   tokenize,
+  UNIGRAM_WEIGHT,
   type RankablePage,
 } from "@/lib/retrieval-bm25";
 
@@ -15,6 +16,14 @@ import {
  * 「不/的」这类高频字权重污染问题（候选预筛/停字表是待议改进），任何
  * 分词或打分改动都必须先让本文件记录改动前的精确行为，再在改动后
  * 逐条审视哪些断言应当变化、哪些是回归。
+ *
+ * 批⑤第二步复评记录（2026-10-06，虚词停用 + CJK 单字半权落地后）：
+ * 全部 21 条基线用例逐条重跑——**零翻转**。它们钉的是仍然成立的行为
+ * （token 结构、tf 饱和、字段权重比 6:1、零分页门禁、excerpt/候选透传、
+ * 空候选不 NaN）；改动影响的是 CJK 打分的绝对值（单字减半）和虚词不再
+ * 成为查询 token，而基线里没有任何用例把「虚词入 token」或「单字满权」
+ * 当断言。新语义由文末「批⑤」专块固化，实测前后分数对照见
+ * docs/reports/2026-10-04-project-evaluation-and-remediation.md 第五部分。
  *
  * 与服务端 retrieval-service.test.ts 的分工：那边在 PG 环境验证
  * service 层接线（loadPages/门限/fallback），这里只锁纯函数语义。
@@ -204,5 +213,42 @@ describe("rankPages：归一化、门限切分与截断", () => {
   it("空候选集 → 空 results/belowThreshold，不产生 NaN", () => {
     const out = rankPages([], "安全组", 5, 0.35);
     expect(out).toEqual({ candidates: 0, results: [], belowThreshold: [] });
+  });
+});
+
+describe("批⑤：CJK 虚词停用与单字降权", () => {
+  it("虚词单字不进 token，但同段 bigram 全部保留（丢单字不丢召回）", () => {
+    expect(tokenize("的")).toEqual([]);
+    // 「对」是停用单字被丢弃；「对象/象存/存储」bigram 与实义单字照旧
+    expect(tokenize("对象存储")).toEqual(["对象", "象", "象存", "存", "存储", "储"]);
+    // 否定的信息量由 bigram 兜住：「连不上」仍可经「连不/不上」命中
+    expect(tokenize("连不上")).toEqual(["连", "连不", "不上", "上"]);
+  });
+
+  it("CJK 单字权重恰为 bigram 的一半；拉丁整词不受影响", () => {
+    const p = page({ content: "安全" });
+    expect(scorePage(p, ["安"])).toBeCloseTo(scorePage(p, ["安全"]) * UNIGRAM_WEIGHT, 12);
+    expect(scorePage(page({ content: "ssh" }), ["ssh"])).toBeCloseTo(tfSat(1) * 0.5, 12);
+  });
+
+  it("高频字污染收敛：『完全无关』对查询『安全组』只剩半权单字分", () => {
+    // 基线文件头点名的污染实例——唯一重叠是单字「全」。
+    // 改动前：tfSat(1)×3 满权；改动后减半。
+    const noise = page({ id: "n", title: "完全无关", baseConfidence: 0.9 });
+    expect(scorePage(noise, tokenize("安全组"))).toBeCloseTo(
+      tfSat(1) * 3 * UNIGRAM_WEIGHT,
+      12,
+    );
+  });
+
+  it("全虚词查询 → 零命中：一页都不进上下文（改动前 4 个种子页会全员混入）", () => {
+    const corpus = [
+      page({ id: "a", title: "安全组配置", summary: "入方向和出方向", baseConfidence: 0.9 }),
+      page({ id: "b", title: "云盘扩容", summary: "在线扩容与离线扩容", baseConfidence: 0.7 }),
+    ];
+    const { results, belowThreshold } = rankPages(corpus, "的不了是", 5, 0);
+    expect(results).toEqual([]);
+    expect(belowThreshold).toHaveLength(2);
+    expect(belowThreshold.every((m) => m.score === 0)).toBe(true);
   });
 });
