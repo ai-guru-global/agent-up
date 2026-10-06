@@ -666,7 +666,7 @@ route 必须在 actor 作用域内**。
 | 批④ | 第二步：邮箱登录查库接线 | ✅ 完成 | `82de786` |
 | 批⑤ | 第二步：CJK 分词质量改动 | 🟡 部分完成（虚词污染闭合；实词单字污染残留，见批⑤边界小节） | `8e9d009` |
 | 批⑥ | 检索候选预筛（LIKE 预筛或裁撤） | ✅ 结案：**裁撤**（实测无收益且召回不安全，见批⑥小节） | 无代码改动 |
-| 批⑦ | 覆盖率 route 层扩围 | ⏳ 待启动 | — |
+| 批⑦ | 覆盖率 route 层扩围 | ✅ 完成（40 个路由全部纳入，阈值一行未动，实测 97.10 / 83.96 / 99.52） | `b6d1cce` |
 | 新增 | 置信度模型改造（`0.4×base` 底数项 / 绝对分档）——风险 #7 质量半边的真正解；idf 已被实测否决 | ⏸ 未排期（需改 21 例基线语义） | — |
 | 批⑧（建议） | wiki 正文入库（风险 #10：`content = summary` 兜底、`filePath` 悬空） | ⏳ 待用户裁决 | — |
 
@@ -924,12 +924,95 @@ B 反而变成 A 的 2.3 倍**（13 token × 3 字段 × 2 KB 的 `%x%` 扫描�
 **本批不改任何代码**，因此无测试/构建增量；风险 #7 性能半边自此以
 「现状 0.124ms + 已量化的再入条件」结案，质量半边继续留在未排期项。
 
+## 批⑦（`b6d1cce`）——覆盖率纳入路由层，阈值零下调
+
+**动因**：`vitest.config.ts` 的 include 原本只到 `lib/services/**`，40 个
+`app/api/**/route.ts` 全在门禁之外。配置文件里留着一条前置约束（批②写入）：
+「纳入前必须先跑 `pnpm test -- --coverage` 量出实际数字，再决定抬阈值还是加
+per-glob 阈值；任何情况下都不应为了让扩围通过而下调现有阈值」。本批就是执行这条约束。
+
+### 三组实测（同一 config，只变 include 与用例集合）
+
+| 组 | 口径 | Lines | Branches | Functions |
+|----|------|-------|----------|-----------|
+| A | 扩围前（旧 include，502 用例） | 97.39%（3025/3106） | 83.84%（732/873） | 99.29%（140/141） |
+| C | **只扩围不补测**（旧 464 用例 + 路由层） | 93.51%（4313/4612） | 81.93%（948/1157） | 97.04%（197/203） |
+| B | 扩围 + 补测（最终门禁态，502 用例） | **97.10%（4458/4591）** | **83.96%（1026/1222）** | **99.52%（209/210）** |
+
+（分母跨组不可直接比：v8 只统计**被加载过**的文件，A 无路由、C 有 5 个路由从未被
+import，故其分支总数 1157 低于 B 的 1222。可比的只有百分比。）
+
+C 组是本批真正的收获：它回答了原注释担心的问题，而答案是**否**——扩围并不会把
+大盘拉到 80 以下（branches 81.93 对阈值 70，仍有 11.93pp 余量），CI 不会挂。
+所以「挂 CI」从来不是真实风险；**真实风险是假绿**：C 组里有 5 个路由 0% 覆盖，
+被 3100 行 lib 层的均值完全掩盖，门禁照样 exit 0。原注释把这件事写成了阈值风险，
+实际是可见性风险——这个误判只有真的量出三组数才能暴露。
+
+扩围的真实代价约 **0.3pp 行覆盖率**（A 97.39 → B 97.10），门禁余量仍约 17pp。
+**三组全部高于阈值，因此 lines/functions/statements 80、branches 70 一行未动**，
+也没有引入 per-glob 阈值（实测不需要）。
+
+### 补测（新增 38 例，`app/api/__tests__/`）
+
+- **`auth-logout.test.ts`（2 例）**：零参 `POST()`；断言 200 + `{loggedOut:true}`、
+  `set-cookie` 以 `agentup_session=;` 开头且含 `Max-Age=0 / Path=/ / HttpOnly / SameSite=Lax`；
+  第二次调用与第一次字节一致（幂等）。
+- **`skill-detail.test.ts`（10 例）**：GET 详情形状（`bindings:[]`/`versions:[]`/`_count`）、
+  GET 404 只断言 `success:false`+`error`（**该路径用 `error()` 而非 `handleApiError()`，
+  响应没有 `code` 字段**——这个契约不一致现由测试固定并在用例名里写明）、
+  PUT 后 `triggerPatterns`/`inputSchema`/`status` 以 TEXT 原样往返（SQLite 迁移后 JSON 列即 TEXT，
+  必须断言反序列化而非仅断言写入成功）、422 `status:"ARCHIVED"`、400 不可解析体、
+  404 ghost、403 `code:"AUTHORIZATION"`、DELETE 为归档非物理删除、DELETE ghost 403/404。
+- **`wiki-crud.test.ts`（19 例）**：vault GET/404/PUT 改名/422/400/404/403/DELETE 级联
+  （删除后 `prisma.wikiPage.count` 归零）；pages GET **精确**分页 meta
+  `{page:1,pageSize:2,total:3,totalPages:2,hasMore:true}`、lifecycle/tier 过滤、`lifecycle=ALL`、
+  内存内 search 过滤（CJK 标题命中 + ASCII 大小写不敏感，SQLite 无 `mode:"insensitive"`）、
+  POST 201（path 中 vaultId 权威、body 默认值齐备）、slug 重复 409、缺 content 422、
+  page GET 的 tags/categories/wikilinks 往返、PUT/DELETE/403。
+- **`releases.test.ts`（+7 例，17→24）**：`GET /api/releases` 过滤契约——全量 + agent join +
+  `changedPartitions` 反序列化成数组、`status=APPROVED`/`REJECTED`、
+  **未知 status → 200 空结果**（此前只是 `app/api/releases/route.ts:13` 的一行注释，
+  现成为断言）、`status=ALL` 等价于不传、`agentId` 命中/陌生、`status`+`agentId` 为 AND。
+  该路由由此从 84.61% 行 / 14.28% 分支 → **4×100**。
+
+5 个原 0% 路由（`auth/logout`、`skills/[id]`、`wiki/vaults/[id]`、`wiki/vaults/[id]/pages`、
+`wiki/pages/[id]`）现全部 100/100/100/100；40 个 route.ts 无一为 0%。
+
+### 已知残留（有意不为，非遗漏）
+
+分支覆盖最低的路由：`maas/usage` 77.77% 行 / 50% 分支（L15-16 兜底 catch）、
+`agents/[id]/config/[partition]` 81.25 / 46.15、`agents/[id]/skills` 90.47 / 55.55、
+`feedback` 94.44 / 66.66（62-63,69）、`feedback/[id]/insight` 100 / 66.66（23-44）、
+`releases/[id]/summary` 98.55 / 58.82（38）、`wiki/vaults` 91.66 / 71.42（27-28）、
+`skills` 92 / 83.33（28-29）、`settings/roles` 96.07（65-66）、
+`settings/audit-logs` 92.3（30-31）、`auth/login` 91.11（51-56，`NODE_ENV!=="test"`
+守卫的开发期告警分支，测试里结构性不可达）。
+
+共性：补这些防御分支要引入 `vi.mock` / `vi.spyOn`，而**本仓零先例**——全仓只 mock 过
+`fetch`。为一个不可能在正常请求生命周期内触发的 `catch` 引入模块级 mock，换来的只是
+把测试与实现细节耦合，得不偿失。唯一未覆盖的函数在 `lib/services`，与路由层扩围无关。
+
+### 过程记录（本批两次自我纠错）
+
+1. 第一次改注释时，我把「扩围后」的 96.97% 当作「扩围前基线」写入——是 A/C/B 三组
+   实测暴露了这个错标，注释改为并列三行并标明各组用例数。
+2. `releases.test.ts` helper 用了 `Promise<{status:number; json:any}>`，被
+   `@typescript-eslint/no-explicit-any` 拦下；改为 `ReleaseRow`/`ListBody` 接口 +
+   `as ListBody` 断言，同时把 `first.version.version` 修正为可选链。
+
+### 风险 #9 自此完全闭合
+
+迁移时闭合的是「跑不通」（447 测试首次本机运行）；本批闭合的是「门禁看不见路由层」。
+**批⑦是本次批准计划（PG→SQLite 及被其解锁的五批）的最后一步，计划内项目全部完成。**
+剩余两项均在计划外、待用户裁决：批⑧ wiki 正文入库（风险 #10）、置信度模型改造（风险 #7 质量半边）。
+
 ## 本机验证（全部实测）
 
 | 门禁 | 结果 |
 |------|------|
-| 全量测试 | **41 文件 / 464 测试全绿**（迁移基线 447 + RBAC 矩阵 7 + 登录 6 + 批⑤新增 4） |
-| `npx tsc --noEmit` / `npx eslint .` | 双 exit 0（收尾修复含补齐 1 处 prisma 导入） |
+| 全量测试 | **44 文件 / 502 测试全绿**（迁移基线 447 + RBAC 矩阵 7 + 登录 6 + 批⑤新增 4 + 批⑦新增 38） |
+| 覆盖率门禁（`pnpm test -- --coverage`） | exit 0：Statements·Lines **97.1%**（4458/4591）、Branches **83.96%**（1026/1222）、Functions **99.52%**（209/210）；include 已含 40 个 `app/api/**/route.ts`，阈值 80/80/80/70 未动 |
+| `npx tsc --noEmit` / `npx eslint .` | 双 exit 0（批⑦复跑：tsc exit 0，4 份测试文件 + vitest.config.ts lint exit 0） |
 | 双构建 | 全栈 + `DEMO_EXPORT=1` 均 exit 0（批⑤后复跑，仍双 exit 0） |
 | 生产模式 cookie E2E（`next start`） | 匿名建 Agent → 403 结构化；allen 登录 → 200 `sessionIssued:true`；cookie 建 Agent → **201 `createdBy=user-allen`**；cookie 读 audit-logs → 200（修复前 500）；匿名读 → 403；错口令 → 401 |
 
