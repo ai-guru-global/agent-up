@@ -621,3 +621,53 @@ route 必须在 actor 作用域内**。
 - 批⑥ scope 重定：pg_trgm 不可用，降级为「LIKE 预筛或裁撤」，待批⑤落地后按实测性能决定。
 - **全部被卡批次自此解锁**：③第二步（RBAC 强制）→ ④第二步（邮箱登录接线）→
   ⑤第二步（分词改动，基线已在 `7788731`）→ ⑥（scope 重定）→ ⑦（覆盖率扩围，可先量真实基线）。
+
+---
+
+# 第五部分 · SQLite 解锁后的实施批次（2026-10-06）
+
+## 批次进度（更新第三部分表格）
+
+| 批次 | 内容 | 状态 | 提交 |
+|------|------|------|------|
+| 批③ | 第二步：RBAC 服务层强制 + 路由接线 | ✅ 完成 | `ad1753d` + `0d9b2d4` |
+| 批④ | 第二步：邮箱登录查库接线 | ✅ 完成 | `82de786` |
+| 批⑤ | 第二步：CJK 分词质量改动 | ⏳ 进行中 | 基线 `7788731` |
+| 批⑥ | 检索候选预筛（LIKE 预筛或裁撤） | ⏳ 待批⑤实测 | — |
+| 批⑦ | 覆盖率 route 层扩围 | ⏳ 待批⑤后 | — |
+
+## 批④第二步（`82de786`）
+
+- 登录路由改查真实用户库：email 小写归一 → `findUnique` → scrypt `verifyPassword`；
+  无用户 / 未设口令 / 口令不符统一 401「邮箱或密码错误」，不做用户枚举。
+- 会话令牌载荷取自用户行 + 首个角色；响应保留旧字段 `username`（值为邮箱），
+  前端与 demo 轨字段集合不变。6 例路由测试覆盖（含大小写混写登录）。
+
+## 批③第二步（`ad1753d` + `0d9b2d4`）——残留风险 #1 自此闭合
+
+- **`lib/services/rbac.ts`**：`requirePermission(resource, action)` 按
+  actor.id → UserRole → Role → RolePermission → Permission 多角色取并集；
+  `system` 豁免；匿名 fail-closed 拒一切写；**令牌里的 role 字符串只做审计展示，
+  不参与授权判定**——防止「改个 x-actor-role 头就提权」。
+- **接线面**：agent/feedback/release/skill/wiki/trace/eval-case 服务层写路径 +
+  settings 全部管理路由（roles POST/PUT/DELETE、permissions、product-groups）+
+  audit-logs GET（`audit:read`）。
+- **测试夹具**：`seedRbacAdmin()` + `adminActorHeaders` 统一喂 12 个路由测试文件；
+  意图为「特定用户署名」的用例改为给该用户授具体权限（复用已种子权限行，
+  不新建撞 `(resource,action)` 唯一键的权限）。
+- **`0d9b2d4` 实测教训**：audit-logs 的 RBAC 门在 try/catch 之外，权限拒绝逃逸成
+  500——生产模式冒烟才暴露；查询移入 `withActor` 回调并统一 `handleApiError`，
+  403 结构化返回。**门禁必须位于路由错误边界之内。**
+
+## 本机验证（全部实测）
+
+| 门禁 | 结果 |
+|------|------|
+| 全量测试 | **41 文件 / 460 测试全绿**（迁移基线 447 + RBAC 矩阵 7 + 登录 6） |
+| `npx tsc --noEmit` / `npx eslint .` | 双 exit 0（收尾修复含补齐 1 处 prisma 导入） |
+| 双构建 | 全栈 + `DEMO_EXPORT=1` 均 exit 0 |
+| 生产模式 cookie E2E（`next start`） | 匿名建 Agent → 403 结构化；allen 登录 → 200 `sessionIssued:true`；cookie 建 Agent → **201 `createdBy=user-allen`**；cookie 读 audit-logs → 200（修复前 500）；匿名读 → 403；错口令 → 401 |
+
+**操作口径记录**：`next start` 强制 production → x-actor 信任头默认失效（设计使然），
+生产冒烟必须走 cookie 路径；且 `next build` 与 `DEMO_EXPORT=1 next build` 共用 `.next`
+目录，后者会覆盖前者产物——冒烟前需最后跑全栈构建。
