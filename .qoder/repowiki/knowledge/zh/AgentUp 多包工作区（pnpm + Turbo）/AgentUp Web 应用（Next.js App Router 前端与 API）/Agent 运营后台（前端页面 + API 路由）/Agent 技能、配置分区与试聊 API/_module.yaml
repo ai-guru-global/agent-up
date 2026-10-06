@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: web_app/agents_feature/skills_config_chat
+title: Agent 技能、配置分区与试聊 API
+scope:
+    - apps/web/app/api/agents/[id]/skills/
+    - apps/web/app/api/agents/[id]/config/
+    - apps/web/app/api/agents/[id]/chat/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/agents_feature/agent_detail_ui
+    - path: web_app/agents_feature/versions_release_rollback

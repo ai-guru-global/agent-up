@@ -7,53 +7,47 @@ scope:
 source_files:
     - package.json
     - pnpm-workspace.yaml
+    - pnpm-lock.yaml
     - turbo.json
+    - .github/workflows/ci.yml
     - apps/web/package.json
-    - packages/shared/package.json
-    - packages/ui/package.json
     - packages/db/package.json
-    - skills-lock.json
 ---
 
-## 1. 使用的系统/方法
+## 1. 使用的系统/方案
 
-- **包管理器**：pnpm（根 `package.json` 通过 `packageManager: "pnpm@9.15.0"` 锁定版本，并声明 Node `>=20` 引擎要求）。
-- **工作区**：`pnpm-workspace.yaml` 将 `apps/*` 与 `packages/*` 注册为 workspace 包，实现跨包共享依赖解析。
-- **任务编排**：Turbo (`turbo v2.5.0`) 作为顶层脚本入口，统一执行 `dev`、`build`、`lint`、`db:*`、`clean` 等任务，并通过 `dependsOn` 和 `inputs/outputs` 控制构建顺序与缓存。
-- **技能依赖**：除 npm/pnpm 外，项目还使用 `skills-lock.json` 锁定 `.agents/skills/` 下的 Claude Skills（来源为 GitHub `Leonxlnx/taste-skill`），每个 skill 以 `computedHash` 固定内容。
+- **包管理器**：pnpm（根 `package.json` 通过 `packageManager: "pnpm@9.15.0"` 锁定版本，CI 也显式安装 `pnpm/action-setup@v4` with `version: 9.15.0`）。
+- **工作区**：`pnpm-workspace.yaml` 声明 `apps/*` 与 `packages/*` 两个 glob 模式，将 Next.js 应用 (`apps/web`) 与共享库 (`packages/db`) 纳入同一 pnpm workspace。
+- **构建编排**：Turbo v2 (`turbo: ^2.5.0`) 作为根脚本入口，统一调度 dev/build/lint/clean 等任务；`turbo.json` 中通过 `dependsOn: ["^build", "^db:generate"]` 建立跨包的依赖顺序（`^` 表示上游包先执行）。
+- **锁文件**：根级 `pnpm-lock.yaml` 是依赖版本的唯一事实源；CI 使用 `pnpm install --frozen-lockfile` 强制锁文件严格匹配。
+- **Node 版本**：根 `engines.node = ">=20"`，CI 固定为 Node 20。
 
 ## 2. 关键文件
 
 | 文件 | 作用 |
 |---|---|
-| `package.json` | 根工作区定义，声明 pnpm/Turbo/TS 开发依赖及顶层脚本 |
-| `pnpm-workspace.yaml` | 声明 workspace 成员 `apps/*`、`packages/*` |
-| `turbo.json` | 定义 `build`/`dev`/`lint`/`db:*`/`clean` 任务及其依赖关系与缓存策略 |
-| `apps/web/package.json` | Next.js 应用依赖（Next 16.2.10、React 19.2.4、Zod、Mermaid 等），并以 `workspace:*` 引用本地 `@agent-up/shared` |
-| `packages/shared/package.json` | 共享 TS 库（`@agent-up/shared`，私有，仅导出 TypeScript 源码） |
-| `packages/ui/package.json` | UI 组件库（`@agent-up/ui`，声明 `peerDependencies` 要求 React ^19） |
-| `packages/db/package.json` | Prisma 数据层（`@agent-up/db`，依赖 `@prisma/client` 6.10.0，提供 `db:generate`/`db:push`/`db:migrate`/`db:studio` 脚本） |
-| `pnpm-lock.yaml` | pnpm 锁文件（未展开） |
-| `skills-lock.json` | Claude Skills 锁定清单 |
+| `package.json` | 根工作区入口，声明 `turbo`、`typescript` 等根级 devDependencies，并通过 `scripts` 转发到 `turbo run ...` |
+| `pnpm-workspace.yaml` | 定义 workspace 成员 glob |
+| `pnpm-lock.yaml` | pnpm 依赖解析的完整锁文件 |
+| `turbo.json` | Turbo 任务图、缓存策略、全局依赖（`.env`） |
+| `.github/workflows/ci.yml` | CI 中固定 pnpm 9.15.0 / Node 20，并执行 `--frozen-lockfile` |
+| `apps/web/package.json` | Web 应用的运行时依赖（next、react、mermaid、zod）及开发依赖（eslint、vitest、tailwindcss） |
+| `packages/db/package.json` | 共享数据库包 `@agent-up/db`，依赖 `@prisma/client` 与 `prisma` |
 
 ## 3. 架构与约定
 
-- **Monorepo 结构**：应用位于 `apps/web`，共享代码拆分为 `packages/{shared,ui,db}` 三个独立包，均通过 `name` 字段发布为 `@agent-up/*` 命名空间。
-- **内部包引用**：应用通过 pnpm workspace protocol `workspace:*` 引用本地包（如 `apps/web` 中的 `"@agent-up/shared": "workspace:*"`），无需发布到公共 registry。
-- **包可见性**：所有 `packages/*` 的 `package.json` 都标记为 `"private": true`，表明它们是仅供本 monorepo 消费的内部模块，不对外发布。
-- **TypeScript 共享**：`packages/shared` 与 `packages/ui` 将 `main` 与 `types` 同时指向 `./src/index.ts`，使类型在编译期直接复用源码，避免额外构建产物。
-- **依赖版本对齐**：React 19.2.4 在 `apps/web`、`packages/ui` 中保持一致；`packages/ui` 通过 `peerDependencies` 强制消费者安装匹配的 React 版本。
-- **构建/任务编排**：`turbo.json` 规定 `build` 依赖 `^build`（上游包先构建）与 `^db:generate`（Prisma 客户端生成优先），`dev` 禁用缓存且持久运行，`lint` 依赖 `^build`。
-- **环境配置**：`turbo.json` 将 `.env` 加入 `globalDependencies`，确保环境变量变化触发重新构建。
+- **Monorepo 结构**：`apps/` 下放可独立部署的应用（当前仅 `web`），`packages/` 下放内部库（当前仅 `db`）。新包需遵循该命名空间才能被 workspace 自动发现。
+- **内部包引用**：`apps/web` 通过 `"@agent-up/db": "workspace:*"` 引用同仓库的 `packages/db`，由 pnpm workspace 在本地解析，不发布到 npm registry。
+- **依赖范围划分**：`apps/web` 只声明运行时依赖（next、react、mermaid、zod），构建/测试工具（eslint、vitest、tailwindcss、@types/*）放在 `devDependencies`；`packages/db` 同理，Prisma 相关依赖同时出现在 `dependencies`（`@prisma/client` 运行时需要）和 `devDependencies`（`prisma` CLI 需要生成 client）。
+- **Prisma 集成**：`packages/db` 暴露 `src/index.ts` 作为 `main` 与 `types` 入口，对外提供单例 PrismaClient；`turbo.json` 中 `build` 任务依赖 `^db:generate`，确保 `@agent-up/db` 的 Prisma Client 先生成再被 web 构建。
+- **构建产物**：Turbo 输出目录为 `.next/**` 与 `dist/**`（`turbo.json` 的 `tasks.build.outputs`），`node_modules` 不被纳入缓存。
 
 ## 4. 约定与约束
 
-- **包管理器锁定**：根 `package.json` 的 `packageManager` 字段锁定 pnpm 版本，配合 `pnpm-lock.yaml` 保证全仓库一致的依赖树。
-- **Node 版本约束**：`engines.node >= 20` 强制运行时环境。
-- **Workspace 协议**：内部包之间一律使用 `workspace:*` 引用，禁止通过版本号引用同仓库包。
-- **私有包**：`packages/*` 全部标记 `private: true`，不会被发布到 npm registry。
-- **Peer Dependency 约束**：`@agent-up/ui` 通过 `peerDependencies` 要求 React ^19，由消费者保证版本一致。
-- **Prisma 集成**：数据库相关命令集中在 `packages/db`，并通过 Turbo 的 `db:generate`/`db:push`/`db:migrate` 任务暴露给上层应用。
-- **Skills 锁定**：`.agents/skills/` 下的 AI Skill 通过 `skills-lock.json` 以 `computedHash` 精确锁定，来源均为 GitHub `Leonxlnx/taste-skill` 的不同路径。
-- **无 vendoring**：未发现 `vendor/` 目录或第三方源码内联，依赖全部通过 pnpm 从 registry 拉取并由 lockfile 锁定。
-- **无私有 registry 配置**：仓库中未发现 `.npmrc`、`.pnpmrc`、`registry` 或 `GOPRIVATE` 等私有源配置，默认使用公共 npm registry。
+- **pnpm 版本锁定**：根 `package.json` 的 `packageManager` 字段与 CI 的 `pnpm/action-setup` 均固定为 `9.15.0`，二者必须保持一致（CI 注释明确说明 `packageManager: pnpm@9.15.0`）。
+- **锁文件不可漂移**：CI 以 `pnpm install --frozen-lockfile` 运行，任何未提交到 `pnpm-lock.yaml` 的变更都会导致安装失败——这是仓库对依赖版本一致性的硬性约束。
+- **Node 引擎要求**：根 `engines.node = ">=20"`，CI 固定 Node 20，开发者环境需满足该最低版本。
+- **Workspace 成员范围**：只有 `apps/*` 与 `packages/*` 下的包会被 pnpm workspace 识别；新增包若不在这些 glob 下不会被自动发现。
+- **内部包协议**：同仓库包之间使用 `workspace:*` 协议引用（如 `@agent-up/db`），而非版本号，避免重复安装与版本分裂。
+- **Prisma Client 生成时机**：由于 monorepo 根找不到 schema，CI 单独执行 `pnpm --filter @agent-up/db exec prisma generate`，并在 `turbo.json` 中将 `db:generate` 设为非缓存任务，保证每次构建都重新生成。
+- **无私有注册表配置**：仓库未发现 `.npmrc`、`registry` 或 `GOPRIVATE` 等私有源配置，所有依赖来自公共 npm registry。

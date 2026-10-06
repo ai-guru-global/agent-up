@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: knowledge_base
+title: 运维知识库文档集
+scope:
+    - knowledge/
+source_files: []
+depends_on: []
+related_to: []

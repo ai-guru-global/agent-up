@@ -3,23 +3,249 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-08-30T02:12:38Z"
+exported_at: "2026-10-06T13:27:57Z"
 modules:
     "":
-        dir_name: agent-up 多包 Monorepo（Next.js 前端 + GTM 物料 + 共享库）
-        title: agent-up 多包 Monorepo（Next.js 前端 + GTM 物料 + 共享库）
-        scope: []
+        dir_name: AgentUp 多包工作区（pnpm + Turbo）
+        title: AgentUp 多包工作区（pnpm + Turbo）
+        scope:
+            - README.md
+            - .gitignore
+            - package.json
+            - pnpm-workspace.yaml
+            - turbo.json
+            - tsconfig.json
+            - skills-lock.json
+            - code-up.yaml
+            - gotchas.md
+            - .env.example
+            - pnpm-lock.yaml
+            - skills-up.yaml
         source_files: []
         children:
-            - gtm
+            - chrome_extension
+            - db_package
+            - docs
+            - knowledge_base
+            - web_app
         depends_on: []
         related_to: []
-    gtm:
-        dir_name: GTM 对外物料与产品落地页
-        title: GTM 对外物料与产品落地页
+    chrome_extension:
+        dir_name: Chrome 扩展 — agent-up 反馈收集器
+        title: Chrome 扩展 — agent-up 反馈收集器
         scope:
+            - chrome-extension/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/feedback_feature
+    db_package:
+        dir_name: Agent 业务数据库层（Prisma + SQLite）
+        title: Agent 业务数据库层（Prisma + SQLite）
+        scope:
+            - packages/db/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/agents_feature
+            - path: web_app/wiki_feature
+    docs:
+        dir_name: 项目文档与 GTM 物料库
+        title: 项目文档与 GTM 物料库
+        scope:
+            - docs/
             - GTM/
-            - .impeccable/critique/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    knowledge_base:
+        dir_name: 运维知识库文档集
+        title: 运维知识库文档集
+        scope:
+            - knowledge/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app:
+        dir_name: AgentUp Web 应用（Next.js App Router 前端与 API）
+        title: AgentUp Web 应用（Next.js App Router 前端与 API）
+        scope:
+            - apps/web/
+        source_files: []
+        children:
+            - web_app/agents_feature
+            - web_app/architecture_feature
+            - web_app/demo_setup
+            - web_app/feedback_feature
+            - web_app/maas_feature
+            - web_app/releases_feature
+            - web_app/settings_feature
+            - web_app/shared_lib
+            - web_app/skills_feature
+            - web_app/ui_components
+            - web_app/wiki_feature
+        depends_on: []
+        related_to: []
+    web_app/agents_feature:
+        dir_name: Agent 运营后台（前端页面 + API 路由）
+        title: Agent 运营后台（前端页面 + API 路由）
+        scope:
+            - apps/web/app/(dashboard)/agents/
+            - apps/web/app/api/agents/
+        source_files: []
+        children:
+            - web_app/agents_feature/agent_detail_ui
+            - web_app/agents_feature/skills_config_chat
+            - web_app/agents_feature/versions_release_rollback
+        depends_on: []
+        related_to:
+            - path: db_package
+    web_app/agents_feature/agent_detail_ui:
+        dir_name: Agent 管理列表与详情页 UI
+        title: Agent 管理列表与详情页 UI
+        scope:
+            - apps/web/app/(dashboard)/agents/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/agents_feature/skills_config_chat
+    web_app/agents_feature/skills_config_chat:
+        dir_name: Agent 技能、配置分区与试聊 API
+        title: Agent 技能、配置分区与试聊 API
+        scope:
+            - apps/web/app/api/agents/[id]/skills/
+            - apps/web/app/api/agents/[id]/config/
+            - apps/web/app/api/agents/[id]/chat/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/agents_feature/agent_detail_ui
+            - path: web_app/agents_feature/versions_release_rollback
+    web_app/agents_feature/versions_release_rollback:
+        dir_name: Agent 版本历史与整版本回滚 API
+        title: Agent 版本历史与整版本回滚 API
+        scope:
+            - apps/web/app/api/agents/[id]/versions/
+            - apps/web/app/api/agents/[id]/rollback/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/agents_feature/skills_config_chat
+    web_app/architecture_feature:
+        dir_name: AgentUp 架构文档站点（三层 Loop _ Harness _ 路线图）
+        title: AgentUp 架构文档站点（三层 Loop / Harness / 路线图）
+        scope:
+            - apps/web/app/(dashboard)/architecture/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app/demo_setup:
+        dir_name: 演示模式（Demo Mode）运行时注入层
+        title: 演示模式（Demo Mode）运行时注入层
+        scope:
+            - apps/web/demo/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/shared_lib
+    web_app/feedback_feature:
+        dir_name: 反馈中心（Feedback）Web 端与 API
+        title: 反馈中心（Feedback）Web 端与 API
+        scope:
+            - apps/web/app/(dashboard)/feedback/
+            - apps/web/app/api/feedback/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: chrome_extension
+    web_app/maas_feature:
+        dir_name: MaaS 集成演示与连通性探针页面
+        title: MaaS 集成演示与连通性探针页面
+        scope:
+            - apps/web/app/(dashboard)/maas/
+            - apps/web/app/api/maas/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/shared_lib
+    web_app/releases_feature:
+        dir_name: Agent 发布审批与 AI 评测
+        title: Agent 发布审批与 AI 评测
+        scope:
+            - apps/web/app/(dashboard)/releases/
+            - apps/web/app/api/releases/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app/settings_feature:
+        dir_name: 设置中心：产品组、角色权限与审计日志
+        title: 设置中心：产品组、角色权限与审计日志
+        scope:
+            - apps/web/app/(dashboard)/settings/
+            - apps/web/app/api/settings/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app/shared_lib:
+        dir_name: Web 应用共享库（认证、校验、服务与工具）
+        title: Web 应用共享库（认证、校验、服务与工具）
+        scope:
+            - apps/web/lib/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: web_app/demo_setup
+            - path: web_app/maas_feature
+    web_app/skills_feature:
+        dir_name: Skill 技能市场页面与 API
+        title: Skill 技能市场页面与 API
+        scope:
+            - apps/web/app/(dashboard)/skills/
+            - apps/web/app/api/skills/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app/ui_components:
+        dir_name: 共享 UI 基元与状态字典
+        title: 共享 UI 基元与状态字典
+        scope:
+            - apps/web/components/ui/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app/wiki_feature:
+        dir_name: Wiki 知识库前端页面与 API 路由
+        title: Wiki 知识库前端页面与 API 路由
+        scope:
+            - apps/web/app/(dashboard)/wiki/
+            - apps/web/app/api/wiki/
+        source_files: []
+        children:
+            - web_app/wiki_feature/wiki_vaults_api
+        depends_on: []
+        related_to:
+            - path: db_package
+    web_app/wiki_feature/wiki_vaults_api:
+        dir_name: Wiki Vault REST API 路由
+        title: Wiki Vault REST API 路由
+        scope:
+            - apps/web/app/api/wiki/vaults/
         source_files: []
         children: []
         depends_on: []

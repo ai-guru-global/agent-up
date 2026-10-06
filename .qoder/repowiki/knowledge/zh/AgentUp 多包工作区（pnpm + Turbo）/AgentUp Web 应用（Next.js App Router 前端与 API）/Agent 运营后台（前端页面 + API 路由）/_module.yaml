@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: web_app/agents_feature
+title: Agent 运营后台（前端页面 + API 路由）
+scope:
+    - apps/web/app/(dashboard)/agents/
+    - apps/web/app/api/agents/
+source_files: []
+depends_on: []
+related_to:
+    - path: db_package

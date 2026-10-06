@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: db_package
+title: Agent 业务数据库层（Prisma + SQLite）
+scope:
+    - packages/db/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/agents_feature
+    - path: web_app/wiki_feature

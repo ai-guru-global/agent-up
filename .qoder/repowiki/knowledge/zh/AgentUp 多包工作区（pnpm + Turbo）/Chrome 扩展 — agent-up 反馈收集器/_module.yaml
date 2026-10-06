@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: chrome_extension
+title: Chrome 扩展 — agent-up 反馈收集器
+scope:
+    - chrome-extension/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/feedback_feature

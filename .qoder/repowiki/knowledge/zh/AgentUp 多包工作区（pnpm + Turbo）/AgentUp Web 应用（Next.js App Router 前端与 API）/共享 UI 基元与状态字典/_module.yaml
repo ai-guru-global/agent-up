@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: web_app/ui_components
+title: 共享 UI 基元与状态字典
+scope:
+    - apps/web/components/ui/
+source_files: []
+depends_on: []
+related_to: []

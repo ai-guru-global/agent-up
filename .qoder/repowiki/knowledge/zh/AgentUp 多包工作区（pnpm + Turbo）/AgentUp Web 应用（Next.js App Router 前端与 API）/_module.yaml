@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: web_app
+title: AgentUp Web 应用（Next.js App Router 前端与 API）
+scope:
+    - apps/web/
+source_files: []
+depends_on: []
+related_to: []

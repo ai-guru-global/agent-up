@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: web_app/architecture_feature
+title: AgentUp 架构文档站点（三层 Loop / Harness / 路线图）
+scope:
+    - apps/web/app/(dashboard)/architecture/
+source_files: []
+depends_on: []
+related_to: []

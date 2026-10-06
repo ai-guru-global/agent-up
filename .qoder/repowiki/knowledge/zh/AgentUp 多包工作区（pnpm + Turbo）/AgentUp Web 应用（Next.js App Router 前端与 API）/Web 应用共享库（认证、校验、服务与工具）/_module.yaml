@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: web_app/shared_lib
+title: Web 应用共享库（认证、校验、服务与工具）
+scope:
+    - apps/web/lib/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/demo_setup
+    - path: web_app/maas_feature

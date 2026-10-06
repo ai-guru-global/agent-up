@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: web_app/skills_feature
+title: Skill 技能市场页面与 API
+scope:
+    - apps/web/app/(dashboard)/skills/
+    - apps/web/app/api/skills/
+source_files: []
+depends_on: []
+related_to: []
