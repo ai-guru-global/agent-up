@@ -315,6 +315,114 @@ describe("GET /api/releases", () => {
   });
 });
 
+describe("GET /api/releases 过滤契约（批⑦扩围补）", () => {
+  /** 两条状态不同的已建档 release：APPROVED + REJECTED */
+  async function seedTwo(): Promise<void> {
+    await seedReleaseWithVersion({
+      agentId: AGENT_ID,
+      versionId: "ver-list-a",
+      version: "1.0.0",
+      releaseId: "rel-list-a",
+      changeNote: "首版",
+    });
+    await seedReleaseWithVersion({
+      agentId: AGENT_ID,
+      versionId: "ver-list-b",
+      version: "1.1.0",
+      releaseId: "rel-list-b",
+      changeNote: "被拒的那版",
+      releaseStatus: "REJECTED",
+    });
+  }
+
+  /** 只声明本组断言用到的字段，其余留索引签名以免 route 侧新增字段影响编译 */
+  interface ReleaseRow {
+    id: string;
+    status: string;
+    agent: { id: string; name: string };
+    version: { id: string; version: string } | null;
+    changedPartitions: string[];
+    [key: string]: unknown;
+  }
+  interface ListBody {
+    success: boolean;
+    data: { items: ReleaseRow[]; pagination: { total: number; totalPages: number; hasMore: boolean } };
+  }
+
+  async function list(query = ""): Promise<{ status: number; json: ListBody }> {
+    const res = await listReleases(
+      new NextRequest(`http://localhost/api/releases${query}`),
+    );
+    return { status: res.status, json: (await res.json()) as ListBody };
+  }
+
+  it("无过滤 → 全量，agent 名字与 version 一并join，changedPartitions 反序列化成数组", async () => {
+    await seedTwo();
+    const { status, json } = await list();
+    expect(status).toBe(200);
+    expect(json.data.items.map((r) => r.id).sort()).toEqual([
+      "rel-list-a",
+      "rel-list-b",
+    ]);
+    const first = json.data.items[0];
+    expect(first.agent).toEqual({ id: AGENT_ID, name: "ECS 助手" });
+    expect(first.version?.version).toMatch(/^1\./);
+    // SQLite 正文列是 TEXT；此处锁定 route 边界已完成反序列化（否则会是字符串）
+    expect(first.changedPartitions).toEqual(["PROMPT"]);
+    expect(json.data.pagination.total).toBe(2);
+  });
+
+  it("status=APPROVED → 只回 APPROVED（证明 where.status 分支生效）", async () => {
+    await seedTwo();
+    const { json } = await list("?status=APPROVED");
+    expect(json.data.items.map((r) => r.id)).toEqual(["rel-list-a"]);
+    expect(json.data.pagination.total).toBe(1);
+  });
+
+  it("status=REJECTED → 只回 REJECTED，且 total 随过滤走", async () => {
+    await seedTwo();
+    const { json } = await list("?status=REJECTED");
+    expect(json.data.items.map((r) => r.id)).toEqual(["rel-list-b"]);
+    expect(json.data.items[0].status).toBe("REJECTED");
+    expect(json.data.pagination.total).toBe(1);
+  });
+
+  it("未知 status → 200 空结果而非回退全量（route 注释里的 JSON 契约）", async () => {
+    await seedTwo();
+    const { status, json } = await list("?status=NOT_A_STATUS");
+    expect(status).toBe(200);
+    expect(json.data.items).toEqual([]);
+    expect(json.data.pagination).toMatchObject({ total: 0, totalPages: 0, hasMore: false });
+  });
+
+  it("status=ALL → 显式全量，与不传 status 同结果", async () => {
+    await seedTwo();
+    const all = await list("?status=ALL");
+    const bare = await list();
+    expect(all.json.data.items.map((r) => r.id).sort()).toEqual(
+      bare.json.data.items.map((r) => r.id).sort(),
+    );
+    expect(all.json.data.pagination.total).toBe(2);
+  });
+
+  it("agentId 过滤：命中自己的 release，陌生 agentId 返回空", async () => {
+    await seedTwo();
+    const mine = await list(`?agentId=${AGENT_ID}`);
+    expect(mine.json.data.pagination.total).toBe(2);
+    const ghost = await list("?agentId=agent-ghost");
+    expect(ghost.json.data.items).toEqual([]);
+    expect(ghost.json.data.pagination.total).toBe(0);
+  });
+
+  it("status 与 agentId 组合过滤是 AND", async () => {
+    await seedTwo();
+    const { json } = await list(`?status=APPROVED&agentId=${AGENT_ID}`);
+    expect(json.data.items.map((r) => r.id)).toEqual(["rel-list-a"]);
+    const none = await list("?status=APPROVED&agentId=agent-ghost");
+    expect(none.json.data.items).toEqual([]);
+  });
+});
+
 describe("GET /api/releases/[id] (single release + diff baseline)", () => {
   it("returns 404 for missing release", async () => {
     const res = await getRelease(
