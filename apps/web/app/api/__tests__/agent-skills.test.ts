@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import { prisma } from "@agent-up/db";
 import {
   GET as listBindings,
   POST as bindSkillRoute,
