@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PrismaClient } from "@prisma/client";
 import { seedData } from "./seed-data.mjs";
+import { wikiCorpus } from "./wiki-corpus.mjs";
 
 // —— 内联 .env 加载（prisma db seed 也会加载，直接 node 运行时兜底） ——
 const here = dirname(fileURLToPath(import.meta.url));
@@ -141,7 +142,10 @@ async function seed() {
     await prisma.wikiPage.create({
       data: {
         id: p.id, vaultId: p.vaultId, title: p.title, slug: p.slug,
-        content: p.summary, summary: p.summary,
+        // 批⑧（风险 #10）：正文取自 wiki-corpus.mjs（由 knowledge 下的 markdown 编译）。
+        // 迁移前这里是 content: p.summary —— 正文等于摘要，检索上下文只有一句话。
+        // content 在 schema 里是必填 String，语料缺失会直接抛错，不会静默降级。
+        content: wikiCorpus[p.filePath], summary: p.summary,
         provenance: p.provenance, lifecycle: p.lifecycle, tier: p.tier,
         baseConfidence: p.baseConfidence, sourceRefs: J([]),
         wikilinks: J(p.wikilinks), categories: J(p.categories), tags: J(p.tags),

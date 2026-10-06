@@ -1,10 +1,11 @@
 import { seedData } from "@agent-up/db/prisma/seed-data.mjs";
+import { wikiCorpus } from "@agent-up/db/prisma/wiki-corpus.mjs";
 
 export type AnyRec = Record<string, unknown>;
 
 /**
  * 演示数据集单一事实源在 packages/db/prisma/seed-data.mjs（批5 起 data/ 目录已删除）：
- * db:seed 写 PostgreSQL，演示模式用同一份数据初始化内存态。
+ * db:seed 写入 SQLite，演示模式用同一份数据初始化内存态。
  */
 const ds = seedData as {
   agents: AnyRec[];
@@ -20,6 +21,9 @@ const ds = seedData as {
   wikiPages: AnyRec[];
   evalCases: AnyRec[];
 };
+
+/** 生成产物 wiki-corpus 的键即 wikiPage.filePath；缺键由下方循环显式抛错，不做 summary 兜底 */
+const corpus: Record<string, string | undefined> = wikiCorpus;
 
 /**
  * 新建 Agent 时从预留 id 池分配：这些 id 的详情页已在构建期预渲染，
@@ -60,11 +64,16 @@ export function createInitialState(): DemoState {
   const wikiPagesByVault: Record<string, AnyRec[]> = {};
   for (const page of ds.wikiPages) {
     const vaultId = page.vaultId as string;
-    // 对齐 packages/db/prisma/seed.mjs 的落库规则（content 取 summary）：
-    // seed-data.mjs 本身不带 content 字段，不补齐则演示轨的页面正文恒为空，
-    // 检索打分与真实轨不一致，列表页的 content 关键字过滤也永远命中不了。
-    const withContent = { ...page, content: page.content ?? page.summary ?? "" };
-    (wikiPagesByVault[vaultId] ??= []).push(withContent);
+    // 批⑧（风险 #10）：正文与 seed.mjs 同源，取自编译产物 wiki-corpus.mjs。
+    // 不再兜底成 summary——两轨正文不一致会让演示轨的检索打分失去参考价值。
+    const filePath = page.filePath as string;
+    const content = corpus[filePath];
+    if (content === undefined) {
+      throw new Error(
+        `[demo seed] wiki-corpus 缺少 ${filePath}，运行 pnpm --filter @agent-up/db wiki:corpus 重新生成`,
+      );
+    }
+    (wikiPagesByVault[vaultId] ??= []).push({ ...page, content });
   }
 
   const seed = {
