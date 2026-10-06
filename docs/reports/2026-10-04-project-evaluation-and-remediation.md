@@ -554,6 +554,11 @@ route 必须在 actor 作用域内**。
     建议列为批⑧；它一旦落地会同时改写批⑥ 的口径（正文 ≥1 KB 后按**字节**而非页数触发再入，
     见第五部分批⑥小节）。
 
+   > → 2026-10-06 批⑧已闭合（`468a7a4`）：4 页 markdown 正文入库，全库正文 147 B → **18,954 B**，
+   > 两处 `content = summary` 兜底同时删除，`filePath` 由「0 命中」变成编译器的双向校验键。
+   > 批⑥ 口径已按新语料复算并维持裁撤结论；批⑤ 的 21 例基线仍是打分语义基线，
+   > 但其绝对分数取自 40 字节级语料，跨批比较时不可当作现网值。
+
 ---
 
 # 第三部分 · 第二轮整改：分批实施记录（2026-10-05 起）
@@ -668,7 +673,7 @@ route 必须在 actor 作用域内**。
 | 批⑥ | 检索候选预筛（LIKE 预筛或裁撤） | ✅ 结案：**裁撤**（实测无收益且召回不安全，见批⑥小节） | 无代码改动 |
 | 批⑦ | 覆盖率 route 层扩围 | ✅ 完成（40 个路由全部纳入，阈值一行未动，实测 97.10 / 83.96 / 99.52） | `b6d1cce` |
 | 新增 | 置信度模型改造（`0.4×base` 底数项 / 绝对分档）——风险 #7 质量半边的真正解；idf 已被实测否决 | ⏸ 未排期（需改 21 例基线语义） | — |
-| 批⑧（建议） | wiki 正文入库（风险 #10：`content = summary` 兜底、`filePath` 悬空） | ⏳ 待用户裁决 | — |
+| 批⑧ | wiki 正文入库（风险 #10：`content = summary` 兜底、`filePath` 悬空） | ✅ 完成（4 页 / 18,954 B，两轨同源，见批⑧小节） | `468a7a4` |
 | 收尾 | 计划外遗留项复核（凭据文档口径 / repowiki 重生成债 / 包名定案） | ✅ 完成（无代码改动，见复核小节） | — |
 
 ## 批④第二步（`82de786`）
@@ -1005,7 +1010,8 @@ C 组是本批真正的收获：它回答了原注释担心的问题，而答案
 
 迁移时闭合的是「跑不通」（447 测试首次本机运行）；本批闭合的是「门禁看不见路由层」。
 **批⑦是本次批准计划（PG→SQLite 及被其解锁的五批）的最后一步，计划内项目全部完成。**
-剩余两项均在计划外、待用户裁决：批⑧ wiki 正文入库（风险 #10）、置信度模型改造（风险 #7 质量半边）。
+剩余两项均在计划外、待用户裁决：批⑧ wiki 正文入库（风险 #10，**后已于 `468a7a4` 完成**）、
+置信度模型改造（风险 #7 质量半边，仍未排期）。
 
 ## 计划外遗留项复核（无代码改动）
 
@@ -1042,14 +1048,100 @@ role=platform_admin）、`README.md:353`（API 表 Auth 行）、`README.md:466`
 `package.json` 与源码里零引用——它早已不存在，却仍被生成文档当作现役包描述，
 这正是 repowiki 需要重生成而非手改的具体证据。
 
-## 本机验证（全部实测）
+## 批⑧（`468a7a4`）——wiki 正文入库，风险 #10 闭合
+
+**动因**：批⑥ 小节记录过现网语料的真实尺寸——`WikiPage` 全库 4 行，`content` 逐字节等于
+`summary`（32/32/41/42 B，合计 **147 B**）。检索链路因此永远只有一句摘要可当上下文，
+`excerpt` 也退化成摘要复读；而 `seed-data.mjs` 里每页声明的 `filePath` 在全仓 **0 命中**，
+等于指向不存在的文件。演示轨另有一处同族兜底：`demo/seed.ts` 用
+`content = page.content ?? page.summary ?? ""` 补正文，两轨都「有内容」而其实都没内容。
+
+**设计：markdown 是可评审源，编译产物是两轨唯一事实源。**
+
+| 角色 | 路径 | 约束 |
+|------|------|------|
+| 正文源（人工维护） | `knowledge/<filePath>` 4 份 markdown | 可 diff、可评审，与 `filePath` 同名 |
+| 编译器 | `packages/db/scripts/build-wiki-corpus.mjs`（`pnpm --filter @agent-up/db wiki:corpus`） | **双向校验**：声明了却缺文件、有文件却没人引用，两种不匹配都 `exit 1` |
+| 生成产物（入库跟踪） | `packages/db/prisma/wiki-corpus.mjs` | 逐字节照磁盘内容，**不做换行或空白归一**——一致性测试按同一条规则比对 |
+| 消费方 1（真实轨） | `seed.mjs` 的 `content: wikiCorpus[p.filePath]` | `content` 是必填 `String`，缺键直接抛，不会静默写空串 |
+| 消费方 2（演示轨） | `demo/seed.ts` 同一产物 | 缺键 `throw` 且提示重生命令；`content = summary` 兜底已删除 |
+
+「改了 md 忘了重新生成」这条最容易犯的漂移被做成**测试挂掉**而非文档约定：
+`lib/__tests__/wiki-corpus.test.ts`（6 例，PG-free）把产物与磁盘 markdown 逐字节比对，
+并锁死正文是成篇文档（≥600 B、含 `## ` 小节、不等于 `summary`）、`filePath` 双向对齐、
+以及演示轨 `createInitialState()` 的正文与语料一致。
+
+**入库实测**：4 页 / **18,954 B**（`storage/disk-expansion.md` 6,338、
+`troubleshooting/connection-troubleshooting.md` 6,810、`troubleshooting/ssh-troubleshooting.md`
+3,034、`network/security-group-guide.md` 2,772）；按 vault 计 ecs-wiki 12,144 B、rds-wiki
+6,810 B。重新 `node prisma/seed.mjs` 后逐行核对：4 行 `content` 与对应 markdown
+**字节数与内容全等**，全库正文 147 B → 18,954 B（**129 倍**）。
+
+**风险 #10 的代价被量化（同一 scorer、同一查询，只换正文来源）**：口语查询
+`ssh 连不上服务器了，一直超时怎么排查` 下 `page-ecs-ssh` 原始分 **11.96 → 13.94（+16.6%）**、
+`excerpt` **41 → 400 字符（9.8 倍）**；`page-rds-conn` 7.51 → 10.55、置信度 0.72 → 0.79。
+
+**`next dev` 实机冒烟**（reseeded `dev.db`，非测试夹具）：
+
+| vault | 查询 | candidates | top1 | score | confidence | excerpt |
+|---|---|---|---|---|---|---|
+| ecs-wiki | `ssh 连不上服务器了` | 3 | page-ecs-ssh | 7.03 | **0.98** | 400 字符，首行即 markdown 标题 |
+| ecs-wiki | `安全组` | 3 | page-ecs-sg | 11.14 | 0.96 | 400 |
+| ecs-wiki | `磁盘扩容怎么做` | 3 | page-ecs-disk | 10.82 | 0.88 | 400 |
+| rds-wiki | `连接 timeout` | 1 | page-rds-conn | 6.99 | 0.94 | 400 |
+
+演示轨同样真的带上了正文：`DEMO_EXPORT=1` 产物里可 grep 到
+`nc -vz`、`growpart` 等只在 markdown 中出现的串。
+
+**批⑥ 口径按新语料复算**（迁移方案当时的预判：正文入库会使批⑥ 的测量失效，需复跑）。
+当前 18,954 B 语料实测 `findP50 = 0.248 ms` + `rankP50 = 0.062 ms` ≈ **0.31 ms** 端到端；
+同一影子模型下的规模曲线（临时测试实测后已删除）：
+
+| 语料字节 | findMany | rankPages |
+|---|---|---|
+| 518,568 | 3.299 ms | 1.513 ms |
+| 1,030,326 | 6.448 ms | 2.972 ms |
+| 2,053,842 | 13.067 ms | 5.973 ms |
+
+即约 **6.3 ms/MB（取数）+ 2.9 ms/MB（打分）**。批⑥ 的再入条件是
+`loadPages p50 > 25 ms` **或** 单 vault 语料 > 3 MB：按 6.3 ms/MB 反推，25 ms 要
+约 4 MB 才够，所以 **3 MB 这条字节条件先成立**（3 MB 时取数约 18.6 ms、端到端约 27.3 ms，
+尚未触及 25 ms 的取数阈值）。这与批⑥ 「预算按字节而非页数计」的结论一致。
+斜率的诚实边界：批⑥ 的 1.6 ms/MB 是 88 B/页 与 2 KB/页 两点外推，今天三点是均匀 ~4.7 KB/页，
+两种取样都无法把 per-row 项与 per-byte 项分离（18,954 B 语料实测取数 0.248 ms，
+已高于按斜率的预测 0.12 ms，差值即固定/逐行开销），故这里的 ms/MB 只用于
+「离门槛多远」的判断。当前距再入仍有约两个数量级，**批⑥ 的裁撤结论维持**。
+
+**残留（有意不在本批做，但本批让它变大了）**：批⑧ 是纯数据侧，**打分语义一行未动**。
+同一口语 SSH 查询在 `threshold=0` 下的完整分档实测为
+`page-ecs-ssh` 13.94 / conf **0.98**、`page-ecs-sg` 2.74 / conf **0.48**、
+`page-ecs-disk` 1.64 / conf **0.35**；而 API 默认门限 0.35 会把三页**全部**当作可用上下文返回，
+`threshold=0.5` 才只剩正解。也就是说：正文入库把「无关页也能拿到 400 字符真正文」这件事
+从「一句摘要」升级成了「一整段看似可信的说明」——风险 #7 质量半边（顶格归一化让任何
+score>0 的最高分页都逼近 0.96，且 `0.4×base`  alone 已越过默认门限）因此在数据侧变好之后
+**相对更突出**。这与批⑤ 边界小节记录的实词单字污染同族，是批⑨（置信度模型改造）的直接输入，
+不属于「正文是否存在」这一问题，故本批不动。另：18,954 B 是演示语料的固有规模，不是容量上限。
+
+### 过程记录（本批两次自我纠错）
+
+1. **生成脚本的头注释把脚本自己写坏了。** 注释里原样写着 glob
+   `knowledge/**/*.md`，其中的 `*/` 提前闭合了块注释，编译产物照同一模板生成后
+   `node --check` 报 `SyntaxError: Unexpected token '*'`。**块注释内不得出现 glob。**
+   已改为文字描述，并对产物做 `grep -n '\*\*/'` 反查。
+2. **验证窗口内混入了 git 写操作。** 一次构建命令尾部误带 `git checkout -- .`，
+   把当时尚未提交的 `demo/seed.ts` 改动清回了 HEAD。发现于「文件在命令期间被改动」提示，
+   按上下文重放后**重跑全套门禁**（tsc / eslint / 508 测试 / 双构建）而非沿用之前的结果。
+   口径：**同一命令里不把 git 写操作和验证命令串在一起**，验证只针对当前工作树的确切状态。
+
+## 本机验证（全部实测，截至批⑧）
 
 | 门禁 | 结果 |
 |------|------|
-| 全量测试 | **44 文件 / 502 测试全绿**（迁移基线 447 + RBAC 矩阵 7 + 登录 6 + 批⑤新增 4 + 批⑦新增 38） |
-| 覆盖率门禁（`pnpm test -- --coverage`） | exit 0：Statements·Lines **97.1%**（4458/4591）、Branches **83.96%**（1026/1222）、Functions **99.52%**（209/210）；include 已含 40 个 `app/api/**/route.ts`，阈值 80/80/80/70 未动 |
-| `npx tsc --noEmit` / `npx eslint .` | 双 exit 0（批⑦复跑：tsc exit 0，4 份测试文件 + vitest.config.ts lint exit 0） |
-| 双构建 | 全栈 + `DEMO_EXPORT=1` 均 exit 0（批⑦复跑，新增 4 份测试文件后仍双 exit 0）。全栈轨残留 2 条 Turbopack **warning**（`instrumentation.ts:20` 的 `process.exit` 不宜在 Edge Runtime 使用——批① 刻意为之；`@prisma/client` 的 `export *` 遇到 CJS 模块），均为既有项、非本批引入，不影响 exit 0 |
+| 全量测试 | **45 文件 / 508 测试全绿**（迁移基线 447 + RBAC 矩阵 7 + 登录 6 + 批⑤新增 4 + 批⑦新增 38 + 批⑧新增 6） |
+| 覆盖率门禁（`npx vitest run --coverage`） | exit 0：Statements·Lines **97.1%**（4458/4591）、Branches **83.96%**（1026/1222）、Functions **99.52%**（209/210）；include 已含 40 个 `app/api/**/route.ts`，阈值 80/80/80/70 未动。批⑧ 后复跑数字**逐位不变**（新增测试为静态断言，且 `demo/seed.ts`、生成产物均不在 include 内） |
+| `npx tsc --noEmit` / `npx eslint .` | 双 exit 0（批⑧ 复跑；本批新增两文件一度报 2 条类型错——生成产物的字面量键类型与 `unknown` 断言消息，已以 `Record<string, string | undefined>` 收口与局部变量提名修复，未放宽任何 tsconfig） |
+| 双构建 | 全栈 + `DEMO_EXPORT=1` 均 exit 0（批⑧ 复跑）。全栈轨残留 2 条 Turbopack **warning**（`instrumentation.ts:20` 的 `process.exit` 不宜在 Edge Runtime 使用——批① 刻意为之；`@prisma/client` 的 `export *` 遇到 CJS 模块），均为既有项、非本批引入，不影响 exit 0 |
+| 真实轨 API 冒烟（`next dev` + reseeded `dev.db`） | `/api/wiki/vaults/{ecs,rds}-wiki/search` 四条查询 top1 全部命中正确页，`excerpt` 400 字符（见批⑧ 表） |
 | 生产模式 cookie E2E（`next start`） | 匿名建 Agent → 403 结构化；allen 登录 → 200 `sessionIssued:true`；cookie 建 Agent → **201 `createdBy=user-allen`**；cookie 读 audit-logs → 200（修复前 500）；匿名读 → 403；错口令 → 401 |
 
 **操作口径记录**：`next start` 强制 production → x-actor 信任头默认失效（设计使然），
