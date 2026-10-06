@@ -1154,12 +1154,18 @@ score>0 的最高分页都逼近 0.96，且 `0.4×base`  alone 已越过默认�
 
 ## repowiki 重生成实测（2026-10-06）——路径已打通到服务端，卡在 CLI 无法应答的确认门
 
+> **本节结论已被文末《IDE Repo Wiki 面板重生成实测（同日 21:27 完结）》推翻并取代**：
+> 债务实际已清偿，且本节的读写边界判断（「权威状态在本地库 `wiki.v1.db`」「回写仓库的唯一动作是
+> `sync --export`」）两处均误——详见该节的「机制订正」。CLI 侧 `PAUSED/112` 的实测记录本身仍然有效，
+> 保留作通路取证。
+
 上一节把 `.qoder/repowiki/**` 判为「维持工具链重生成债、留给用户执行」。本节把那句
 「留给用户执行」补成**可复现的命令 + 精确阻塞点**：本次实测从 CLI 侧把重生成推到了服务端，
 但没有完成，原因是服务端任务在启动约 10 秒后进入 `PAUSED` 且 `server_error_code=112`，
 而 headless CLI 没有应答该确认的入口。
 
-**先厘清读写边界（为何本轮零风险）**：`.qoder/repowiki/**` 只是**导出物**，权威状态在本地库
+**先厘清读写边界（为何本轮零风险）**〔此段两句机制判断事后证明有误，见文末「机制订正」〕：
+`.qoder/repowiki/**` 只是**导出物**，权威状态在本地库
 `~/.qoder/qoder-knowledge/knowledge-agent-up-95789951342a23ef/wiki/wiki.v1.db`；
 把生成物写回仓库的唯一动作是 `wiki sync --export`（本次**未执行**）。实测三次生成尝试后，
 本地库仍完好——`partition.baseline_commit=fd262e2…`、`section` 32 行、`updated_at` 全部停在
@@ -1200,3 +1206,122 @@ sync 两类子命令，无 resume/cancel，故 CLI 侧此门不可开。对照�
 `qoder wiki sync --download --repo "$PWD" --language zh` 拉回团队服务器那份作对照。
 `--disable-team-sync-upload` 只影响生成后的上传，不影响 export 到本地目录，
 所以「重生成但不发布」是可达的组合。手改生成文件依旧禁止。
+
+## IDE Repo Wiki 面板重生成实测（同日 21:27 完结）——债务清偿，附机制订正与新发现的文案债
+
+上一节的 `PAUSED/112` 卡在 CLI 通路上。用户按该节指引在 **Qoder IDE 的 Repo Wiki 面板**触发
+全量重生成并当场应答确认，本轮**实际完成**：面板显示
+`✓ 已完成 · Wiki 文件 94/94 完成, 0 失败 · 更新时间 2026-10-06 21:27 · Commit ID d6e8f256e4e1`，
+其中基线 commit 正是上一节那份文档的提交（`d6e8f25`），即**基线已对齐 HEAD、不再落后 102 个提交**。
+
+**仓库回写是自动的**：面板直接把生成物写入 `<repo>/.qoder/repowiki/**`，全程**未执行**
+`qoder wiki sync --export`。生成物已提交为 `fca9e6d`
+（`294 files changed, 41543 insertions(+), 16517 deletions(-)`）。
+
+### 机制订正（推翻上一节两处判断）
+
+- **存在两套互不相通的 wiki 存储**，上一节把它们当成一套：
+  | 存储 | 谁写 | 谁读 |
+  |---|---|---|
+  | `~/.qoder/qoder-knowledge/knowledge-agent-up-…/wiki/wiki.v1.db` | CLI `qoder wiki` 生成通路 | `qoder wiki sync --export/--download` |
+  | `<repo>/.qoder/repowiki/**` + `~/.qoder/knowledges/agent-up/main__zh-CN/**` | **IDE Repo Wiki 面板**（直接落盘） | 面板自身增量、知识卡片检索 |
+
+  面板通路**不触碰** `wiki.v1.db`。实测该库在重生成完成后仍是
+  `partition.baseline_commit=fd262e2…`、`section` 32 行、`last_accessed_at=2026-09-27T02:58:34`，
+  `run_history` 仍只有那条 `pull|import` 记录。这解释了上一节那个监控为何 25 分钟零事件
+  ——**盯的是错的表面**。因此「`.qoder/repowiki` 只是导出物、权威状态在 `wiki.v1.db`、
+  回写唯一动作是 `sync --export`」三句合起来是错的：对面板通路而言，**仓库里那份就是权威副本**。
+- 上一节读到的 `section` = 1 是我方查询口径错误（只读 `mode=ro&immutable=1` 复测为 32 行、
+  时间戳未变），**不是数据损坏**，订正记录在案。
+- 「`--regenerate` 的 112 是本仓库重生成的必经门」只对 **CLI 通路**成立。同一台机器、同一仓库，
+  面板通路 94 个 catalog 全部跑完，没有 CLI 无法应答的确认门。
+
+### 由此产生的新风险（必须记着）
+
+本地 CLI 库现在**落后于仓库**（基线 `fd262e2` / 2026-09-27 那份旧 wiki）。若日后误跑
+`qoder wiki sync --export`，会用陈旧数据**覆盖** `.qoder/repowiki` 的新内容，把本次清偿的债务
+原地退回。执行任何 `sync --export` 前，先核对
+`sqlite3 … "select baseline_commit from partition"` 是否等于当前基线（应为 `d6e8f25…` 而非 `fd262e2…`）。
+
+### 债务复测（与上一节同一 NUL-safe 方法：`git ls-tree -r --name-only -z` + python 按 NUL 切分）
+
+规模：`.qoder/repowiki` 受跟踪文件 **83 → 215**（markdown **77 → 192**，另 22 yaml + 1 metadata json；
+按目录分 `zh/` 95、`knowledge/` 120）。
+
+| 陈旧口径指标 | 前（`fca9e6d^`） | 后（`HEAD`） |
+|---|---|---|
+| 提及 PostgreSQL | 24 文件 / 82 处 | 17 文件 / 38 处 |
+| 提及 docker-compose | 21 文件 / 167 处 | **0 / 0** |
+| 提及 MinIO | 20 文件 / 94 处 | 4 文件 / 5 处（均为「后续预留」或 Q&A 否定句） |
+| 提及「JSON 文件存储」 | 7 文件 / 20 处 | **0 / 0** |
+| NEXTAUTH | 7 文件 / 16 处 | **0 / 0** |
+| `packages/shared` | 35 文件 / 610 处 | **0 / 0** |
+| 存储层三词并集（上一节那个 30） | 30 文件 | 17 文件，**其中仅 5 个文件仍与代码矛盾** |
+
+两条轴（30/83 与 41）双双归零或接近归零；第二轴（NEXTAUTH + `packages/shared`）完全归零。
+存活的 PostgreSQL 提及里 11 个 md + metadata json 是**正确表述**——「当前 SQLite + 2026-10-05 从
+PostgreSQL 迁移而来 + 未来若需并发写再迁回」，例如 `快速开始.md:188`
+「Q1：需要先启动 PostgreSQL 或 MinIO 吗？不需要」、`Schema 概览.md:26`
+「该版本于 2026-10-05 从 PostgreSQL 迁移而来」、`性能优化.md:161`「若未来迁移至 PostgreSQL…」。
+
+### 仍与代码矛盾的 5 处（生成器精度债，禁止手改，留作下次重生成的观察项）
+
+1. `zh/content/反馈评估系统/效果报告生成.md` L43 / L110 / L235 / L337——
+   架构图与 participant 把 DB 标成 PostgreSQL，L235 断言
+   「报告以 JSON 形式存储在 PostgreSQL 的 `agentVersion` 表中」。
+2. `zh/content/版本控制系统/版本演进线.md` L158——「数据层通过 Prisma 访问 PostgreSQL」。
+3. `zh/content/数据库设计/数据库设计.md` L385——「`db:seed`（PostgreSQL）」。
+4. `zh/content/数据库设计/核心实体详解/知识库实体.md` L61——mermaid 节点 `DB[("SQLite / PostgreSQL")]`
+   把两套引擎并列成同时存在。
+5. `knowledge/…/Agent 管理列表与详情页 UI/技术栈.md` L1——「Prisma/PostgreSQL 后端（由注释说明）」。
+
+### 第 5 条指向一个**我们自己的、新发现的代码债**（非生成器幻觉）
+
+生成器那句写着「由注释说明」是有依据的：**迁移只改了 schema 与服务层，第一方文案与注释没跟上**。
+实测 `apps/web` 与 `packages` 的 ts/tsx 里 PostgreSQL 共 **21 处 / 13 文件**，分类器判出
+**17 处 / 11 文件是「当前存储 = PostgreSQL」的断言、需要改成 SQLite**（实际 18 处 / 12 文件，
+差额原因见表后）：
+
+| 文件 | 行 |
+|---|---|
+| `app/(dashboard)/agents/[id]/agent-detail.tsx` | 198, 225 |
+| `app/(dashboard)/agents/page.tsx` | 136, 403 |
+| `app/(dashboard)/feedback/page.tsx` | 212 |
+| `app/(dashboard)/dashboard/page.tsx` | 84 |
+| `app/(dashboard)/architecture/page.tsx` | 272, 343 |
+| `app/(dashboard)/architecture/roadmap/page.tsx` | 97, 117, 334 |
+| `app/(dashboard)/layout.tsx` | 197, 261 |
+| `app/(dashboard)/skills/page.tsx` | 177 |
+| `app/page.tsx` | 126 |
+| `lib/services/effectiveness-service.ts` | 14 |
+| `lib/__tests__/seed-data-consistency.test.ts` | 15 |
+
+其余 4 处按分类器判为**已标注为历史**的正确表述（`roadmap/page.tsx` L233/L238、
+`lib/__tests__/demo-mock-server.test.ts` L12、`app/(dashboard)/error.tsx` L59）。
+但其中 `error.tsx:59`（「数据库不可用：确认本地 PostgreSQL 已启动，且已执行迁移与种子」）
+是被句中的「迁移」二字误判——它同样是**当前状态断言**，所以真实待改数是
+**18 处 / 12 文件**，上表按分类器原样给出以便复现。这些都是**用户可见文案**
+（「数据源：本地 PostgreSQL（Prisma）中的种子数据」「确认本地 PostgreSQL 可用后重试」），
+迁移后已属事实错误，会直接误导使用者；`.github/workflows/ci.yml` 与 `docker-compose.yml`
+经复测已无残留（CI 仅一行说明「原 postgres service 已移除」，正确）。
+
+### 引用完整性
+
+按字面路径断言口径统计：markdown 中带仓库前缀的 backtick 路径 **81 条可判定字面断言**
+（另有 44 条含 `*`/`**`/`[…]` 的 glob 形态路径不参与存在性判定），**80 条可解析**；
+唯一不可解析的 `packages/db/build`（`knowledge/…/pnpm + Turbo 多包工作区构建与 CI 流水线.md:109`）
+实指 `packages/db` 的 `build` 脚本（`prisma generate && tsc`，见 `packages/db/package.json`），
+**属记号而非事实错**。真实错误 1 处、共 4 次出现：
+`zh/content/知识库系统/API 接口参考.md` L8 / L79 / L86 / L166 的链接目标
+`file://apps/web/app/api/pages/[id]/route.ts` **漏了 `wiki/`**——链接文字里的
+`apps/web/app/api/wiki/pages/[id]/route.ts` 是正确的，真实文件存在。
+
+### 本项最终处置
+
+- repowiki 重生成债：**已清偿**，风险 #4/#9 口径下的那份「工具链重生成债」不再存在；
+  后续增量由面板「重新生成」承担，手改生成文件的禁令不变（上面 5 处矛盾照此不修）。
+- 新增待办（第一方代码，可手改，一个提交即可）：上表 17 处 + `error.tsx:59` = **18 处 / 12 文件**
+  的 PostgreSQL 文案/注释 → SQLite 口径，与 `architecture`/`roadmap` 两页的历史标注方式保持一致
+  （现状句改写、历史句保留）。
+- 本文档中上一节的两处机制判断按本节订正，保留原文与实测过程作通路取证。
+
