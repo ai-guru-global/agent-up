@@ -8,6 +8,7 @@
 
 | # | 物料 | 受众 | 形态 | 状态 |
 |---|------|------|------|------|
+| 00 | [营销与 GTM 策略总纲](./00-marketing-strategy.md) | 内部（所有对外叙事的单一依据） | 文字（STP/信息屋/四叙事/渠道/指标/红线） | v1.0（2026-10-20） |
 | 01 | [企业客户 One-Pager](./01-customer-one-pager.md) | 企业客户 | 文字 | v1.0（2026-08-26） |
 | 02 | [面试话术转换指南](./02-interview-playbook.md) | 面试官（全栈 SA / MaaS SA） | 文字 | v1.0（2026-08-26） |
 | 03 | [3 分钟演示视频脚本](./03-demo-video-script.md) | 客户 / 面试官（录制统一脚本） | 文字（逐屏台词 + 操作动作 + 预期证据） | v1.0（2026-08-31） |
@@ -35,10 +36,12 @@
 
 | 口径 | 当前值 | 核实命令 |
 |------|--------|---------|
-| 测试数 | 334（需本地 PG：`docker compose up -d postgres`） | `cd apps/web && pnpm test` |
+| 测试数 | 508（45 个文件；本地 SQLite 零服务，无需 docker） | `pnpm test`（根级） |
 | 演示站路由 | 17（含 10 个 Agent 详情静态页） | `cd apps/web && pnpm build:demo`（日志列出生成路由） |
-| Zod schema | 29 | `grep -c 'Schema = z' apps/web/lib/schemas.ts` |
-| API route 文件 | 38 | `find apps/web/app/api -name route.ts \| wc -l` |
+| Zod schema | 30 | `grep -c 'Schema = z' apps/web/lib/schemas.ts` |
+| API route 文件 | 40 | `find apps/web/app/api -name route.ts \| wc -l` |
+| 覆盖率门禁 | lines/statements/functions ≥80 · branches ≥70（CI 强制） | `pnpm test:coverage` |
+| 开源治理 | MIT + 社区四件套 + Dependabot + CI Node 20/22 双矩阵（2026-10-20 起） | `LICENSE`、`.github/` |
 | 真实 LLM 集成点 | 5（探针/归因/摘要/试聊/发布 AI 评测） | 见 `docs/api/api-reference.md` 第四节 |
 | 演示账号 | allengaller / 123 | MOCK 登录 |
 | MiMo 探针实测 | 2,557ms · 入 45 / 出 73 tokens（mimo-v2.5-pro，2026-08-25） | 见 `docs/reports/2026-08-25-mimo-llm-integration-delivery.md` 第三节 |
@@ -55,3 +58,7 @@
 |---|------|------|
 | B1 | Chrome 插件演示动线（反馈收集器 PoC 已入库 `chrome-extension/`，含 README 动线；待录 1 分钟独立片段或并入 03 视频脚本） | 已入库，未录视频 |
 | B2 | 03 视频脚本 S4（发布审批）补「AI 评测」镜头（快照回放 PASSED 出镜）；台词同步补 trace→打分→沉淀叙事 | 待重录 / 待剪辑时并入 |
+| B3 | 英文 README 短版（解锁 HN/Product Hunt/Reddit 国际渠道，见 [00 总纲](./00-marketing-strategy.md) §6.1） | 待启动（60 天窗口评估） |
+| B6 | W1 产品首页数字刷新（315 等旧口径 → 508/30/40，与事实口径表对齐） | 待执行 |
+| B7 | 演示站轻量埋点（North Star「每周闭环完成数」的激活口径，见 00 总纲 §8） | 待评估方案 |
+| B8 | README 顶部演示 GIF + GitHub topics/Social Preview（Launch 前置项，见 00 总纲 §7） | 待执行 |
