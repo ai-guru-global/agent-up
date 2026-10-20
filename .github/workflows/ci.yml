@@ -5,11 +5,26 @@ on:
     branches: [main]
   pull_request:
 
+# 同一分支的新推送取消进行中的旧运行，省额度也缩短反馈回路
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 最小权限：本工作流只需读代码，不需要写仓库/发包
+permissions:
+  contents: read
+
 jobs:
   quality-gate:
-    name: lint · test · build
+    name: lint · typecheck · test · build (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # engines 约定 >=20；20 与 22 双 LTS 矩阵验证
+        node: [20, 22]
 
     env:
       # SQLite：单文件库，无需服务容器（2026-10-05 迁移，原 postgres service 已移除）
@@ -26,7 +41,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node }}
           cache: pnpm
 
       - name: Install dependencies
@@ -46,10 +61,18 @@ jobs:
         # turbo run lint：web 包 eslint 全绿（构建产物目录已忽略）
         run: pnpm lint
 
+      - name: Typecheck
+        # turbo run typecheck：web + db 双包 tsc --noEmit；
+        # dependsOn ^build 保证 Prisma Client 类型已生成
+        run: pnpm typecheck
+
       - name: Test
+        # 根级 turbo run test（test 任务 cache:false，避免 DB 文件状态被缓存）；
+        # 带覆盖率以强制阈值门禁（lines/statements/functions ≥80、branches ≥70，
+        # turbo 不透传 vitest 参数，覆盖率入口走 --filter）；
         # 测试连本地 SQLite 文件（vitest 的 dotenv/config 找不到 .env 时回落到
         # job 级 env 的 DATABASE_URL）；LLM 端点全 mock fetch，不发真实请求
-        run: cd apps/web && pnpm test
+        run: pnpm test:coverage
 
       - name: Build
         # packages/db 的 build 内含 prisma generate（上面已单独跑过，幂等）；

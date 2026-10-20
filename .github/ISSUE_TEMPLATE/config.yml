@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 故障排查手册
+    url: https://github.com/ai-guru-global/agent-up/blob/main/docs/guides/troubleshooting.md
+    about: 提 issue 前先查 15 个已知问题，多数安装/启动问题已有解法。
+  - name: 使用与部署问题
+    url: https://github.com/ai-guru-global/agent-up/blob/main/docs/guides/deployment.md
+    about: 部署指南含演示前检查清单，部署类疑问先看这里。

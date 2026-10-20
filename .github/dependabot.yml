@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # 根 workspace（pnpm-lock.yaml 在仓库根）
+  - package-ecosystem: pnpm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(deps)"
+    # 小步快跑：单 PR 最多升 5 个依赖，出问题好定位好回滚
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    # 主版本（含 Next.js / React 跨大版本）单独开 PR 评审
+    ignore:
+      # Next.js 大版本升级需要实测 Turbopack / instrumentation 行为，手动评估
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+  # GitHub Actions workflow 依赖
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ci)"
