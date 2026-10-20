@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: web_app/demo_setup
+title: 演示模式（Demo Mode）运行时注入层
+scope:
+    - apps/web/demo/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/agents_feature/skills_config_chat
+    - path: web_app/feedback_feature
+    - path: web_app/wiki_feature/wiki_vaults_api

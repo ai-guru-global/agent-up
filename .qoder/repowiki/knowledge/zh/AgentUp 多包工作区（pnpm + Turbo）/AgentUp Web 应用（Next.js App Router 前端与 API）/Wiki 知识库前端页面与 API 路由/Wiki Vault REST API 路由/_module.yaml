@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: web_app/wiki_feature/wiki_vaults_api
-title: Wiki Vault REST API 路由
-scope:
-    - apps/web/app/api/wiki/vaults/
-source_files: []
-depends_on: []
-related_to: []

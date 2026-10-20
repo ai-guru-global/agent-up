@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: web_app/feedback_feature
+title: 反馈中心（Feedback）Web 端与 API
+scope:
+    - apps/web/app/(dashboard)/feedback/
+    - apps/web/app/api/feedback/
+source_files: []
+depends_on: []
+related_to:
+    - path: chrome_extension
+    - path: web_app/demo_setup

@@ -1,9 +1,0 @@
-schema_version: 1
-module_path: web_app/releases_feature
-title: Agent 发布审批与 AI 评测
-scope:
-    - apps/web/app/(dashboard)/releases/
-    - apps/web/app/api/releases/
-source_files: []
-depends_on: []
-related_to: []

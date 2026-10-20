@@ -1,0 +1,19 @@
+schema_version: 1
+module_path: ""
+title: AgentUp Monorepo（pnpm + Turborepo）
+scope:
+    - README.md
+    - .gitignore
+    - package.json
+    - pnpm-workspace.yaml
+    - turbo.json
+    - tsconfig.json
+    - skills-lock.json
+    - code-up.yaml
+    - gotchas.md
+    - .env.example
+    - pnpm-lock.yaml
+    - skills-up.yaml
+source_files: []
+depends_on: []
+related_to: []

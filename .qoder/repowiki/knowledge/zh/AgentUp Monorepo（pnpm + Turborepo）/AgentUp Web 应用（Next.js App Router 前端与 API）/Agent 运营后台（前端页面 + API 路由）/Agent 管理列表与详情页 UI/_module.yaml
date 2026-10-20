@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: web_app/agents_feature/agent_detail_ui
+title: Agent 管理列表与详情页 UI
+scope:
+    - apps/web/app/(dashboard)/agents/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/agents_feature/skills_config_chat
+    - path: web_app/agents_feature/versions_release_rollback

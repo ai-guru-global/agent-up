@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-10-06T13:27:57Z"
+exported_at: "2026-10-06T13:59:59Z"
 modules:
     "":
-        dir_name: AgentUp 多包工作区（pnpm + Turbo）
-        title: AgentUp 多包工作区（pnpm + Turbo）
+        dir_name: AgentUp Monorepo（pnpm + Turborepo）
+        title: AgentUp Monorepo（pnpm + Turborepo）
         scope:
             - README.md
             - .gitignore
@@ -48,12 +48,10 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to:
-            - path: web_app/agents_feature
-            - path: web_app/wiki_feature
+        related_to: []
     docs:
-        dir_name: 项目文档与 GTM 物料库
-        title: 项目文档与 GTM 物料库
+        dir_name: 工程文档与 Go-To-Market 物料库
+        title: 工程文档与 Go-To-Market 物料库
         scope:
             - docs/
             - GTM/
@@ -102,8 +100,7 @@ modules:
             - web_app/agents_feature/skills_config_chat
             - web_app/agents_feature/versions_release_rollback
         depends_on: []
-        related_to:
-            - path: db_package
+        related_to: []
     web_app/agents_feature/agent_detail_ui:
         dir_name: Agent 管理列表与详情页 UI
         title: Agent 管理列表与详情页 UI
@@ -114,6 +111,7 @@ modules:
         depends_on: []
         related_to:
             - path: web_app/agents_feature/skills_config_chat
+            - path: web_app/agents_feature/versions_release_rollback
     web_app/agents_feature/skills_config_chat:
         dir_name: Agent 技能、配置分区与试聊 API
         title: Agent 技能、配置分区与试聊 API
@@ -126,7 +124,9 @@ modules:
         depends_on: []
         related_to:
             - path: web_app/agents_feature/agent_detail_ui
-            - path: web_app/agents_feature/versions_release_rollback
+            - path: web_app/demo_setup
+            - path: web_app/maas_feature
+            - path: web_app/releases_feature
     web_app/agents_feature/versions_release_rollback:
         dir_name: Agent 版本历史与整版本回滚 API
         title: Agent 版本历史与整版本回滚 API
@@ -137,7 +137,7 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: web_app/agents_feature/skills_config_chat
+            - path: web_app/agents_feature/agent_detail_ui
     web_app/architecture_feature:
         dir_name: AgentUp 架构文档站点（三层 Loop _ Harness _ 路线图）
         title: AgentUp 架构文档站点（三层 Loop / Harness / 路线图）
@@ -156,7 +156,9 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: web_app/shared_lib
+            - path: web_app/agents_feature/skills_config_chat
+            - path: web_app/feedback_feature
+            - path: web_app/wiki_feature/wiki_vaults_api
     web_app/feedback_feature:
         dir_name: 反馈中心（Feedback）Web 端与 API
         title: 反馈中心（Feedback）Web 端与 API
@@ -168,6 +170,7 @@ modules:
         depends_on: []
         related_to:
             - path: chrome_extension
+            - path: web_app/demo_setup
     web_app/maas_feature:
         dir_name: MaaS 集成演示与连通性探针页面
         title: MaaS 集成演示与连通性探针页面
@@ -178,7 +181,7 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: web_app/shared_lib
+            - path: web_app/agents_feature/skills_config_chat
     web_app/releases_feature:
         dir_name: Agent 发布审批与 AI 评测
         title: Agent 发布审批与 AI 评测
@@ -188,7 +191,8 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: web_app/agents_feature/skills_config_chat
     web_app/settings_feature:
         dir_name: 设置中心：产品组、角色权限与审计日志
         title: 设置中心：产品组、角色权限与审计日志
@@ -198,7 +202,8 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: web_app/shared_lib
     web_app/shared_lib:
         dir_name: Web 应用共享库（认证、校验、服务与工具）
         title: Web 应用共享库（认证、校验、服务与工具）
@@ -208,8 +213,8 @@ modules:
         children: []
         depends_on: []
         related_to:
-            - path: web_app/demo_setup
-            - path: web_app/maas_feature
+            - path: web_app/settings_feature
+            - path: web_app/wiki_feature/wiki_vaults_api
     web_app/skills_feature:
         dir_name: Skill 技能市场页面与 API
         title: Skill 技能市场页面与 API
@@ -239,8 +244,7 @@ modules:
         children:
             - web_app/wiki_feature/wiki_vaults_api
         depends_on: []
-        related_to:
-            - path: db_package
+        related_to: []
     web_app/wiki_feature/wiki_vaults_api:
         dir_name: Wiki Vault REST API 路由
         title: Wiki Vault REST API 路由
@@ -249,4 +253,6 @@ modules:
         source_files: []
         children: []
         depends_on: []
-        related_to: []
+        related_to:
+            - path: web_app/demo_setup
+            - path: web_app/shared_lib

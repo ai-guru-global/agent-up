@@ -5,21 +5,22 @@
 - [apps/web/app/api/auth/login/route.ts](file://apps/web/app/api/auth/login/route.ts)
 - [apps/web/app/api/auth/logout/route.ts](file://apps/web/app/api/auth/logout/route.ts)
 - [apps/web/app/api/agents/route.ts](file://apps/web/app/api/agents/route.ts)
-- [apps/web/app/api/agents/[id]/route.ts](file://apps/web/app/api/agents/[id]/route.ts)
-- [apps/web/app/api/agents/[id]/config/[partition]/route.ts](file://apps/web/app/api/agents/[id]/config/[partition]/route.ts)
-- [apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts](file://apps/web/app/api/agents/[id]/config/[partition]/rollback/route.ts)
-- [apps/web/app/api/agents/[id]/versions/route.ts](file://apps/web/app/api/agents/[id]/versions/route.ts)
-- [apps/web/app/api/agents/[id]/versions/[versionId]/route.ts](file://apps/web/app/api/agents/[id]/versions/[versionId]/route.ts)
-- [apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts](file://apps/web/app/api/agents/[id]/rollback/[versionId]/route.ts)
-- [apps/web/app/api/agents/[id]/skills/route.ts](file://apps/web/app/api/agents/[id]/skills/route.ts)
-- [apps/web/app/api/agents/[id]/release/route.ts](file://apps/web/app/api/agents/[id]/release/route.ts)
-- [apps/web/app/api/agents/[id]/eval-cases/route.ts](file://apps/web/app/api/agents/[id]/eval-cases/route.ts)
-- [apps/web/app/api/agents/[id]/evidence-chain/route.ts](file://apps/web/app/api/agents/[id]/evidence-chain/route.ts)
-- [apps/web/app/api/agents/[id]/version-lineage/route.ts](file://apps/web/app/api/agents/[id]/version-lineage/route.ts)
-- [apps/web/app/api/agents/[id]/chat/route.ts](file://apps/web/app/api/agents/[id]/chat/route.ts)
 - [apps/web/app/api/releases/route.ts](file://apps/web/app/api/releases/route.ts)
+- [apps/web/app/api/feedback/route.ts](file://apps/web/app/api/feedback/route.ts)
+- [apps/web/app/api/wiki/vaults/route.ts](file://apps/web/app/api/wiki/vaults/route.ts)
+- [apps/web/app/api/settings/roles/route.ts](file://apps/web/app/api/settings/roles/route.ts)
+- [apps/web/app/api/skills/route.ts](file://apps/web/app/api/skills/route.ts)
+- [apps/web/app/api/dashboard/route.ts](file://apps/web/app/api/dashboard/route.ts)
+- [apps/web/app/api/maas/probe/route.ts](file://apps/web/app/api/maas/probe/route.ts)
 - [docs/api/api-reference.md](file://docs/api/api-reference.md)
 </cite>
+
+## 更新摘要
+**变更内容**   
+- 删除了旧的 `接口文档.md` 文件，统一使用 `docs/api/api-reference.md` 作为唯一 API 参考文档
+- 更新了文档组织结构，采用自动化工具链维护 API 文档
+- 保持了完整的 40 个 API 端点覆盖，包括认证、Agent 管理、版本控制、发布评测、反馈处理、技能管理、知识库、设置管理等模块
+- 增强了 RBAC 权限矩阵和 Actor 上下文机制的文档说明
 
 ## 目录
 1. [简介](#简介)
@@ -34,7 +35,9 @@
 10. [附录：客户端集成与 SDK 示例](#附录客户端集成与-sdk-示例)
 
 ## 简介
-本文件为 AgentUp 平台 RESTful API 的完整接口文档，覆盖全部 40 个 Next.js Route Handler。文档按功能模块分组：认证、Agent 管理、版本控制、发布与评测、反馈处理、技能管理、知识库、设置与其他。每个端点提供 HTTP 方法、URL 模式、请求参数、响应结构与状态码；并统一说明认证授权、错误格式、分页机制与 LLM 相关行为。
+本文件为 AgentUp 平台 RESTful API 的完整接口文档，基于 Next.js App Router 组织在 `apps/web/app/api` 下。文档按功能模块分组：认证、Agent 管理、版本控制、发布与评测、反馈处理、技能管理、知识库、设置与其他。每个端点提供 HTTP 方法、URL 模式、请求参数、响应结构与状态码；并统一说明认证授权、错误格式、分页机制与 LLM 相关行为。
+
+**更新** 文档已迁移至 `docs/api/api-reference.md`，采用自动化维护流程，确保与实际代码实现保持同步。
 
 ## 项目结构
 API 基于 Next.js App Router 组织在 `apps/web/app/api` 下，按资源域划分路由目录（如 agents、releases、feedback、wiki、settings 等），并通过 `lib/utils.ts`、`lib/errors.ts`、`lib/schemas.ts`、`lib/context.ts`、`lib/auth-token.ts` 等公共库实现统一的响应封装、校验、错误体系与 Actor 身份解析。
@@ -104,7 +107,7 @@ U --> DB
 - [docs/api/api-reference.md:6-74](file://docs/api/api-reference.md#L6-L74)
 
 ## 架构总览
-下图展示一次“Agent 试聊”的典型调用链：前端 → 路由层 → Prompt 组装 → LLM 调用 → Trace 落盘 → 返回 traceId。
+下图展示一次"Agent 试聊"的典型调用链：前端 → 路由层 → Prompt 组装 → LLM 调用 → Trace 落盘 → 返回 traceId。
 
 ```mermaid
 sequenceDiagram
@@ -388,6 +391,8 @@ Resp --> End
 
 ## 结论
 本 API 采用 Next.js Route Handler 分层架构，配合统一响应、Zod 校验、Actor 上下文与 RBAC 写权限矩阵，形成一致的接口契约。Agent 域提供完整的配置分区管理、版本历史、回滚与评测能力；反馈、Wiki、Settings 等模块覆盖平台运营所需的关键流程。LLM 端点对外暴露稳定契约，便于扩展更多智能能力。
+
+**更新** 文档现已迁移至 `docs/api/api-reference.md`，采用自动化维护流程，确保与实际代码实现保持同步。
 
 ## 附录：客户端集成与 SDK 示例
 - 认证流程

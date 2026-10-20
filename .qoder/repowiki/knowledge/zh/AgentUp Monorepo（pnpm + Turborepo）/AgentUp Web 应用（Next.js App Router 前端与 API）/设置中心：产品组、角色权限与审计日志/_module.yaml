@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: web_app/settings_feature
+title: 设置中心：产品组、角色权限与审计日志
+scope:
+    - apps/web/app/(dashboard)/settings/
+    - apps/web/app/api/settings/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/shared_lib

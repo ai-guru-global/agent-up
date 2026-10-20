@@ -1,0 +1,9 @@
+schema_version: 1
+module_path: docs
+title: 工程文档与 Go-To-Market 物料库
+scope:
+    - docs/
+    - GTM/
+source_files: []
+depends_on: []
+related_to: []

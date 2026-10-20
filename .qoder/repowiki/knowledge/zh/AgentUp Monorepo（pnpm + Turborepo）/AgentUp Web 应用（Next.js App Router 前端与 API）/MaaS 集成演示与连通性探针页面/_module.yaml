@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: web_app/maas_feature
+title: MaaS 集成演示与连通性探针页面
+scope:
+    - apps/web/app/(dashboard)/maas/
+    - apps/web/app/api/maas/
+source_files: []
+depends_on: []
+related_to:
+    - path: web_app/agents_feature/skills_config_chat
