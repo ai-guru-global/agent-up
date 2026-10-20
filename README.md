@@ -2,7 +2,7 @@
 
 > better agent, better life
 
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-371_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
+![CI](https://github.com/ai-guru-global/agent-up/actions/workflows/ci.yml/badge.svg) ![License](https://img.shields.io/badge/license-MIT-green) ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white) ![Tests](https://img.shields.io/badge/tests-508_passing-brightgreen?logo=vitest&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-9-F69200?logo=pnpm&logoColor=white) ![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444)
 
 基于三层 Loop 设计理念的 Agent 持续改进管理平台。面向专有云工单场景，支持各产品组维护改进各自的 Agent 配置（Prompt / 知识库 / 工具 / 路由），通过审批流程发布新版本。
 
@@ -67,10 +67,10 @@
 - **语言**: TypeScript (strict mode)
 - **样式**: Tailwind CSS 4
 - **校验**: Zod（30 个 schema 覆盖所有 API 入参）
-- **测试**: Vitest 3 + v8 coverage（371 个测试，35 个文件）
+- **测试**: Vitest 3 + v8 coverage（508 个测试，45 个文件）
 - **LLM**: 小米 MiMo（mimo-v2.5-pro，OpenAI 兼容协议 Token Plan）——已真实接入 5 个集成点
 - **数据库**: SQLite（单文件 `packages/db/prisma/dev.db`）+ Prisma ORM（2026-10-05 自 PostgreSQL 迁移；所有业务运行时走 Prisma，种子由 `pnpm db:seed` 写入）
-- **对象存储**: MinIO (S3 兼容)
+- **对象存储**: MinIO (S3 兼容)——预留未接线（compose 已随 SQLite 迁移移除，`S3_*` 配置键零消费方）
 - **构建**: Turborepo monorepo + pnpm workspaces
 
 ## 项目结构
@@ -183,16 +183,17 @@ pnpm dev
 pnpm dev                 # 启动开发服务器（turbo）
 pnpm build               # 全量构建
 pnpm lint                # ESLint 检查（全绿，0 problems）
-cd apps/web && pnpm test                # 运行全部测试（单元 + API 集成）
-cd apps/web && pnpm test -- --coverage  # 带覆盖率报告
+pnpm typecheck           # TypeScript 类型检查（web + db 双包 tsc --noEmit）
+pnpm test                # 运行全部测试（单元 + API 集成）
+pnpm test:coverage       # 带覆盖率报告（turbo 不透传 vitest 参数，故走 --filter）
 ```
 
 ### 测试
 
-**371 个测试，35 个测试文件：**
+**508 个测试，45 个测试文件：**
 
-- **单元测试**（`lib/__tests__/`，17 个文件）：versioning、errors、schemas、diff、context（ALS actor 上下文）、auth-token（HMAC 签名会话令牌：载荷校验 / cookie 解析 / Set-Cookie 属性）、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、retrieval-service、utils、llm-service（mock fetch）、test-db（Prisma 冒烟 + `_resetDb` 清库基建）、worker-db（per-worker 独立 PG 测试库）
-- **API 集成测试**（`app/api/__tests__/`，18 个文件）：dashboard 概览聚合、agents、agent-rollback、agent-skills、releases（含审批流 + diff）、feedback（ingest 多渠道工单接入 + skills/wiki 闭环）、versions-rollback、settings-roles / settings-permissions-groups / settings-audit-logs、effectiveness 全链路、trace/eval 闭环（trace-eval-ai-review）、MaaS 用量聚合（maas-usage）、证据链（evidence-chain）、资产演进线（version-lineage）、vault 内知识检索（wiki-search）+ LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
+- **单元测试**（`lib/__tests__/`，22 个文件）：versioning、errors、schemas、diff、context（ALS actor 上下文）、auth-token（HMAC 签名会话令牌：载荷校验 / cookie 解析 / Set-Cookie 属性）、audit-service、release-service、feedback-service（状态机）、agent-service、skill-service、wiki-service、retrieval-service、utils、llm-service（mock fetch）、test-db（Prisma 冒烟 + `_resetDb` 清库基建）、worker-db（per-worker 独立 SQLite 测试库）
+- **API 集成测试**（`app/api/__tests__/`，23 个文件）：dashboard 概览聚合、agents、agent-rollback、agent-skills、releases（含审批流 + diff）、feedback（ingest 多渠道工单接入 + skills/wiki 闭环）、versions-rollback、settings-roles / settings-permissions-groups / settings-audit-logs、effectiveness 全链路、trace/eval 闭环（trace-eval-ai-review）、MaaS 用量聚合（maas-usage）、证据链（evidence-chain）、资产演进线（version-lineage）、vault 内知识检索（wiki-search）+ LLM 集成点（llm-integrations，mock fetch 绝不发真实请求），验证 status / body / 审计副作用
 - **隔离**：每个测试经 `_resetDb` 清库后连本地 SQLite 文件（每并发 worker 一个独立 `.db` 文件，由 `lib/__tests__/setup/` 自动创建，互不干扰；无需任何数据库服务）
 
 ## 演示双轨（本地全栈 / 静态导出 Demo）
@@ -455,7 +456,7 @@ A：4 个真实 LLM 集成点返回 503 并在页面给出明确提示，其余�
 
 **Q：测试会弄脏开发数据库吗？**
 
-A：不会。每个测试先经 `_resetDb` 清库（TRUNCATE 全部业务表），再灌入自己的测试数据；跑完 `pnpm db:seed` 即可恢复演示数据。
+A：不会。每个测试先经 `_resetDb` 清库（按依赖序 deleteMany 全部业务表），再灌入自己的测试数据；跑完 `pnpm db:seed` 即可恢复演示数据。
 
 **Q：如何把演示数据重置回初始状态？**
 
@@ -470,17 +471,18 @@ A：`allengaller@example.com` / `AgentUp#Demo2026`（真实用户库登录，账
 1. ~~接入真实 LLM~~ ✅ 已接入小米 MiMo（4 个集成点）；接入真实 DashScope / 百炼 API（多 Provider 可切换）为下一里程碑
 2. L1 trace（检索命中、工具调用、模型回答）回流为反馈证据，闭合「复盘有据 → 归因有理 → 加强有验」
 3. ~~Prisma 持久化~~ ✅ 批0–批5 全量落地（2026-10-05 起运行时为 SQLite 单文件，PostgreSQL 版本见 git 历史）；NextAuth 真实认证与 RBAC 为下一里程碑
-4. ~~CI 流水线~~ ✅ `.github/workflows/ci.yml`（lint + test 连 PG 服务容器 + build）
+4. ~~CI 流水线~~ ✅ `.github/workflows/ci.yml`（lint + typecheck + test + build，Node 20/22 矩阵，SQLite 单文件零服务容器）
 
 ## 参与贡献
 
-本仓库当前为演示 / 面试形态项目；欢迎讨论与复用。提交或评审改动时遵循以下约定：
+本仓库当前为演示 / 面试形态项目；欢迎讨论与复用。完整的环境搭建、命令、测试纪律与提交规范见 [CONTRIBUTING.md](CONTRIBUTING.md)；安全漏洞请按 [SECURITY.md](SECURITY.md) 的私密渠道上报；社区互动遵守 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。核心约定速览：
 
-1. `pnpm lint` 与 `cd apps/web && pnpm test` 全绿（447 个测试，本地 SQLite 文件自动创建，无需任何数据库服务）
+1. `pnpm lint`、`pnpm typecheck` 与 `pnpm test` 全绿（508 个测试，本地 SQLite 文件自动创建，无需任何数据库服务）
 2. 新增 mock 能力时遵循全站统一的 MOCK 标注规范（徽标 + 代码注释，见 [MOCK 声明](#mock-声明与演示用途)）
 3. 新增文档按 `YYYY-MM-DD-主题.md` 命名放入 `docs/` 对应目录（规范见 [文档索引](#文档索引)）
 4. commit message 用 Conventional Commits 风格：`feat|fix|docs|chore(scope): 中文摘要`，如 `fix(web): 修复 lint 扫描构建产物`
+5. 变更历史统一记录在 [CHANGELOG.md](CHANGELOG.md)
 
 ## 许可证
 
-仓库当前未附带开源许可证（默认保留所有权利）。如需以开源许可证（如 MIT / Apache-2.0）发布或复用其中内容，请先与作者确认。
+[MIT](LICENSE) © 2026 Allen Galler

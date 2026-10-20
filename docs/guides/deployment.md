@@ -26,8 +26,9 @@ pnpm dev              # turbo 编排启动 apps/web（http://localhost:3000）
 | `pnpm dev` | 开发服务器（Turbopack） |
 | `pnpm build` | 全量生产构建 |
 | `pnpm lint` | ESLint（全绿，0 problems） |
-| `cd apps/web && pnpm test` | 447 个测试（单元 + API 集成；连本地 SQLite 文件，自动创建，无需任何数据库服务） |
-| `cd apps/web && pnpm test -- --coverage` | 带覆盖率（阈值 lines/functions/statements ≥80，branches ≥70） |
+| `pnpm typecheck` | TypeScript 类型检查（web + db 双包 `tsc --noEmit`） |
+| `pnpm test` | 508 个测试（单元 + API 集成；连本地 SQLite 文件，自动创建，无需任何数据库服务） |
+| `pnpm test:coverage` | 带覆盖率（阈值 lines/functions/statements ≥80，branches ≥70；CI 同步强制） |
 
 ### 数据与基础设施
 
@@ -74,14 +75,14 @@ cd apps/web && npx next start  # 生产模式启动
 
 - 生产环境同样需要 `apps/web/.env`（或注入等效环境变量）才能启用 LLM 功能
 - 静态页面（architecture / maas / login 等）预渲染；API 与动态页按需渲染
-- CI 已就绪（`.github/workflows/ci.yml`：lint + test 连 PG 服务容器 + build）；本地提交前建议执行同样三件套 `pnpm lint && cd apps/web && pnpm test && pnpm build`
+- CI 已就绪（`.github/workflows/ci.yml`：lint + typecheck + test + build，Node 20/22 矩阵，SQLite 单文件零服务容器）；本地提交前建议执行同样四件套 `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 
 ## 四、客户现场演示前检查清单
 
 | 检查项 | 命令 / 动作 |
 |--------|------------|
 | 依赖与构建 | `pnpm install && pnpm build` 通过 |
-| 测试全绿 | `cd apps/web && pnpm test` → 447/447（本地 SQLite 文件，自动创建） |
+| 测试全绿 | `pnpm test` → 508/508（本地 SQLite 文件，自动创建） |
 | 服务启动 | `pnpm dev` 后 `curl http://localhost:3000` 返回 200 |
 | LLM 凭据 | `/maas` 页 LIVE 区块显示模型与 Base URL；点「发起真实调用」有回复 |
 | 演示动线 | ① `/maas` 连通性 → ② 反馈页「AI 归因」→ ③ `/agents/ecs-assistant` 试聊 → ④ `/releases` 查看变更 + AI 摘要 + AI 评测 |
