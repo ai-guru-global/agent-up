@@ -81,7 +81,7 @@ export default function DashboardHome() {
           {error}
           <span className="mt-1 block text-xs">
             概览数据来自 /api/dashboard，由服务端实时汇总 Agent、反馈与发布数据。
-            若刚启动，请确认本地 PostgreSQL 可用后刷新重试。
+            若刚启动，请确认已完成数据库迁移与种子初始化（SQLite 单文件，无需启动任何服务）后刷新重试。
           </span>
         </Alert>
       </div>
@@ -122,7 +122,7 @@ export default function DashboardHome() {
         hint={
           <>
             平台的日常动线是「反馈进来 → 归因到四分区 → 改配置 → 提交发布审批 → 生成版本快照」。
-            下面的四个指标对应这条动线上最容易堵住的环节，数字带下划色的表示需要你介入。
+            下面的四个指标对应这条动线上最容易堵住的环节，用主题色标出的数字表示需要你介入。
           </>
         }
       />
@@ -137,7 +137,7 @@ export default function DashboardHome() {
         <StatCard
           label="待处理反馈"
           value={d.feedback.pending}
-          sub={`待处理 ${d.feedback.pending} 条 / 历史共 ${d.feedback.total} 条`}
+          sub={`历史共 ${d.feedback.total} 条`}
           accent
           explain="尚未流转到「已解决」的反馈数量，是改进环的输入队列"
         />
@@ -266,17 +266,18 @@ export default function DashboardHome() {
           description="按改进环的顺序排列：先看有什么问题，再改配置，最后把变更放行。"
         />
         <div className="flex flex-wrap gap-3">
+          {/* 顺序与上方说明一致：先看有什么问题（反馈），再改配置（Agent），最后放行（审批） */}
+          <Link
+            href="/feedback/"
+            className="inline-flex h-9 items-center rounded-md bg-[var(--accent)] px-3.5 text-[13px] font-medium text-white transition-colors hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
+          >
+            处理反馈
+          </Link>
           <Link
             href="/agents/"
             className="inline-flex h-9 items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-elevated)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
           >
             管理 Agent
-          </Link>
-          <Link
-            href="/feedback/"
-            className="inline-flex h-9 items-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[13px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-elevated)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]"
-          >
-            处理反馈
           </Link>
           <Link
             href="/releases/"

@@ -4,8 +4,11 @@ import { DemoProvider } from "@/demo/demo-provider";
 import { DemoDeepLinkRedirect } from "@/demo/demo-deep-link-redirect";
 
 export const metadata: Metadata = {
-  title: "Agent 改进平台",
-  description: "Agent 持续改进管理平台",
+  title: {
+    default: "Agent 改进平台",
+    template: "%s · Agent 改进平台",
+  },
+  description: "Agent 持续改进管理平台——反馈、归因、审批发布与效果回滚的工程化闭环",
 };
 
 export default function RootLayout({

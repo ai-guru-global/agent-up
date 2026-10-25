@@ -133,7 +133,7 @@ export default function AgentsPage() {
         >
           {error}
           <span className="mt-1 block text-xs">
-            列表数据来自 /api/agents，由服务端从 PostgreSQL 实时读取。
+            列表数据来自 /api/agents，由服务端从 SQLite 实时读取。
             请确认本地数据库可用，然后重试。
           </span>
         </Alert>
@@ -400,7 +400,7 @@ function CreateAgentModal({
       </div>
 
       <Hint className="mt-4 border-t border-[var(--border)] pt-3">
-        创建动作会立即写入数据库（PostgreSQL），但不会触发任何对外发布。
+        创建动作会立即写入数据库（SQLite），但不会触发任何对外发布。
       </Hint>
     </Modal>
   );

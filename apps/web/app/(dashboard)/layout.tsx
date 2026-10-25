@@ -194,7 +194,7 @@ export default function DashboardLayout({
           </div>
         </div>
         <p className="mt-1 text-[10px] leading-relaxed text-[var(--subtle)]">
-          数据源：本地 PostgreSQL（Prisma）中的种子数据
+          数据源：本地 SQLite 单文件库（Prisma）中的种子数据
         </p>
         <p className="mt-1 text-[10px] leading-relaxed text-[var(--subtle)]">
           所有增删改都会写入数据库，重启服务后仍然保留；演示环境可随时修改，不影响任何线上系统
@@ -258,7 +258,7 @@ export default function DashboardLayout({
           >
             AgentUp
           </Link>
-          <MockTag note="演示环境：数据来自本地 PostgreSQL 的种子数据" />
+          <MockTag note="演示环境：数据来自本地 SQLite 的种子数据" />
         </header>
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-x-hidden">

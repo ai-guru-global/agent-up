@@ -195,7 +195,7 @@ export default function AgentDetailPage() {
         >
           {agentError}
           <span className="mt-1 block text-xs">
-            若反复失败，可回到列表页确认这条记录是否仍在，再确认本地 PostgreSQL 可用后重试。
+            若反复失败，可回到列表页确认这条记录是否仍在，再确认数据库文件（SQLite 单文件，无需启动服务）就位后重试。
           </span>
         </Alert>
       </div>
@@ -222,7 +222,7 @@ export default function AgentDetailPage() {
             返回 Agent 列表
           </Link>
         }
-        hint="Agent 数据持久化在 PostgreSQL（Prisma），四分区配置与版本快照均存于数据库。"
+        hint="Agent 数据持久化在 SQLite 单文件库（Prisma），四分区配置与版本快照均存于数据库。"
       />
     );
   }

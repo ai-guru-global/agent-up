@@ -209,7 +209,7 @@ export default function FeedbackPage() {
         >
           {error}
           <span className="mt-1 block text-xs">
-            列表数据来自 /api/feedback，由服务端从 PostgreSQL 实时读取。
+            列表数据来自 /api/feedback，由服务端从 SQLite 实时读取。
             请确认本地数据库可用，然后重试。
           </span>
         </Alert>

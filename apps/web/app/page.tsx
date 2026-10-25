@@ -123,7 +123,7 @@ export default function HomePage() {
           >
             架构总览
           </Link>
-          。当前为演示环境，数据来自本地 PostgreSQL 中的种子数据。
+          。当前为演示环境，数据来自本地 SQLite 种子数据。
         </p>
       </div>
     </main>

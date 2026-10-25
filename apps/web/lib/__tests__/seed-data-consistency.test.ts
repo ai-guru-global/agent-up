@@ -12,7 +12,7 @@ import { verifyPassword } from "@/lib/password-hash";
 /**
  * 种子数据一致性守卫（纯静态断言，PG-free 可跑）。
  *
- * seed-data.mjs 是双轨单一事实源：db:seed 展平写入 PostgreSQL，
+ * seed-data.mjs 是双轨单一事实源：db:seed 展平写入 SQLite，
  * demo/seed.ts 原样喂给浏览器演示态。其中的 _count 是 JSON 文件时代
  * 手工维护的冗余计数，曾与实际关系数组脱节——perm-6..10 声称被
  * 3/2/3/2/1 个角色持有、实际授权为零；role-product/role-cre 的

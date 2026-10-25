@@ -269,7 +269,7 @@ export default function ArchitectureOverviewPage() {
             [
               "数据持久化",
               <ScoreDots score={5} />,
-              "批0–批5 全量落地：运行时全面走 PostgreSQL（Prisma），JSON 存储层已删除；种子由 pnpm db:seed 灌入，测试经 _resetDb 隔离",
+              "批0–批5 全量落地：运行时全面走数据库（Prisma，2026-10-05 起 SQLite 单文件），JSON 存储层已删除；种子由 pnpm db:seed 灌入，测试经 _resetDb 隔离",
               "对象存储（Wiki 快照）未接线：compose 仍定义 MinIO，但 S3_* 配置键已因零消费方从 .env.example 移除",
             ],
             [
@@ -340,7 +340,7 @@ export default function ArchitectureOverviewPage() {
             ["概念设计（三层 Loop / 四分区 / Release→Version）", <ScoreDots score={5} />, "MVP 设计文档完整、逻辑自洽"],
             ["数据模型", <ScoreDots score={5} />, "Prisma schema 覆盖全域，FK / 唯一约束在批4–批5 补齐"],
             ["配置版本控制", <ScoreDots score={5} />, "SemVer 自动计算 + 不可变快照 + 分区级 / 整版本双粒度回滚 + diff 查看器"],
-            ["数据持久化", <ScoreDots score={5} />, "批0–批5 收官：运行时全面走 PostgreSQL（Prisma），JSON 存储层已删除"],
+            ["数据持久化", <ScoreDots score={5} />, "批0–批5 收官：运行时全面走数据库（Prisma，现 SQLite 单文件），JSON 存储层已删除"],
             ["认证（身份可信）", <ScoreDots score={3} />, "HMAC-SHA256 签名会话令牌（v1.payload.sig，timingSafeEqual 比对），登录下发 HttpOnly cookie；令牌校验失败直接判匿名、绝不回落明文 x-actor-* 头。缺真实用户库（凭据硬编码 MOCK）"],
             ["授权 / RBAC 强制", <ScoreDots score={1} />, "Role/Permission 模型零运行时消费方，service 层不做权限判断，页面路由无守卫 —— 任何登录者仍可改任意 Agent"],
             [<strong>LLM / 评测 / 复盘自动化</strong>, <ScoreDots score={4} />, "5 个真实 LLM 集成点（试聊 / 归因 / 摘要 / AI 评测 / probe）；AI 评测含确定性断言 + LLM 判官；蒸馏与 L1 自动采集仍缺"],

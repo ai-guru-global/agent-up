@@ -9,7 +9,7 @@ import { handleMockRequest, resetDemoState } from "@/demo/mock-server";
  * 「同形」：同样的 success/error 包裹、同样的状态码语义、同样的字段集合。
  * 这里在 install-fetch 使用的同一入口上锁定该契约，防止两轨漂移。
  *
- * 测试不需要 PostgreSQL：种子数据来自 packages/db/prisma/seed-data.mjs 静态模块。
+ * 测试不需要数据库：种子数据来自 packages/db/prisma/seed-data.mjs 静态模块。
  */
 
 const get = (pathname: string, query = "") =>

@@ -56,7 +56,7 @@ export default function DashboardError({
         <p className="text-xs font-semibold text-[var(--foreground)]">常见原因与排查顺序</p>
         <ol className="mt-2 space-y-1.5 text-xs leading-relaxed text-[var(--muted)]">
           <li>
-            1. 数据库不可用：确认本地 PostgreSQL 已启动，且已执行迁移与种子
+            1. 数据库不可用：确认已执行迁移与种子（SQLite 单文件，无需启动任何服务）
             （pnpm db:migrate、pnpm db:seed）。
           </li>
           <li>
