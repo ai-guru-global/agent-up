@@ -20,7 +20,7 @@
 | 项 | 内容 |
 |----|------|
 | 画面 | `/dashboard` 工作台，最近反馈与发布记录两块卡片在视野内 |
-| 操作 | 登录（allengaller / 123）后停在工作台，光标缓划过反馈与发布卡片 |
+| 操作 | 登录（allengaller@example.com / AgentUp#Demo2026，本地全栈真实用户库）后停在工作台，光标缓划过反馈与发布卡片 |
 | 台词 | Agent 上线只是开始，难的是持续改进：改不动、不敢改、说不清。接下来三分钟，我用一条完整的改进闭环，回答这三个问题。 |
 | 预期证据 | 工作台「最近反馈 / 发布记录」卡片正常渲染 |
 
@@ -78,7 +78,7 @@
 | 画面 | 淡出回工作台或产品首页，结尾字幕（演示账号 + 联系方式） |
 | 操作 | 无（静帧 3 秒） |
 | 台词 | 模型是引擎，agent-up 是让引擎持续变好的那层——公共云走百炼，专有云走 Apsara Stack。模型可换，闭环不变。 |
-| 预期证据 | 结尾字幕：better agent, better life · 演示账号 allengaller / 123 |
+| 预期证据 | 结尾字幕：better agent, better life · 本地演示 allengaller@example.com / AgentUp#Demo2026 · 在线演示站 MOCK 登录 allengaller / 123 |
 
 ## 附录
 

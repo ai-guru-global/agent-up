@@ -78,4 +78,4 @@ MaaS 提供模型能力；agent-up 管 Agent 的**配置 · 评估 · 发布 · 
 - ☐ POC 范围定义：1 个产品组 + 1 个 Agent + 4 周改进闭环跑通
 
 ---
-*agent-up · better agent, better life · 演示账号：allengaller / 123*
+*agent-up · better agent, better life · 本地全栈演示账号：allengaller@example.com / AgentUp#Demo2026 · 在线演示站（MOCK）：allengaller / 123*
